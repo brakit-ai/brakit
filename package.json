@@ -1,0 +1,53 @@
+{
+  "name": "brakit",
+  "version": "0.1.0",
+  "description": "Multi-dimensional code security scanner that detects compound vulnerabilities",
+  "type": "module",
+  "bin": {
+    "brakit": "./dist/bin/brakit.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@swc/core": "^1.11.0",
+    "citty": "^0.1.6",
+    "fast-glob": "^3.3.3",
+    "picocolors": "^1.1.1",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "keywords": [
+    "security",
+    "static-analysis",
+    "vulnerability",
+    "nextjs",
+    "prisma",
+    "supabase"
+  ]
+}
