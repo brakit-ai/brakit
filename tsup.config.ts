@@ -10,7 +10,6 @@ export default defineConfig({
   clean: true,
   target: "node18",
   splitting: false,
-  // Shebang for the CLI binary
   banner: {
     js: "",
   },
