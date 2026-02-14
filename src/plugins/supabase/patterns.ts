@@ -1,6 +1,6 @@
 import type { AnalysisPattern } from "../../core/plugin/types.js";
 import { definePattern } from "../../core/plugin/helpers.js";
-import { getLineNumber } from "../../core/layers/layer2-ast/parser.js";
+import { getLineNumber } from "../../core/stages/parse/parser.js";
 
 export const supabasePatterns: Record<string, AnalysisPattern> = {
   "service-role-client": definePattern({

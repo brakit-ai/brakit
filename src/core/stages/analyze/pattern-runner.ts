@@ -1,12 +1,12 @@
 import { extname } from "node:path";
 import picomatch from "picomatch";
 import type { Finding } from "../../types/findings.js";
-import type { Layer2Result } from "../../pipeline/types.js";
+import type { ParseResult } from "../../pipeline/types.js";
 import type { ResolvedRegistry } from "../../plugin/registry.js";
 import type { PatternContext } from "../../plugin/types.js";
 
 export function runPatterns(
-  layer2Result: Layer2Result,
+  parseResult: ParseResult,
   registry: ResolvedRegistry,
 ): Finding[] {
   const findings: Finding[] = [];
@@ -16,10 +16,10 @@ export function runPatterns(
     const pluginName = qualifiedId.split(":")[0];
     const matcher = picomatch(pattern.fileGlob);
 
-    for (const analysis of layer2Result.fileAnalyses) {
+    for (const analysis of parseResult.fileAnalyses) {
       if (!matcher(analysis.filePath)) continue;
 
-      const contents = layer2Result.input.fileContents.get(analysis.filePath);
+      const contents = parseResult.input.fileContents.get(analysis.filePath);
       if (contents === undefined) continue;
 
       const ctx: PatternContext = {

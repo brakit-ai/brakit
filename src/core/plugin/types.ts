@@ -6,6 +6,8 @@ import type {
   Severity,
   Confidence,
 } from "../types/findings.js";
+import type { ImportGraph } from "../stages/correlate/import-graph.js";
+export type { ImportGraph };
 
 export interface BrakitPlugin {
   name: string;
@@ -75,6 +77,7 @@ export interface CompoundContext {
   // Only patterns listed in `requires` are included.
   findingsByPattern: ReadonlyMap<string, Finding[]>;
   fileAnalyses: ReadonlyMap<string, FileAnalysis>;
+  importGraph: ImportGraph;
   ruleId: string;
 }
 

@@ -1,17 +1,17 @@
-import type { Layer1Result, Layer2Result } from "../../pipeline/types.js";
+import type { AnalysisResult, ParseResult } from "../../pipeline/types.js";
 import type { ResolvedRegistry } from "../../plugin/registry.js";
 import { runPatterns } from "./pattern-runner.js";
 import { deduplicateFindings } from "./deduplicator.js";
 
-export function runLayer1(
-  layer2Result: Layer2Result,
+export function runAnalyzer(
+  parseResult: ParseResult,
   registry: ResolvedRegistry,
-): Layer1Result {
-  const findings = runPatterns(layer2Result, registry);
+): AnalysisResult {
+  const findings = runPatterns(parseResult, registry);
   const deduped = deduplicateFindings(findings);
 
   return {
-    ...layer2Result,
+    ...parseResult,
     findings: deduped,
   };
 }

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseFile } from "@/core/layers/layer2-ast/parser";
-import { extractImports } from "@/core/layers/layer2-ast/extractors/imports";
-import { extractExports } from "@/core/layers/layer2-ast/extractors/exports";
-import { extractFunctions } from "@/core/layers/layer2-ast/extractors/functions";
-import { extractDirectives } from "@/core/layers/layer2-ast/extractors/directives";
-import { classifyFile } from "@/core/layers/layer2-ast/role-classifier";
-import { runLayer2 } from "@/core/layers/layer2-ast/index";
+import { parseFile } from "@/core/stages/parse/parser";
+import { extractImports } from "@/core/stages/parse/extractors/imports";
+import { extractExports } from "@/core/stages/parse/extractors/exports";
+import { extractFunctions } from "@/core/stages/parse/extractors/functions";
+import { extractDirectives } from "@/core/stages/parse/extractors/directives";
+import { classifyFile } from "@/core/stages/parse/role-classifier";
+import { runParser } from "@/core/stages/parse/index";
 import { RegistryBuilder } from "@/core/plugin/registry";
 import { nextjs } from "@/plugins/nextjs/index";
 import { prisma } from "@/plugins/prisma/index";
@@ -335,7 +335,7 @@ export async function GET() {
 
 // ── Full Layer 2 integration ──
 
-describe("runLayer2", () => {
+describe("runParser", () => {
   it("produces FileAnalysis for each file", () => {
     const registry = new RegistryBuilder().addPlugin(nextjs()).resolve();
     const fileContents = new Map([
@@ -343,7 +343,7 @@ describe("runLayer2", () => {
       ["app/dashboard/page.tsx", SERVER_COMPONENT],
     ]);
 
-    const result = runLayer2(
+    const result = runParser(
       {
         rootDir: "/test",
         filePaths: [...fileContents.keys()],

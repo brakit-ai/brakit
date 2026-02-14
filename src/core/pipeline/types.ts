@@ -12,21 +12,21 @@ export interface ScanInput {
   projectContext: ProjectContext;
 }
 
-export interface Layer2Result {
+export interface ParseResult {
   input: ScanInput;
   fileAnalyses: FileAnalysis[];
   fileAnalysisMap: ReadonlyMap<string, FileAnalysis>;
 }
 
-export interface Layer1Result extends Layer2Result {
+export interface AnalysisResult extends ParseResult {
   findings: Finding[];
 }
 
-export interface Layer4Result extends Layer1Result {
+export interface CorrelationResult extends AnalysisResult {
   compoundFindings: CompoundFinding[];
 }
 
-export interface ScanResult extends Layer4Result {
+export interface ScanResult extends CorrelationResult {
   score: BrakitScore;
   metadata: ScanMetadata;
 }

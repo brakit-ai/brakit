@@ -1,6 +1,6 @@
 import type { AnalysisPattern } from "../../core/plugin/types.js";
 import { definePattern } from "../../core/plugin/helpers.js";
-import { getLineNumber } from "../../core/layers/layer2-ast/parser.js";
+import { getLineNumber } from "../../core/stages/parse/parser.js";
 
 const SECRET_PATTERNS = [
   /\b(jwt|auth|api|secret|private)[-_]?(key|secret|token)\s*[:=]\s*["'`][A-Za-z0-9+/=_-]{20,}["'`]/gi,

@@ -149,7 +149,7 @@ describe("Plugin helpers", () => {
 });
 
 describe("Pipeline types", () => {
-  it("ScanResult extends Layer4Result with score and metadata", () => {
+  it("ScanResult extends CorrelationResult with score and metadata", () => {
     const result: ScanResult = {
       input: {
         rootDir: "/test",

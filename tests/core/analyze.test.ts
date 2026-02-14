@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { RegistryBuilder } from "@/core/plugin/registry";
-import { runLayer2 } from "@/core/layers/layer2-ast/index";
-import { runLayer1 } from "@/core/layers/layer1-static/index";
-import { deduplicateFindings } from "@/core/layers/layer1-static/deduplicator";
+import { runParser } from "@/core/stages/parse/index";
+import { runAnalyzer } from "@/core/stages/analyze/index";
+import { deduplicateFindings } from "@/core/stages/analyze/deduplicator";
 import { nextjs } from "@/plugins/nextjs/index";
 import { prisma } from "@/plugins/prisma/index";
 import { supabase } from "@/plugins/supabase/index";
@@ -50,8 +50,8 @@ function scan(files: Record<string, string>) {
     config: BASE_CONFIG,
     projectContext: BASE_CONTEXT,
   };
-  const layer2 = runLayer2(input, registry);
-  return runLayer1(layer2, registry);
+  const layer2 = runParser(input, registry);
+  return runAnalyzer(layer2, registry);
 }
 
 // ── Next.js pattern tests ──
@@ -445,7 +445,7 @@ describe("deduplicateFindings", () => {
 
 // ── Full Layer 1 integration ──
 
-describe("runLayer1 integration", () => {
+describe("runAnalyzer integration", () => {
   it("detects multiple vulnerabilities across plugins", () => {
     const result = scan({
       "app/api/users/route.ts": `
