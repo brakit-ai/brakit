@@ -1,4 +1,4 @@
-import type { FileRole, FileAnalysis } from "../types/analysis.js";
+import type { FileRole, FileAnalysis, ASTSummary } from "../types/analysis.js";
 import type {
   Finding,
   CompoundFinding,
@@ -27,6 +27,7 @@ export interface FileRoleContext {
   relativePath: string;
   contents: string;
   extension: string;
+  ast: ASTSummary;
 }
 
 export interface AnalysisPattern {

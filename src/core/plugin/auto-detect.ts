@@ -45,55 +45,68 @@ export async function detectPlugins(
   for (const dep of Object.keys(allDeps)) {
     const mapping = DEPENDENCY_MAP[dep];
     if (mapping && !loaded.has(mapping.pluginName)) {
-      const plugin = await mapping.load();
+      const plugin = await mapping.load(context);
       loaded.set(mapping.pluginName, plugin);
     }
   }
 
   // Always load the compounds plugin for cross-plugin rules.
   const { compounds } = await import("../../plugins/compounds/index.js");
-  loaded.set("compounds", compounds());
+  loaded.set("compounds", compounds(context));
 
   return Array.from(loaded.values());
 }
 
 interface PluginMapping {
   pluginName: string;
-  load: () => Promise<BrakitPlugin>;
+  load: (ctx: ProjectContext) => Promise<BrakitPlugin>;
 }
 
 const DEPENDENCY_MAP: Record<string, PluginMapping> = {
   next: {
     pluginName: "nextjs",
-    load: () =>
-      import("../../plugins/nextjs/index.js").then((m) => m.nextjs()),
+    load: (ctx) =>
+      import("../../plugins/nextjs/index.js").then((m) => m.nextjs(ctx)),
   },
   "@prisma/client": {
     pluginName: "prisma",
-    load: () =>
-      import("../../plugins/prisma/index.js").then((m) => m.prisma()),
+    load: (ctx) =>
+      import("../../plugins/prisma/index.js").then((m) => m.prisma(ctx)),
   },
   prisma: {
     pluginName: "prisma",
-    load: () =>
-      import("../../plugins/prisma/index.js").then((m) => m.prisma()),
+    load: (ctx) =>
+      import("../../plugins/prisma/index.js").then((m) => m.prisma(ctx)),
   },
   "@supabase/supabase-js": {
     pluginName: "supabase",
-    load: () =>
-      import("../../plugins/supabase/index.js").then((m) => m.supabase()),
+    load: (ctx) =>
+      import("../../plugins/supabase/index.js").then((m) => m.supabase(ctx)),
   },
   "next-auth": {
     pluginName: "auth",
-    load: () => import("../../plugins/auth/index.js").then((m) => m.auth()),
+    load: (ctx) =>
+      import("../../plugins/auth/index.js").then((m) => m.auth(ctx)),
   },
   "@clerk/nextjs": {
     pluginName: "auth",
-    load: () => import("../../plugins/auth/index.js").then((m) => m.auth()),
+    load: (ctx) =>
+      import("../../plugins/auth/index.js").then((m) => m.auth(ctx)),
   },
   "@auth/core": {
     pluginName: "auth",
-    load: () => import("../../plugins/auth/index.js").then((m) => m.auth()),
+    load: (ctx) =>
+      import("../../plugins/auth/index.js").then((m) => m.auth(ctx)),
+  },
+  "@supabase/auth-helpers-nextjs": {
+    pluginName: "auth",
+    load: (ctx) =>
+      import("../../plugins/auth/index.js").then((m) => m.auth(ctx)),
+  },
+  "@supabase/ssr": {
+    pluginName: "auth",
+    load: (ctx) =>
+      import("../../plugins/auth/index.js").then((m) => m.auth(ctx)),
   },
 };
 
@@ -137,6 +150,12 @@ function detectAuth(allDeps: Record<string, string>): StackInfo | null {
   }
   if (allDeps["@auth/core"]) {
     return { name: "auth.js", version: allDeps["@auth/core"], details: {} };
+  }
+  if (allDeps["@supabase/auth-helpers-nextjs"]) {
+    return { name: "supabase-auth", version: allDeps["@supabase/auth-helpers-nextjs"], details: {} };
+  }
+  if (allDeps["@supabase/ssr"]) {
+    return { name: "supabase-auth", version: allDeps["@supabase/ssr"], details: {} };
   }
   return null;
 }

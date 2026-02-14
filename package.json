@@ -30,10 +30,12 @@
     "citty": "^0.1.6",
     "fast-glob": "^3.3.3",
     "picocolors": "^1.1.1",
+    "picomatch": "^4.0.3",
     "yaml": "^2.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/picomatch": "^4.0.2",
     "tsup": "^8.4.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
