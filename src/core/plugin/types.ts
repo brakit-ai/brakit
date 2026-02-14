@@ -30,14 +30,27 @@ export interface FileRoleContext {
   ast: ASTSummary;
 }
 
+// What a pattern's analyze() returns. The engine inflates these into full Findings
+// by adding id, patternId, source, filePath, and applying pattern-level defaults.
+export interface PatternMatch {
+  title: string;
+  message: string;
+  line?: number;
+  column?: number;
+  codeSnippet?: string;
+  recommendation?: string;
+  severity?: Severity;
+  confidence?: Confidence;
+  metadata?: Record<string, unknown>;
+}
+
 export interface AnalysisPattern {
   description: string;
   fileGlob: string;
   pillar: Pillar;
   severity: Severity;
   confidence: Confidence;
-  // patternId on returned findings is auto-prefixed with the plugin name.
-  analyze: (context: PatternContext) => Finding[];
+  analyze: (context: PatternContext) => PatternMatch[];
 }
 
 export interface PatternContext {

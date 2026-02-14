@@ -1,6 +1,7 @@
 import type { ProjectContext } from "../../core/types/context.js";
 import type { BrakitPlugin } from "../../core/plugin/types.js";
 import { defineFileRole } from "../../core/plugin/helpers.js";
+import { nextjsPatterns } from "./patterns.js";
 
 const CLIENT_HOOKS = [
   "useState",
@@ -97,5 +98,7 @@ export function nextjs(_context?: ProjectContext): BrakitPlugin {
         },
       }),
     },
+
+    patterns: nextjsPatterns,
   };
 }

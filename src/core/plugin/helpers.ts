@@ -2,13 +2,13 @@ import type {
   FileRoleRule,
   AnalysisPattern,
   CompoundRule,
+  PatternMatch,
   FileRoleContext,
   PatternContext,
   CompoundContext,
 } from "./types.js";
 import type { FileRole } from "../types/analysis.js";
 import type {
-  Finding,
   CompoundFinding,
   Pillar,
   Severity,
@@ -35,7 +35,7 @@ interface PatternInput {
   pillar: Pillar;
   severity: Severity;
   confidence?: Confidence;
-  analyze: (context: PatternContext) => Finding[];
+  analyze: (context: PatternContext) => PatternMatch[];
 }
 
 export function definePattern(input: PatternInput): AnalysisPattern {

@@ -1,6 +1,7 @@
 import type { ProjectContext } from "../../core/types/context.js";
 import type { BrakitPlugin } from "../../core/plugin/types.js";
 import { defineFileRole } from "../../core/plugin/helpers.js";
+import { authPatterns } from "./patterns.js";
 
 const AUTH_MODULES = [
   "next-auth",
@@ -31,5 +32,7 @@ export function auth(_context?: ProjectContext): BrakitPlugin {
         },
       }),
     },
+
+    patterns: authPatterns,
   };
 }

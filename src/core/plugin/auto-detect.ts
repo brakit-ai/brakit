@@ -34,8 +34,6 @@ export async function detectProjectContext(
   };
 }
 
-// Maps detected dependencies to built-in plugins.
-// Deduplicates when multiple deps map to the same plugin (e.g., prisma + @prisma/client).
 export async function detectPlugins(
   context: ProjectContext,
 ): Promise<BrakitPlugin[]> {
@@ -50,7 +48,6 @@ export async function detectPlugins(
     }
   }
 
-  // Always load the compounds plugin for cross-plugin rules.
   const { compounds } = await import("../../plugins/compounds/index.js");
   loaded.set("compounds", compounds(context));
 

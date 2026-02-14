@@ -17,7 +17,6 @@ export type FileRole =
 
 export interface FileAnalysis {
   filePath: string;
-  // A file can have multiple roles (e.g., api-route + db-query).
   roles: FileRole[];
   classifiedBy: string[];
   ast: ASTSummary;
@@ -27,7 +26,6 @@ export interface ASTSummary {
   exports: ExportInfo[];
   imports: ImportInfo[];
   functions: FunctionInfo[];
-  // Top-level directives: 'use server', 'use client', etc.
   directives: string[];
 }
 

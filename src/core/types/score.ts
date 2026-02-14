@@ -1,7 +1,6 @@
 import type { Pillar, Severity } from "./findings.js";
 
 export interface BrakitScore {
-  // 0-100, where 100 = no issues found.
   overall: number;
   pillars: Record<Pillar, number>;
   stats: ScoreStats;

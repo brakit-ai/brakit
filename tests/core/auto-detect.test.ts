@@ -72,7 +72,6 @@ describe("detectPlugins", () => {
     const ctx = await detectProjectContext(join(FIXTURES, "nextjs-app"));
     const plugins = await detectPlugins(ctx);
 
-    // Both "prisma" and "@prisma/client" map to the prisma plugin.
     const prismaCount = plugins.filter((p) => p.name === "prisma").length;
     expect(prismaCount).toBe(1);
   });

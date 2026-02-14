@@ -150,7 +150,6 @@ describe("Plugin helpers", () => {
 
 describe("Pipeline types", () => {
   it("ScanResult extends Layer4Result with score and metadata", () => {
-    // Verify the type structure compiles correctly by constructing a minimal ScanResult
     const result: ScanResult = {
       input: {
         rootDir: "/test",

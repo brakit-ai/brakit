@@ -1,6 +1,5 @@
 import type { Severity } from "./findings.js";
 
-// User-facing config from .brakit.yaml or defineConfig().
 export interface BrakitConfig {
   minSeverity: Severity;
   exclude: string[];
@@ -8,7 +7,6 @@ export interface BrakitConfig {
   scoreThreshold?: number;
 }
 
-// Resolved config with all defaults applied.
 export interface ScanConfig {
   minSeverity: Severity;
   exclude: string[];
