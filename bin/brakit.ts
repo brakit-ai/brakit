@@ -1,15 +1,4 @@
-import { defineCommand, runMain } from "citty";
+import { runMain } from "citty";
+import devCommand from "../src/cli/commands/dev.js";
 
-const main = defineCommand({
-  meta: {
-    name: "brakit",
-    version: "0.1.0",
-    description: "Multi-dimensional code security scanner",
-  },
-  subCommands: {
-    scan: () => import("../src/cli/commands/scan").then((m) => m.default),
-    info: () => import("../src/cli/commands/info").then((m) => m.default),
-  },
-});
-
-runMain(main);
+runMain(devCommand);

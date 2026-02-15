@@ -1,7 +1,7 @@
 {
   "name": "brakit",
-  "version": "0.1.0",
-  "description": "Multi-dimensional code security scanner that detects compound vulnerabilities",
+  "version": "0.2.0",
+  "description": "Runtime request tracer for local development",
   "type": "module",
   "bin": {
     "brakit": "./dist/bin/brakit.js"
@@ -26,16 +26,11 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@swc/core": "^1.11.0",
     "citty": "^0.1.6",
-    "fast-glob": "^3.3.3",
-    "picocolors": "^1.1.1",
-    "picomatch": "^4.0.3",
-    "yaml": "^2.7.0"
+    "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/picomatch": "^4.0.2",
     "tsup": "^8.4.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
@@ -45,11 +40,11 @@
   },
   "license": "MIT",
   "keywords": [
-    "security",
-    "static-analysis",
-    "vulnerability",
+    "devtools",
+    "proxy",
+    "request-tracer",
     "nextjs",
-    "prisma",
-    "supabase"
+    "debug",
+    "http"
   ]
 }
