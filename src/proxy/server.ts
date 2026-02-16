@@ -8,9 +8,17 @@ import {
 import type { BrakitConfig } from "../types.js";
 import { captureRequest } from "./request-log.js";
 import { handleUpgrade } from "./websocket.js";
+import {
+  isDashboardRequest,
+  handleDashboardRequest,
+} from "../dashboard/router.js";
 
 export function createProxyServer(config: BrakitConfig): Server {
   const server = createServer((clientReq, clientRes) => {
+    if (isDashboardRequest(clientReq.url ?? "")) {
+      handleDashboardRequest(clientReq, clientRes, config);
+      return;
+    }
     proxyRequest(clientReq, clientRes, config);
   });
 

@@ -146,6 +146,9 @@ export function printBanner(proxyPort: number, targetPort: number): void {
   console.log(
     `  ${pc.dim("target")}   ${pc.dim(`http://localhost:${targetPort}`)}`,
   );
+  console.log(
+    `  ${pc.dim("inspect")}  ${pc.bold(pc.magenta(`http://localhost:${proxyPort}/__brakit`))}`,
+  );
   console.log();
   console.log(`  ${pc.dim("Waiting for requests...")}`);
   console.log();

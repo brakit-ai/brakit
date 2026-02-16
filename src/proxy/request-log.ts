@@ -12,6 +12,11 @@ export function onRequest(fn: RequestListener): void {
   listeners.push(fn);
 }
 
+export function offRequest(fn: RequestListener): void {
+  const idx = listeners.indexOf(fn);
+  if (idx !== -1) listeners.splice(idx, 1);
+}
+
 export function getRequests(): readonly TracedRequest[] {
   return requests;
 }
