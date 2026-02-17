@@ -4,6 +4,7 @@ import { groupRequestsIntoFlows } from "../analysis/group.js";
 import { defaultFetchStore } from "../store/fetch-store.js";
 import { defaultLogStore } from "../store/log-store.js";
 import { defaultErrorStore } from "../store/error-store.js";
+import { defaultQueryStore } from "../store/query-store.js";
 import { DEFAULT_API_LIMIT } from "../constants.js";
 import type { TelemetryBatch, TelemetryEvent } from "../types.js";
 
@@ -92,6 +93,7 @@ export function handleApiClear(
   defaultFetchStore.clear();
   defaultLogStore.clear();
   defaultErrorStore.clear();
+  defaultQueryStore.clear();
   sendJson(res, 200, { cleared: true });
 }
 
@@ -146,6 +148,23 @@ export function handleApiErrors(
   sendJson(res, 200, { total: entries.length, entries });
 }
 
+export function handleApiQueries(
+  req: IncomingMessage,
+  res: ServerResponse,
+): void {
+  if (req.method !== "GET") {
+    sendJson(res, 405, { error: "Method not allowed" });
+    return;
+  }
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const requestId = url.searchParams.get("requestId");
+  let entries = requestId
+    ? defaultQueryStore.getByRequest(requestId)
+    : [...defaultQueryStore.getAll()];
+  entries = entries.reverse();
+  sendJson(res, 200, { total: entries.length, entries });
+}
+
 function isBrakitBatch(msg: unknown): msg is TelemetryBatch {
   return (
     typeof msg === "object" &&
@@ -165,6 +184,9 @@ function routeEvent(event: TelemetryEvent): void {
       break;
     case "error":
       defaultErrorStore.add(event.data);
+      break;
+    case "query":
+      defaultQueryStore.add(event.data);
       break;
   }
 }

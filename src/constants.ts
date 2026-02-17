@@ -21,6 +21,7 @@ export const DASHBOARD_API_CLEAR = "/__brakit/api/clear";
 export const DASHBOARD_API_LOGS = "/__brakit/api/logs";
 export const DASHBOARD_API_FETCHES = "/__brakit/api/fetches";
 export const DASHBOARD_API_ERRORS = "/__brakit/api/errors";
+export const DASHBOARD_API_QUERIES = "/__brakit/api/queries";
 export const DASHBOARD_API_INGEST = "/__brakit/api/ingest";
 export const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 export const DEFAULT_API_LIMIT = 500;

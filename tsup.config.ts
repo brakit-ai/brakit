@@ -14,6 +14,7 @@ export default defineConfig({
   clean: true,
   target: "node18",
   splitting: false,
+  external: ["pg", "mysql2", "@prisma/client"],
   define: {
     "process.env.BRAKIT_VERSION": JSON.stringify(pkg.version),
   },

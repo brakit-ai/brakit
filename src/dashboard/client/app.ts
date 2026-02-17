@@ -15,6 +15,7 @@ export function getApp(): string {
     actions: 'flow-container',
     requests: 'request-container',
     fetches: 'fetch-container',
+    queries: 'query-container',
     errors: 'error-container',
     logs: 'log-container'
   };
@@ -23,6 +24,7 @@ export function getApp(): string {
     actions: 'Actions',
     requests: 'Requests',
     fetches: 'Server Fetches',
+    queries: 'Queries',
     errors: 'Errors',
     logs: 'Logs'
   };
@@ -45,6 +47,7 @@ export function getApp(): string {
     loadFetches();
     loadErrors();
     loadLogs();
+    loadQueries();
 
     updateStats();
 
@@ -82,6 +85,14 @@ export function getApp(): string {
       state.errors.unshift(err);
       if (state.errors.length > ${MAX_TELEMETRY_ENTRIES}) state.errors.pop();
       prependErrorRow(err);
+      updateStats();
+    });
+
+    events.addEventListener('query', function(e) {
+      var q = JSON.parse(e.data);
+      state.queries.unshift(q);
+      if (state.queries.length > ${MAX_TELEMETRY_ENTRIES}) state.queries.pop();
+      prependQueryRow(q);
       updateStats();
     });
   }
@@ -145,11 +156,13 @@ export function getApp(): string {
     var fetchCount = document.getElementById('sidebar-count-fetches');
     var errorCount = document.getElementById('sidebar-count-errors');
     var logCount = document.getElementById('sidebar-count-logs');
+    var queryCount = document.getElementById('sidebar-count-queries');
     if (actionCount) actionCount.textContent = state.flows.length;
     if (requestCount) requestCount.textContent = reqs.length;
     if (fetchCount) fetchCount.textContent = state.fetches.length;
     if (errorCount) errorCount.textContent = state.errors.length;
     if (logCount) logCount.textContent = state.logs.length;
+    if (queryCount) queryCount.textContent = state.queries.length;
   }
 
   function copyAsCurl(req) {
@@ -164,8 +177,8 @@ export function getApp(): string {
 
   document.getElementById('clear-btn').addEventListener('click', async function() {
     await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
-    state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = [];
-    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); updateStats();
+    state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = []; state.queries = [];
+    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); updateStats();
     showToast('Cleared');
   });
 

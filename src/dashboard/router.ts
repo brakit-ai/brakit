@@ -9,6 +9,7 @@ import {
   DASHBOARD_API_LOGS,
   DASHBOARD_API_FETCHES,
   DASHBOARD_API_ERRORS,
+  DASHBOARD_API_QUERIES,
   DASHBOARD_API_INGEST,
 } from "../constants.js";
 import {
@@ -18,6 +19,7 @@ import {
   handleApiLogs,
   handleApiFetches,
   handleApiErrors,
+  handleApiQueries,
   handleApiIngest,
 } from "./api.js";
 import { handleSSE } from "./sse.js";
@@ -67,6 +69,11 @@ export function handleDashboardRequest(
 
   if (path === DASHBOARD_API_ERRORS) {
     handleApiErrors(req, res);
+    return;
+  }
+
+  if (path === DASHBOARD_API_QUERIES) {
+    handleApiQueries(req, res);
     return;
   }
 

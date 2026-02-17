@@ -175,8 +175,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .empty-sub{font-size:15px}
 
 /* Toast */
-.toast{position:fixed;bottom:24px;right:24px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.4)}
-.toast.show{opacity:1}
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-8px);background:#0a2e1a;border:1px solid #22c55e;color:#4ade80;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:100;box-shadow:0 0 20px rgba(34,197,94,.25),0 4px 12px rgba(0,0,0,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* Scrollbar */
 ::-webkit-scrollbar{width:8px}

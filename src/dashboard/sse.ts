@@ -3,7 +3,8 @@ import { onRequest, offRequest } from "../proxy/request-log.js";
 import { defaultFetchStore } from "../store/fetch-store.js";
 import { defaultLogStore } from "../store/log-store.js";
 import { defaultErrorStore } from "../store/error-store.js";
-import type { TracedRequest, TracedFetch, TracedLog, TracedError } from "../types.js";
+import { defaultQueryStore } from "../store/query-store.js";
+import type { TracedRequest, TracedFetch, TracedLog, TracedError, TracedQuery } from "../types.js";
 import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants.js";
 
 export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
@@ -41,10 +42,15 @@ export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
     writeEvent("error_event", JSON.stringify(entry));
   };
 
+  const queryListener = (entry: TracedQuery) => {
+    writeEvent("query", JSON.stringify(entry));
+  };
+
   onRequest(requestListener);
   defaultFetchStore.onEntry(fetchListener);
   defaultLogStore.onEntry(logListener);
   defaultErrorStore.onEntry(errorListener);
+  defaultQueryStore.onEntry(queryListener);
 
   const heartbeat = setInterval(() => {
     if (res.destroyed) {
@@ -60,5 +66,6 @@ export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
     defaultFetchStore.offEntry(fetchListener);
     defaultLogStore.offEntry(logListener);
     defaultErrorStore.offEntry(errorListener);
+    defaultQueryStore.offEntry(queryListener);
   });
 }

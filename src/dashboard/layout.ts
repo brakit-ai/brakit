@@ -26,10 +26,10 @@ export function getLayoutHtml(config: BrakitConfig): string {
         <span class="item-count" id="sidebar-count-fetches">0</span>
       </button>
       <div class="sidebar-section">Insights</div>
-      <button class="sidebar-item disabled">
+      <button class="sidebar-item" data-view="queries">
         <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
         <span class="item-label">Queries</span>
-        <span class="coming-soon">Soon</span>
+        <span class="item-count" id="sidebar-count-queries">0</span>
       </button>
       <button class="sidebar-item" data-view="errors">
         <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></span>
@@ -94,6 +94,15 @@ export function getLayoutHtml(config: BrakitConfig): string {
           <span style="width:70px;text-align:right">Time</span>
         </div>
         <div id="fetch-list"></div>
+      </div>
+      <div class="view-telemetry" id="query-container" style="display:none">
+        <div class="col-header">
+          <span style="width:70px;border-right:1px solid var(--border);padding-right:16px">Operation</span>
+          <span style="width:120px;border-right:1px solid var(--border);padding-right:16px">Table</span>
+          <span style="flex:1;border-right:1px solid var(--border);padding-right:16px">Query</span>
+          <span style="width:60px;text-align:right">Time</span>
+        </div>
+        <div id="query-list"></div>
       </div>
       <div class="view-telemetry" id="error-container" style="display:none">
         <div class="col-header">

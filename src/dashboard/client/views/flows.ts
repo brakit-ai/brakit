@@ -3,6 +3,7 @@ import {
   DASHBOARD_API_FETCHES,
   DASHBOARD_API_LOGS,
   DASHBOARD_API_ERRORS,
+  DASHBOARD_API_QUERIES,
 } from "../../../constants.js";
 
 export function getFlowsView(): string {
@@ -302,12 +303,14 @@ export function getFlowsView(): string {
       var results = await Promise.all([
         fetch('${DASHBOARD_API_FETCHES}?requestId=' + rid).then(function(r) { return r.json(); }),
         fetch('${DASHBOARD_API_LOGS}?requestId=' + rid).then(function(r) { return r.json(); }),
-        fetch('${DASHBOARD_API_ERRORS}?requestId=' + rid).then(function(r) { return r.json(); })
+        fetch('${DASHBOARD_API_ERRORS}?requestId=' + rid).then(function(r) { return r.json(); }),
+        fetch('${DASHBOARD_API_QUERIES}?requestId=' + rid).then(function(r) { return r.json(); })
       ]);
       var fetches = results[0].entries || [];
       var logs = results[1].entries || [];
       var errors = results[2].entries || [];
-      if (fetches.length === 0 && logs.length === 0 && errors.length === 0) {
+      var queries = results[3].entries || [];
+      if (fetches.length === 0 && logs.length === 0 && errors.length === 0 && queries.length === 0) {
         container.innerHTML = '';
         return;
       }
@@ -334,6 +337,21 @@ export function getFlowsView(): string {
           h += '<div class="sa-row">' +
             '<span class="sa-level" style="color:' + lColor + '">' + l.level.toUpperCase() + '</span>' +
             '<span class="sa-msg" title="' + escHtml(l.message) + '">' + escHtml(l.message) + '</span>' +
+          '</div>';
+        }
+        h += '</div>';
+      }
+      if (queries.length > 0) {
+        h += '<div class="sa-section"><div class="sa-label">Queries (' + queries.length + ')</div>';
+        for (var qi = 0; qi < queries.length; qi++) {
+          var q = queries[qi];
+          var qInfo = q.sql ? simplifySQL(q.sql) : { op: q.operation || '?', table: q.model || '', summary: (q.model ? q.model + '.' : '') + (q.operation || '?') };
+          var qOpColor = QUERY_OP_COLORS[qInfo.op] || 'var(--fg)';
+          var qSlow = q.durationMs > 100 ? ' style="color:var(--red)"' : '';
+          h += '<div class="sa-row">' +
+            '<span class="sa-method" style="color:' + qOpColor + '">' + escHtml(qInfo.op) + '</span>' +
+            '<span class="sa-url">' + escHtml(qInfo.table) + '</span>' +
+            '<span class="sa-dur"' + qSlow + '>' + queryDuration(q.durationMs) + '</span>' +
           '</div>';
         }
         h += '</div>';
