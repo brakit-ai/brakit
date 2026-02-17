@@ -36,66 +36,48 @@ describe("formatSize", () => {
 });
 
 describe("formatRequest", () => {
-  it("formats a GET 200 request", () => {
+  it("formats a one-liner with method, path, status, duration, size", () => {
     const output = formatRequest(makeRequest());
     expect(output).toContain("GET");
     expect(output).toContain("/api/users");
     expect(output).toContain("200");
     expect(output).toContain("23ms");
+    expect(output).toContain("1.2kb");
+    expect(output.split("\n")).toHaveLength(1);
   });
 
-  it("shows response body for API routes (GET)", () => {
+  it("shows path not full URL", () => {
+    const output = formatRequest(
+      makeRequest({ url: "/api/users?page=1", path: "/api/users" }),
+    );
+    expect(output).toContain("/api/users");
+  });
+
+  it("does not include response body", () => {
     const output = formatRequest(
       makeRequest({
         responseBody: '{"users":[{"id":1,"name":"John"}]}',
       }),
     );
-    // API route GET should show response body — this is what Next.js can't do
-    expect(output).toContain('"users"');
-    expect(output).toContain('"John"');
-  });
-
-  it("does NOT show response body for non-API page routes", () => {
-    const output = formatRequest(
-      makeRequest({
-        url: "/dashboard",
-        path: "/dashboard",
-        responseBody: '<!DOCTYPE html><html>...</html>',
-      }),
-    );
-    // Page routes should not show HTML body
+    expect(output).not.toContain("John");
     expect(output.split("\n")).toHaveLength(1);
   });
 
-  it("formats a POST request with request and response bodies", () => {
+  it("does not include request body", () => {
     const output = formatRequest(
       makeRequest({
         method: "POST",
         statusCode: 201,
         requestBody: '{"name":"John"}',
-        responseBody: '{"id":1,"name":"John"}',
       }),
     );
     expect(output).toContain("POST");
     expect(output).toContain("201");
-    expect(output).toContain('"name"');
-    expect(output).toContain('"John"');
+    expect(output).not.toContain("John");
+    expect(output.split("\n")).toHaveLength(1);
   });
 
-  it("shows error response body even for non-API routes", () => {
-    const output = formatRequest(
-      makeRequest({
-        url: "/dashboard",
-        path: "/dashboard",
-        statusCode: 500,
-        responseBody: '{"error":"Internal server error"}',
-      }),
-    );
-    expect(output).toContain("500");
-    expect(output).toContain("Internal server error");
-  });
-
-  it("formats a 500 error with timing", () => {
+  it("formats error status codes", () => {
     const output = formatRequest(
       makeRequest({ statusCode: 500, durationMs: 150 }),
     );
@@ -108,50 +90,14 @@ describe("formatRequest", () => {
     expect(output).toContain("404");
   });
 
-  it("skips RSC payloads in response body", () => {
-    const output = formatRequest(
-      makeRequest({
-        method: "POST",
-        responseBody: '0:{"a":"$@1","f":"","b":"development"}',
-      }),
-    );
-    // RSC payload should not be displayed
-    expect(output).not.toContain("development");
-  });
-
-  it("skips HTML bodies", () => {
-    const output = formatRequest(
-      makeRequest({
-        statusCode: 500,
-        responseBody: '<!DOCTYPE html><html><body>Error</body></html>',
-      }),
-    );
-    expect(output).not.toContain("DOCTYPE");
-  });
-
-  it("pretty-prints short JSON response bodies", () => {
-    const output = formatRequest(
-      makeRequest({
-        responseBody: '{"id":1,"name":"John"}',
-      }),
-    );
-    // Should be pretty-printed with newlines
-    expect(output).toContain('"id": 1');
-  });
-
   it("includes response size", () => {
     const output = formatRequest(makeRequest({ responseSize: 2048 }));
     expect(output).toContain("2.0kb");
   });
 
-  it("truncates long body values", () => {
-    const longBody = '{"key":"' + "x".repeat(1000) + '"}';
-    const output = formatRequest(
-      makeRequest({
-        method: "POST",
-        requestBody: longBody,
-      }),
-    );
-    expect(output).toContain("...");
+  it("omits size when responseSize is 0", () => {
+    const output = formatRequest(makeRequest({ responseSize: 0 }));
+    expect(output).not.toContain("kb");
+    expect(output).not.toContain("0b");
   });
 });

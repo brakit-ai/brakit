@@ -57,6 +57,13 @@ export function getLayoutHtml(config: BrakitConfig): string {
     </div>
     <div class="main-content">
       <div class="view-flows" id="flow-container">
+        <div class="col-header" id="flow-col-header">
+          <span style="width:8px"></span>
+          <span style="flex:1">Action</span>
+          <span style="width:60px;text-align:right">Reqs</span>
+          <span style="width:120px;text-align:right">Status</span>
+          <span style="width:70px;text-align:right">Time</span>
+        </div>
         <div id="flow-list">
           <div class="empty" id="empty-flows">
             <span class="empty-title">Waiting for requests...</span>
@@ -65,6 +72,13 @@ export function getLayoutHtml(config: BrakitConfig): string {
         </div>
       </div>
       <div class="view-requests" id="request-container">
+        <div class="col-header">
+          <span style="width:60px">Method</span>
+          <span style="flex:1">URL</span>
+          <span style="width:36px;text-align:right">Status</span>
+          <span style="width:70px;text-align:right">Time</span>
+          <span style="width:60px;text-align:right">Size</span>
+        </div>
         <div id="request-list"></div>
       </div>
     </div>

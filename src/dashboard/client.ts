@@ -68,14 +68,17 @@ export function getClientScript(config: BrakitConfig): string {
   }
 
   // ===== FLOW VIEW =====
+  var flowColHeader = document.getElementById('flow-col-header');
   function renderFlows() {
     flowListEl.innerHTML = '';
     if (state.flows.length === 0) {
       flowListEl.appendChild(emptyFlows);
       emptyFlows.style.display = 'flex';
+      if (flowColHeader) flowColHeader.style.display = 'none';
       return;
     }
     emptyFlows.style.display = 'none';
+    if (flowColHeader) flowColHeader.style.display = 'flex';
     for (var i = 0; i < state.flows.length; i++) {
       var result = createFlowRow(state.flows[i]);
       flowListEl.appendChild(result.row);
@@ -163,6 +166,13 @@ export function getClientScript(config: BrakitConfig): string {
     // Block 1: Traffic table
     var traffic = document.createElement('div');
     traffic.className = 'flow-traffic';
+
+    // Traffic column header
+    var tHeader = document.createElement('div');
+    tHeader.className = 'traffic-row traffic-header';
+    tHeader.innerHTML = '<span class="t-method">Method</span><span class="t-path">Request</span><span class="t-status">Code</span><span class="t-dur">Time</span><span class="t-size">Size</span>';
+    traffic.appendChild(tHeader);
+
     var skipCats = { 'auth-handshake': 1, 'auth-check': 1, 'middleware': 1 };
 
     for (var i = 0; i < flow.requests.length; i++) {
@@ -180,7 +190,7 @@ export function getClientScript(config: BrakitConfig): string {
 
       var pEl = document.createElement('span');
       pEl.className = 't-path' + (req.isDuplicate ? ' is-dup' : '');
-      pEl.textContent = req.path || req.url;
+      pEl.textContent = req.label;
 
       var stEl = document.createElement('span');
       stEl.className = 't-status ' + sClass;
@@ -211,18 +221,12 @@ export function getClientScript(config: BrakitConfig): string {
 
       // Request body (non-GET only)
       if (req.requestBody && req.method !== 'GET') {
-        var reqBlock = document.createElement('div');
-        reqBlock.className = 'traffic-body';
-        reqBlock.innerHTML = '<div class="traffic-body-label"><span class="arrow-out">\\u2192</span> Request Body</div><pre>' + formatJsonBody(req.requestBody) + '</pre>';
-        traffic.appendChild(reqBlock);
+        traffic.appendChild(buildBodyToggle('out', 'Request Body', req.requestBody));
       }
 
       // Response body
       if (req.responseBody) {
-        var resBlock = document.createElement('div');
-        resBlock.className = 'traffic-body';
-        resBlock.innerHTML = '<div class="traffic-body-label"><span class="arrow-in">\\u2190</span> Response Body</div><pre>' + formatJsonBody(req.responseBody) + '</pre>';
-        traffic.appendChild(resBlock);
+        traffic.appendChild(buildBodyToggle('in', 'Response Body', req.responseBody));
       }
 
       // Separator between requests
@@ -333,7 +337,7 @@ export function getClientScript(config: BrakitConfig): string {
 
       var labelEl = document.createElement('span');
       labelEl.className = 'subreq-label' + (isDup ? ' is-dup' : '');
-      labelEl.textContent = req.label;
+      labelEl.textContent = req.path || req.url;
 
       var statusEl = document.createElement('span');
       statusEl.className = 'subreq-status ' + sClass;
@@ -551,6 +555,28 @@ export function getClientScript(config: BrakitConfig): string {
   function formatHeaders(headers) {
     if (!headers || Object.keys(headers).length === 0) return '<span style="color:var(--text-muted)">No headers</span>';
     return Object.entries(headers).map(([k,v]) => '<span class="json-key">' + escHtml(k) + '</span>: ' + escHtml(maskValue(k, v))).join('\\n');
+  }
+  function buildBodyToggle(direction, label, body) {
+    var block = document.createElement('div');
+    block.className = 'traffic-body';
+
+    var toggle = document.createElement('button');
+    toggle.className = 'traffic-body-toggle';
+    toggle.innerHTML = '<span class="chevron">\\u25B8</span><span class="arrow-' + direction + '">' + (direction === 'out' ? '\\u2192' : '\\u2190') + '</span> ' + label;
+
+    var pre = document.createElement('pre');
+    pre.innerHTML = formatJsonBody(body);
+
+    toggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var isOpen = toggle.classList.contains('open');
+      toggle.classList.toggle('open');
+      pre.classList.toggle('open');
+    });
+
+    block.appendChild(toggle);
+    block.appendChild(pre);
+    return block;
   }
   function formatJsonBody(body) {
     if (!body) return '<span style="color:var(--text-muted)">No body</span>';
