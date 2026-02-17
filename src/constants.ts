@@ -23,6 +23,7 @@ export const DASHBOARD_API_FETCHES = "/__brakit/api/fetches";
 export const DASHBOARD_API_ERRORS = "/__brakit/api/errors";
 export const DASHBOARD_API_QUERIES = "/__brakit/api/queries";
 export const DASHBOARD_API_INGEST = "/__brakit/api/ingest";
+export const DASHBOARD_API_METRICS = "/__brakit/api/metrics";
 export const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 export const DEFAULT_API_LIMIT = 500;
 
@@ -35,3 +36,9 @@ export const CLIENT_MAX_REQUESTS = 1_000;
 export const CLIENT_RELOAD_DEBOUNCE_MS = 300;
 export const CLIENT_TOAST_DURATION_MS = 2_000;
 export const CLIENT_SENSITIVE_MASK_THRESHOLD = 8;
+
+// Metrics persistence
+export const METRICS_DIR = ".brakit";
+export const METRICS_FILE = ".brakit/metrics.json";
+export const METRICS_FLUSH_INTERVAL_MS = 30_000;
+export const METRICS_MAX_SESSIONS = 50;

@@ -111,8 +111,8 @@ export class RequestStore {
 
 export const defaultStore = new RequestStore();
 
-export const captureRequest = (input: CaptureInput) => defaultStore.capture(input);
-export const getRequests = () => defaultStore.getAll();
-export const clearRequests = () => defaultStore.clear();
-export const onRequest = (fn: RequestListener) => defaultStore.onRequest(fn);
-export const offRequest = (fn: RequestListener) => defaultStore.offRequest(fn);
+export const captureRequest = (input: CaptureInput): TracedRequest => defaultStore.capture(input);
+export const getRequests = (): readonly TracedRequest[] => defaultStore.getAll();
+export const clearRequests = (): void => defaultStore.clear();
+export const onRequest = (fn: RequestListener): void => defaultStore.onRequest(fn);
+export const offRequest = (fn: RequestListener): void => defaultStore.offRequest(fn);

@@ -10,6 +10,9 @@ import { pipeDevOutput } from "../../process/output-filter.js";
 import { VERSION } from "../../index.js";
 import { DEFAULT_MAX_BODY_CAPTURE, SHUTDOWN_TIMEOUT_MS } from "../../constants.js";
 import type { BrakitConfig } from "../../types.js";
+import { MetricsStore } from "../../store/metrics-store.js";
+import { setMetricsStore } from "../../dashboard/api.js";
+import { defaultQueryStore } from "../../store/query-store.js";
 
 export default defineCommand({
   meta: {
@@ -62,6 +65,10 @@ export default defineCommand({
       maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE,
     };
 
+    const metricsStore = new MetricsStore(rootDir);
+    setMetricsStore(metricsStore);
+    metricsStore.start();
+
     console.log(pc.dim(`  Starting ${project.devCommand} on port ${targetPort}...`));
     const devProcess = spawnDevServer(project.devBin, targetPort, proxyPort, rootDir);
 
@@ -85,6 +92,11 @@ export default defineCommand({
       console.log(formatRequest(req));
     });
 
+    onRequest((req) => {
+      const queryCount = defaultQueryStore.getByRequest(req.id).length;
+      metricsStore.recordRequest(req, queryCount);
+    });
+
     pipeDevOutput(devProcess);
 
     let shuttingDown = false;
@@ -92,6 +104,7 @@ export default defineCommand({
       if (shuttingDown) return;
       shuttingDown = true;
       console.log(pc.dim("\n  Shutting down..."));
+      metricsStore.stop();
       proxy.close();
       devProcess.kill("SIGTERM");
       setTimeout(() => {

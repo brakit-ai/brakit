@@ -77,45 +77,61 @@ export interface RequestFlow {
 
 export type RequestListener = (req: TracedRequest) => void;
 
-// Telemetry event types (sent from instrumented processes via HTTP ingest)
+// Telemetry — base interface for all instrumented events
 
-export interface TracedFetch {
+export interface TelemetryEntry {
   id: string;
+  parentRequestId: string | null;
+  timestamp: number;
+}
+
+export interface TracedFetch extends TelemetryEntry {
   url: string;
   method: string;
   statusCode: number;
   durationMs: number;
-  parentRequestId: string | null;
-  timestamp: number;
 }
 
-export interface TracedLog {
-  id: string;
+export interface TracedLog extends TelemetryEntry {
   level: "log" | "warn" | "error" | "info" | "debug";
   message: string;
-  parentRequestId: string | null;
-  timestamp: number;
 }
 
-export interface TracedError {
-  id: string;
+export interface TracedError extends TelemetryEntry {
   name: string;
   message: string;
   stack: string;
-  parentRequestId: string | null;
-  timestamp: number;
 }
 
-export interface TracedQuery {
-  id: string;
+export interface TracedQuery extends TelemetryEntry {
   driver: "pg" | "mysql2" | "prisma" | string;
   sql?: string;
   model?: string;
   operation?: string;
   durationMs: number;
   rowCount?: number;
-  parentRequestId: string | null;
-  timestamp: number;
+}
+
+// Performance metrics (persisted across sessions)
+
+export interface SessionMetric {
+  sessionId: string;
+  startedAt: number;
+  avgDurationMs: number;
+  p95DurationMs: number;
+  requestCount: number;
+  errorCount: number;
+  avgQueryCount: number;
+}
+
+export interface EndpointMetrics {
+  endpoint: string;
+  sessions: SessionMetric[];
+}
+
+export interface MetricsData {
+  version: 1;
+  endpoints: EndpointMetrics[];
 }
 
 export type TelemetryEvent =

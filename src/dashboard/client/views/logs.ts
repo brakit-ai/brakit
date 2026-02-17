@@ -1,39 +1,25 @@
-import {
-  DASHBOARD_API_LOGS,
-} from "../../../constants.js";
+import { DASHBOARD_API_LOGS } from "../../../constants.js";
+import { LOG_LEVEL_COLORS } from "../constants.js";
 
 export function getLogsView(): string {
   return `
-  var LOG_LEVEL_COLORS = { error: 'var(--red)', warn: '#f59e0b', info: 'var(--blue)', debug: 'var(--dim)', log: 'var(--fg)' };
+  var LOG_LEVEL_COLORS = ${LOG_LEVEL_COLORS};
 
-  function renderLogs() {
-    var list = document.getElementById('log-list');
-    if (!list) return;
-    list.innerHTML = '';
-    state.logs.forEach(function(l) { appendLogRow(l); });
-  }
-
-  function appendLogRow(l) {
-    var list = document.getElementById('log-list');
-    if (!list) return;
+  function buildLogRow(l) {
     var row = document.createElement('div');
     row.className = 'req-row';
     var ts = new Date(l.timestamp).toLocaleTimeString();
     var color = LOG_LEVEL_COLORS[l.level] || 'var(--fg)';
     row.innerHTML =
-      '<span style="width:60px;font-weight:500;color:' + color + '">' + l.level.toUpperCase() + '</span>' +
-      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px" title="' + escHtml(l.message) + '">' + escHtml(l.message) + '</span>' +
-      '<span style="width:130px;text-align:right;color:var(--dim)">' + ts + '</span>';
-    list.appendChild(row);
+      '<span class="tel-level" style="color:' + color + '">' + l.level.toUpperCase() + '</span>' +
+      '<span class="tel-message tel-mono" title="' + escHtml(l.message) + '">' + escHtml(l.message) + '</span>' +
+      '<span class="tel-timestamp">' + ts + '</span>';
+    return row;
   }
 
-  function prependLogRow(l) {
-    var list = document.getElementById('log-list');
-    if (!list) return;
-    appendLogRow(l);
-    var last = list.lastChild;
-    if (last) list.insertBefore(last, list.firstChild);
-  }
+  var logView = createTelemetryView('log-list', buildLogRow);
+  function renderLogs() { logView.render(state.logs); }
+  function prependLogRow(l) { logView.prepend(l); }
 
   async function loadLogs() {
     try {

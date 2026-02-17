@@ -1,11 +1,13 @@
 import type { BrakitConfig } from "../../types.js";
 import { getHelpers } from "./helpers.js";
+import { getTelemetryViewHelpers } from "./view-helpers.js";
 import { getFlowsView } from "./views/flows.js";
 import { getRequestsView } from "./views/requests.js";
 import { getFetchesView } from "./views/fetches.js";
 import { getErrorsView } from "./views/errors.js";
 import { getLogsView } from "./views/logs.js";
 import { getQueriesView } from "./views/queries.js";
+import { getGraphView } from "./views/graph.js";
 import { getApp } from "./app.js";
 
 export function getClientScript(config: BrakitConfig): string {
@@ -21,12 +23,14 @@ export function getClientScript(config: BrakitConfig): string {
   var toastEl = document.getElementById('toast');
 
   ${getHelpers()}
+  ${getTelemetryViewHelpers()}
   ${getFlowsView()}
   ${getRequestsView()}
   ${getFetchesView()}
   ${getErrorsView()}
   ${getLogsView()}
   ${getQueriesView()}
+  ${getGraphView()}
   ${getApp()}
 })();
 `;

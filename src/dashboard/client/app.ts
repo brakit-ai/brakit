@@ -17,7 +17,8 @@ export function getApp(): string {
     fetches: 'fetch-container',
     queries: 'query-container',
     errors: 'error-container',
-    logs: 'log-container'
+    logs: 'log-container',
+    performance: 'performance-container'
   };
 
   var VIEW_TITLES = {
@@ -26,7 +27,8 @@ export function getApp(): string {
     fetches: 'Server Fetches',
     queries: 'Queries',
     errors: 'Errors',
-    logs: 'Logs'
+    logs: 'Logs',
+    performance: 'Performance'
   };
 
   async function init() {
@@ -48,6 +50,7 @@ export function getApp(): string {
     loadErrors();
     loadLogs();
     loadQueries();
+    loadMetrics();
 
     updateStats();
 
@@ -124,6 +127,7 @@ export function getApp(): string {
       state.activeView = view;
       document.getElementById('header-title').textContent = VIEW_TITLES[view] || view;
       document.getElementById('mode-toggle').style.display = view === 'actions' ? 'flex' : 'none';
+      if (view === 'performance') loadMetrics();
       switchView(view);
     });
   });
@@ -176,9 +180,11 @@ export function getApp(): string {
   }
 
   document.getElementById('clear-btn').addEventListener('click', async function() {
+    if (!confirm('This will clear all data including performance metrics history. Continue?')) return;
     await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
     state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = []; state.queries = [];
-    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); updateStats();
+    graphData = []; selectedEndpoint = '__all__';
+    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); updateStats();
     showToast('Cleared');
   });
 

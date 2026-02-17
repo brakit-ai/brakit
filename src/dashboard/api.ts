@@ -5,33 +5,64 @@ import { defaultFetchStore } from "../store/fetch-store.js";
 import { defaultLogStore } from "../store/log-store.js";
 import { defaultErrorStore } from "../store/error-store.js";
 import { defaultQueryStore } from "../store/query-store.js";
+import type { ReadonlyTelemetryStore } from "../store/telemetry-store.js";
+import type { MetricsStore } from "../store/metrics-store.js";
 import { DEFAULT_API_LIMIT } from "../constants.js";
 import type { TelemetryBatch, TelemetryEvent } from "../types.js";
 
+let metricsStoreRef: MetricsStore | null = null;
+
+export function setMetricsStore(store: MetricsStore): void {
+  metricsStoreRef = store;
+}
+
+const JSON_RESPONSE_HEADERS = {
+  "content-type": "application/json",
+  "access-control-allow-origin": "*",
+  "cache-control": "no-cache",
+} as const;
+
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
-  const body = JSON.stringify(data);
-  res.writeHead(status, {
-    "content-type": "application/json",
-    "access-control-allow-origin": "*",
-    "cache-control": "no-cache",
-  });
-  res.end(body);
+  res.writeHead(status, JSON_RESPONSE_HEADERS);
+  res.end(JSON.stringify(data));
+}
+
+function requireGet(req: IncomingMessage, res: ServerResponse): boolean {
+  if (req.method !== "GET") {
+    sendJson(res, 405, { error: "Method not allowed" });
+    return false;
+  }
+  return true;
+}
+
+function handleTelemetryGet(
+  req: IncomingMessage,
+  res: ServerResponse,
+  store: ReadonlyTelemetryStore,
+): void {
+  if (!requireGet(req, res)) return;
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const requestId = url.searchParams.get("requestId");
+  const entries = requestId
+    ? store.getByRequest(requestId)
+    : [...store.getAll()];
+  sendJson(res, 200, { total: entries.length, entries: entries.reverse() });
 }
 
 export function handleApiRequests(
   req: IncomingMessage,
   res: ServerResponse,
 ): void {
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Method not allowed" });
-    return;
-  }
+  if (!requireGet(req, res)) return;
 
   const url = new URL(req.url ?? "/", "http://localhost");
   const method = url.searchParams.get("method");
   const status = url.searchParams.get("status");
   const search = url.searchParams.get("search");
-  const limit = parseInt(url.searchParams.get("limit") ?? String(DEFAULT_API_LIMIT), 10);
+  const limit = parseInt(
+    url.searchParams.get("limit") ?? String(DEFAULT_API_LIMIT),
+    10,
+  );
   const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
 
   let results = [...getRequests()].reverse();
@@ -72,11 +103,7 @@ export function handleApiFlows(
   req: IncomingMessage,
   res: ServerResponse,
 ): void {
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Method not allowed" });
-    return;
-  }
-
+  if (!requireGet(req, res)) return;
   const flows = groupRequestsIntoFlows(getRequests()).reverse();
   sendJson(res, 200, { total: flows.length, flows });
 }
@@ -94,6 +121,7 @@ export function handleApiClear(
   defaultLogStore.clear();
   defaultErrorStore.clear();
   defaultQueryStore.clear();
+  if (metricsStoreRef) metricsStoreRef.reset();
   sendJson(res, 200, { cleared: true });
 }
 
@@ -101,68 +129,28 @@ export function handleApiFetches(
   req: IncomingMessage,
   res: ServerResponse,
 ): void {
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Method not allowed" });
-    return;
-  }
-  const url = new URL(req.url ?? "/", "http://localhost");
-  const requestId = url.searchParams.get("requestId");
-  let entries = requestId
-    ? defaultFetchStore.getByRequest(requestId)
-    : [...defaultFetchStore.getAll()];
-  entries = entries.reverse();
-  sendJson(res, 200, { total: entries.length, entries });
+  handleTelemetryGet(req, res, defaultFetchStore);
 }
 
 export function handleApiLogs(
   req: IncomingMessage,
   res: ServerResponse,
 ): void {
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Method not allowed" });
-    return;
-  }
-  const url = new URL(req.url ?? "/", "http://localhost");
-  const requestId = url.searchParams.get("requestId");
-  let entries = requestId
-    ? defaultLogStore.getByRequest(requestId)
-    : [...defaultLogStore.getAll()];
-  entries = entries.reverse();
-  sendJson(res, 200, { total: entries.length, entries });
+  handleTelemetryGet(req, res, defaultLogStore);
 }
 
 export function handleApiErrors(
   req: IncomingMessage,
   res: ServerResponse,
 ): void {
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Method not allowed" });
-    return;
-  }
-  const url = new URL(req.url ?? "/", "http://localhost");
-  const requestId = url.searchParams.get("requestId");
-  let entries = requestId
-    ? defaultErrorStore.getByRequest(requestId)
-    : [...defaultErrorStore.getAll()];
-  entries = entries.reverse();
-  sendJson(res, 200, { total: entries.length, entries });
+  handleTelemetryGet(req, res, defaultErrorStore);
 }
 
 export function handleApiQueries(
   req: IncomingMessage,
   res: ServerResponse,
 ): void {
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Method not allowed" });
-    return;
-  }
-  const url = new URL(req.url ?? "/", "http://localhost");
-  const requestId = url.searchParams.get("requestId");
-  let entries = requestId
-    ? defaultQueryStore.getByRequest(requestId)
-    : [...defaultQueryStore.getAll()];
-  entries = entries.reverse();
-  sendJson(res, 200, { total: entries.length, entries });
+  handleTelemetryGet(req, res, defaultQueryStore);
 }
 
 function isBrakitBatch(msg: unknown): msg is TelemetryBatch {
@@ -189,6 +177,25 @@ function routeEvent(event: TelemetryEvent): void {
       defaultQueryStore.add(event.data);
       break;
   }
+}
+
+export function handleApiMetrics(
+  req: IncomingMessage,
+  res: ServerResponse,
+): void {
+  if (!requireGet(req, res)) return;
+  if (!metricsStoreRef) {
+    sendJson(res, 200, { endpoints: [] });
+    return;
+  }
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const endpoint = url.searchParams.get("endpoint");
+  if (endpoint) {
+    const ep = metricsStoreRef.getEndpoint(endpoint);
+    sendJson(res, 200, { endpoints: ep ? [ep] : [] });
+    return;
+  }
+  sendJson(res, 200, { endpoints: metricsStoreRef.getAll() });
 }
 
 export function handleApiIngest(

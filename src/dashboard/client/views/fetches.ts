@@ -1,43 +1,22 @@
-import {
-  DASHBOARD_API_FETCHES,
-} from "../../../constants.js";
+import { DASHBOARD_API_FETCHES } from "../../../constants.js";
 
 export function getFetchesView(): string {
   return `
-  function renderFetches() {
-    var list = document.getElementById('fetch-list');
-    if (!list) return;
-    list.innerHTML = '';
-    state.fetches.forEach(function(f) { appendFetchRow(f); });
-  }
-
-  function appendFetchRow(f) {
-    var list = document.getElementById('fetch-list');
-    if (!list) return;
+  function buildFetchRow(f) {
     var row = document.createElement('div');
     row.className = 'req-row';
-    var statusCls = f.statusCode >= 400 ? ' style="color:var(--red)"' : '';
+    var statusCls = f.statusCode >= 400 ? ' tel-status-err' : '';
     row.innerHTML =
-      '<span style="width:50px;font-weight:500">' + escHtml(f.method) + '</span>' +
-      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(f.url) + '">' + escHtml(f.url) + '</span>' +
-      '<span style="width:50px;text-align:right"' + statusCls + '>' + f.statusCode + '</span>' +
-      '<span style="width:70px;text-align:right;color:var(--dim)">' + formatDuration(f.durationMs) + '</span>';
-    list.appendChild(row);
+      '<span class="tel-method">' + escHtml(f.method) + '</span>' +
+      '<span class="tel-url" title="' + escHtml(f.url) + '">' + escHtml(f.url) + '</span>' +
+      '<span class="tel-status' + statusCls + '">' + f.statusCode + '</span>' +
+      '<span class="tel-duration">' + formatDuration(f.durationMs) + '</span>';
+    return row;
   }
 
-  function prependFetchRow(f) {
-    var list = document.getElementById('fetch-list');
-    if (!list) return;
-    var row = document.createElement('div');
-    row.className = 'req-row';
-    var statusCls = f.statusCode >= 400 ? ' style="color:var(--red)"' : '';
-    row.innerHTML =
-      '<span style="width:50px;font-weight:500">' + escHtml(f.method) + '</span>' +
-      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(f.url) + '">' + escHtml(f.url) + '</span>' +
-      '<span style="width:50px;text-align:right"' + statusCls + '>' + f.statusCode + '</span>' +
-      '<span style="width:70px;text-align:right;color:var(--dim)">' + formatDuration(f.durationMs) + '</span>';
-    list.insertBefore(row, list.firstChild);
-  }
+  var fetchView = createTelemetryView('fetch-list', buildFetchRow);
+  function renderFetches() { fetchView.render(state.fetches); }
+  function prependFetchRow(f) { fetchView.prepend(f); }
 
   async function loadFetches() {
     try {
