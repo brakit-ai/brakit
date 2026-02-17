@@ -20,25 +20,30 @@ export function getLayoutHtml(config: BrakitConfig): string {
         <span class="item-label">Requests</span>
         <span class="item-count" id="sidebar-count-requests">0</span>
       </button>
+      <button class="sidebar-item" data-view="fetches">
+        <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+        <span class="item-label">Fetches</span>
+        <span class="item-count" id="sidebar-count-fetches">0</span>
+      </button>
       <div class="sidebar-section">Insights</div>
       <button class="sidebar-item disabled">
         <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
         <span class="item-label">Queries</span>
         <span class="coming-soon">Soon</span>
       </button>
-      <button class="sidebar-item disabled">
+      <button class="sidebar-item" data-view="errors">
         <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></span>
         <span class="item-label">Errors</span>
-        <span class="coming-soon">Soon</span>
+        <span class="item-count" id="sidebar-count-errors">0</span>
+      </button>
+      <button class="sidebar-item" data-view="logs">
+        <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+        <span class="item-label">Logs</span>
+        <span class="item-count" id="sidebar-count-logs">0</span>
       </button>
       <button class="sidebar-item disabled">
         <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
         <span class="item-label">Performance</span>
-        <span class="coming-soon">Soon</span>
-      </button>
-      <button class="sidebar-item disabled">
-        <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
-        <span class="item-label">Logs</span>
         <span class="coming-soon">Soon</span>
       </button>
     </nav>
@@ -80,6 +85,31 @@ export function getLayoutHtml(config: BrakitConfig): string {
           <span style="width:60px;text-align:right">Size</span>
         </div>
         <div id="request-list"></div>
+      </div>
+      <div class="view-telemetry" id="fetch-container" style="display:none">
+        <div class="col-header">
+          <span style="width:50px">Method</span>
+          <span style="flex:1">URL</span>
+          <span style="width:50px;text-align:right">Status</span>
+          <span style="width:70px;text-align:right">Time</span>
+        </div>
+        <div id="fetch-list"></div>
+      </div>
+      <div class="view-telemetry" id="error-container" style="display:none">
+        <div class="col-header">
+          <span style="width:120px">Type</span>
+          <span style="flex:1">Message</span>
+          <span style="width:130px;text-align:right">Time</span>
+        </div>
+        <div id="error-list"></div>
+      </div>
+      <div class="view-telemetry" id="log-container" style="display:none">
+        <div class="col-header">
+          <span style="width:60px">Level</span>
+          <span style="flex:1">Message</span>
+          <span style="width:130px;text-align:right">Time</span>
+        </div>
+        <div id="log-list"></div>
       </div>
     </div>
     <div class="footer">

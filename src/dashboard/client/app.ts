@@ -6,10 +6,27 @@ import {
   DASHBOARD_API_REQUESTS,
   DASHBOARD_API_EVENTS,
   DASHBOARD_API_CLEAR,
+  MAX_TELEMETRY_ENTRIES,
 } from "../../constants.js";
 
 export function getApp(): string {
   return `
+  var VIEW_CONTAINERS = {
+    actions: 'flow-container',
+    requests: 'request-container',
+    fetches: 'fetch-container',
+    errors: 'error-container',
+    logs: 'log-container'
+  };
+
+  var VIEW_TITLES = {
+    actions: 'Actions',
+    requests: 'Requests',
+    fetches: 'Server Fetches',
+    errors: 'Errors',
+    logs: 'Logs'
+  };
+
   async function init() {
     try {
       var res = await fetch('${DASHBOARD_API_FLOWS}');
@@ -25,6 +42,10 @@ export function getApp(): string {
       renderRequests();
     } catch(e) {}
 
+    loadFetches();
+    loadErrors();
+    loadLogs();
+
     updateStats();
 
     var events = new EventSource('${DASHBOARD_API_EVENTS}');
@@ -39,6 +60,30 @@ export function getApp(): string {
       prependRequestRow(req);
       updateStats();
     };
+
+    events.addEventListener('fetch', function(e) {
+      var f = JSON.parse(e.data);
+      state.fetches.unshift(f);
+      if (state.fetches.length > ${MAX_TELEMETRY_ENTRIES}) state.fetches.pop();
+      prependFetchRow(f);
+      updateStats();
+    });
+
+    events.addEventListener('log', function(e) {
+      var l = JSON.parse(e.data);
+      state.logs.unshift(l);
+      if (state.logs.length > ${MAX_TELEMETRY_ENTRIES}) state.logs.pop();
+      prependLogRow(l);
+      updateStats();
+    });
+
+    events.addEventListener('error_event', function(e) {
+      var err = JSON.parse(e.data);
+      state.errors.unshift(err);
+      if (state.errors.length > ${MAX_TELEMETRY_ENTRIES}) state.errors.pop();
+      prependErrorRow(err);
+      updateStats();
+    });
   }
 
   async function reloadFlows() {
@@ -51,6 +96,13 @@ export function getApp(): string {
     } catch(e) {}
   }
 
+  function switchView(view) {
+    Object.keys(VIEW_CONTAINERS).forEach(function(v) {
+      var el = document.getElementById(VIEW_CONTAINERS[v]);
+      if (el) el.style.display = v === view ? 'block' : 'none';
+    });
+  }
+
   var sidebarItems = document.querySelectorAll('.sidebar-item:not(.disabled)');
   sidebarItems.forEach(function(item) {
     item.addEventListener('click', function() {
@@ -59,14 +111,9 @@ export function getApp(): string {
       sidebarItems.forEach(function(i) { i.classList.remove('active'); });
       item.classList.add('active');
       state.activeView = view;
-      var titles = { actions: 'Actions', requests: 'Requests' };
-      document.getElementById('header-title').textContent = titles[view] || view;
+      document.getElementById('header-title').textContent = VIEW_TITLES[view] || view;
       document.getElementById('mode-toggle').style.display = view === 'actions' ? 'flex' : 'none';
-      if (view === 'requests') {
-        appEl.classList.add('show-requests');
-      } else {
-        appEl.classList.remove('show-requests');
-      }
+      switchView(view);
     });
   });
 
@@ -95,8 +142,14 @@ export function getApp(): string {
     document.getElementById('stat-avg').textContent = 'Avg: ' + avg + 'ms';
     var actionCount = document.getElementById('sidebar-count-actions');
     var requestCount = document.getElementById('sidebar-count-requests');
+    var fetchCount = document.getElementById('sidebar-count-fetches');
+    var errorCount = document.getElementById('sidebar-count-errors');
+    var logCount = document.getElementById('sidebar-count-logs');
     if (actionCount) actionCount.textContent = state.flows.length;
     if (requestCount) requestCount.textContent = reqs.length;
+    if (fetchCount) fetchCount.textContent = state.fetches.length;
+    if (errorCount) errorCount.textContent = state.errors.length;
+    if (logCount) logCount.textContent = state.logs.length;
   }
 
   function copyAsCurl(req) {
@@ -111,8 +164,8 @@ export function getApp(): string {
 
   document.getElementById('clear-btn').addEventListener('click', async function() {
     await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
-    state.flows = []; state.requests = [];
-    renderFlows(); renderRequests(); updateStats();
+    state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = [];
+    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); updateStats();
     showToast('Cleared');
   });
 

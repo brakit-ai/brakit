@@ -175,9 +175,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .tooltip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;box-shadow:0 4px 8px rgba(0,0,0,.3)}
 .tooltip:hover::after{opacity:1}
 
-/* View toggle */
+/* View toggle — switchView() controls visibility via inline display */
 .view-flows{display:block}.view-requests{display:none}
-.show-requests .view-flows{display:none}
-.show-requests .view-requests{display:block}
 `;
 }

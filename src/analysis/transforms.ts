@@ -4,18 +4,26 @@ import { getEffectivePath } from "./categorize.js";
 import { prettifyEndpoint } from "./label.js";
 
 export function markDuplicates(requests: LabeledRequest[]): void {
-  const seen = new Map<string, LabeledRequest>();
-
+  // Count occurrences of each fetchable endpoint in this flow.
+  const counts = new Map<string, number>();
   for (const req of requests) {
     if (req.category !== "data-fetch" && req.category !== "auth-check") continue;
-
     const key = `${req.method} ${getEffectivePath(req).split("?")[0]}`;
-    const first = seen.get(key);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
 
-    if (first) {
+  // React Strict Mode doubles ALL effects — every endpoint appears exactly 2x.
+  // If this pattern holds, it's Strict Mode, not real duplicates.
+  if (counts.size > 0 && [...counts.values()].every((c) => c === 2)) return;
+
+  const seen = new Set<string>();
+  for (const req of requests) {
+    if (req.category !== "data-fetch" && req.category !== "auth-check") continue;
+    const key = `${req.method} ${getEffectivePath(req).split("?")[0]}`;
+    if (seen.has(key)) {
       req.isDuplicate = true;
     } else {
-      seen.set(key, req);
+      seen.add(key);
     }
   }
 }

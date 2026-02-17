@@ -148,10 +148,12 @@ describe("groupRequestsIntoFlows", () => {
   });
 
   it("marks duplicate requests and computes redundancy %", () => {
+    // /api/user appears 2x but /api/videos only 1x — not every endpoint is doubled,
+    // so this is a genuine duplicate, not React Strict Mode.
     const requests = [
       makeReq({ startedAt: 1000, path: "/api/user", url: "/api/user", responseBody: '{"id":1}' }),
-      makeReq({ startedAt: 1050, path: "/api/user", url: "/api/user", responseBody: '{"id":1}' }),
-      makeReq({ startedAt: 1100, path: "/api/videos", url: "/api/videos" }),
+      makeReq({ startedAt: 1600, path: "/api/user", url: "/api/user", responseBody: '{"id":1}' }),
+      makeReq({ startedAt: 2200, path: "/api/videos", url: "/api/videos" }),
     ];
 
     const flows = groupRequestsIntoFlows(requests);
@@ -162,15 +164,33 @@ describe("groupRequestsIntoFlows", () => {
   });
 
   it("warns about duplicates with same data", () => {
+    // Only one endpoint (/api/user) appears 2x with a unique /api/config —
+    // breaks the Strict Mode pattern, so it's flagged.
     const requests = [
       makeReq({ startedAt: 1000, path: "/api/user", url: "/api/user", responseBody: '{"id":1}' }),
-      makeReq({ startedAt: 1050, path: "/api/user", url: "/api/user", responseBody: '{"id":1}' }),
+      makeReq({ startedAt: 1200, path: "/api/config", url: "/api/config" }),
+      makeReq({ startedAt: 1600, path: "/api/user", url: "/api/user", responseBody: '{"id":1}' }),
     ];
 
     const flows = groupRequestsIntoFlows(requests);
     expect(flows[0].warnings.length).toBeGreaterThan(0);
     expect(flows[0].warnings[0]).toContain("duplicated");
     expect(flows[0].warnings[0]).toContain("same data");
+  });
+
+  it("ignores React Strict Mode double-mounts (all endpoints appear exactly 2x)", () => {
+    // Every endpoint appears exactly twice — classic Strict Mode pattern.
+    const requests = [
+      makeReq({ startedAt: 1000, path: "/api/user", url: "/api/user", responseBody: '{"id":1}' }),
+      makeReq({ startedAt: 1050, path: "/api/videos", url: "/api/videos" }),
+      makeReq({ startedAt: 1300, path: "/api/user", url: "/api/user", responseBody: '{"id":1}' }),
+      makeReq({ startedAt: 1350, path: "/api/videos", url: "/api/videos" }),
+    ];
+
+    const flows = groupRequestsIntoFlows(requests);
+    const dupReqs = flows[0].requests.filter((r) => r.isDuplicate);
+    expect(dupReqs).toHaveLength(0);
+    expect(flows[0].redundancyPct).toBe(0);
   });
 
   it("reports 0% redundancy for clean flows", () => {

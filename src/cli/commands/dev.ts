@@ -63,7 +63,7 @@ export default defineCommand({
     };
 
     console.log(pc.dim(`  Starting ${project.devCommand} on port ${targetPort}...`));
-    const devProcess = spawnDevServer(project.devBin, targetPort, rootDir);
+    const devProcess = spawnDevServer(project.devBin, targetPort, proxyPort, rootDir);
 
     const proxy = createProxyServer(config);
 

@@ -6,8 +6,20 @@ import {
   DASHBOARD_API_EVENTS,
   DASHBOARD_API_FLOWS,
   DASHBOARD_API_CLEAR,
+  DASHBOARD_API_LOGS,
+  DASHBOARD_API_FETCHES,
+  DASHBOARD_API_ERRORS,
+  DASHBOARD_API_INGEST,
 } from "../constants.js";
-import { handleApiRequests, handleApiFlows, handleApiClear } from "./api.js";
+import {
+  handleApiRequests,
+  handleApiFlows,
+  handleApiClear,
+  handleApiLogs,
+  handleApiFetches,
+  handleApiErrors,
+  handleApiIngest,
+} from "./api.js";
 import { handleSSE } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
 
@@ -40,6 +52,26 @@ export function handleDashboardRequest(
 
   if (path === DASHBOARD_API_CLEAR) {
     handleApiClear(req, res);
+    return;
+  }
+
+  if (path === DASHBOARD_API_LOGS) {
+    handleApiLogs(req, res);
+    return;
+  }
+
+  if (path === DASHBOARD_API_FETCHES) {
+    handleApiFetches(req, res);
+    return;
+  }
+
+  if (path === DASHBOARD_API_ERRORS) {
+    handleApiErrors(req, res);
+    return;
+  }
+
+  if (path === DASHBOARD_API_INGEST) {
+    handleApiIngest(req, res);
     return;
   }
 

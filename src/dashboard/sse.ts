@@ -1,6 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { onRequest, offRequest } from "../proxy/request-log.js";
-import type { TracedRequest } from "../types.js";
+import { defaultFetchStore } from "../store/fetch-store.js";
+import { defaultLogStore } from "../store/log-store.js";
+import { defaultErrorStore } from "../store/error-store.js";
+import type { TracedRequest, TracedFetch, TracedLog, TracedError } from "../types.js";
 import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants.js";
 
 export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
@@ -13,13 +16,35 @@ export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
 
   res.write(":ok\n\n");
 
-  const listener = (traced: TracedRequest) => {
+  const writeEvent = (eventType: string | null, data: string) => {
     if (res.destroyed) return;
-    const data = JSON.stringify(traced);
-    res.write(`data: ${data}\n\n`);
+    if (eventType) {
+      res.write(`event: ${eventType}\ndata: ${data}\n\n`);
+    } else {
+      res.write(`data: ${data}\n\n`);
+    }
   };
 
-  onRequest(listener);
+  const requestListener = (traced: TracedRequest) => {
+    writeEvent(null, JSON.stringify(traced));
+  };
+
+  const fetchListener = (entry: TracedFetch) => {
+    writeEvent("fetch", JSON.stringify(entry));
+  };
+
+  const logListener = (entry: TracedLog) => {
+    writeEvent("log", JSON.stringify(entry));
+  };
+
+  const errorListener = (entry: TracedError) => {
+    writeEvent("error_event", JSON.stringify(entry));
+  };
+
+  onRequest(requestListener);
+  defaultFetchStore.onEntry(fetchListener);
+  defaultLogStore.onEntry(logListener);
+  defaultErrorStore.onEntry(errorListener);
 
   const heartbeat = setInterval(() => {
     if (res.destroyed) {
@@ -31,6 +56,9 @@ export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
 
   req.on("close", () => {
     clearInterval(heartbeat);
-    offRequest(listener);
+    offRequest(requestListener);
+    defaultFetchStore.offEntry(fetchListener);
+    defaultLogStore.offEntry(logListener);
+    defaultErrorStore.offEntry(errorListener);
   });
 }

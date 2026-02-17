@@ -7,6 +7,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     "bin/brakit": "bin/brakit.ts",
+    "instrument/preload": "src/instrument/preload.ts",
   },
   format: ["esm"],
   dts: true,

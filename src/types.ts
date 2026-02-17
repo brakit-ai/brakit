@@ -76,3 +76,42 @@ export interface RequestFlow {
 }
 
 export type RequestListener = (req: TracedRequest) => void;
+
+// Telemetry event types (sent from instrumented child process via IPC)
+
+export interface TracedFetch {
+  id: string;
+  url: string;
+  method: string;
+  statusCode: number;
+  durationMs: number;
+  parentRequestId: string | null;
+  timestamp: number;
+}
+
+export interface TracedLog {
+  id: string;
+  level: "log" | "warn" | "error" | "info" | "debug";
+  message: string;
+  parentRequestId: string | null;
+  timestamp: number;
+}
+
+export interface TracedError {
+  id: string;
+  name: string;
+  message: string;
+  stack: string;
+  parentRequestId: string | null;
+  timestamp: number;
+}
+
+export type TelemetryEvent =
+  | { type: "fetch"; data: Omit<TracedFetch, "id"> }
+  | { type: "log"; data: Omit<TracedLog, "id"> }
+  | { type: "error"; data: Omit<TracedError, "id"> };
+
+export type TelemetryBatch = {
+  _brakit: true;
+  events: TelemetryEvent[];
+};
