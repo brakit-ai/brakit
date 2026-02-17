@@ -9,6 +9,8 @@ import { getLogsView } from "./views/logs.js";
 import { getQueriesView } from "./views/queries.js";
 import { getGraphView } from "./views/graph.js";
 import { getOverviewView } from "./views/overview.js";
+import { getSecurityRules } from "./rules.js";
+import { getSecurityView } from "./views/security.js";
 import { getApp } from "./app.js";
 
 export function getClientScript(config: BrakitConfig): string {
@@ -32,7 +34,9 @@ export function getClientScript(config: BrakitConfig): string {
   ${getLogsView()}
   ${getQueriesView()}
   ${getGraphView()}
+  ${getSecurityRules()}
   ${getOverviewView()}
+  ${getSecurityView()}
   ${getApp()}
 })();
 `;

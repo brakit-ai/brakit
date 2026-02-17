@@ -45,6 +45,11 @@ export function getLayoutHtml(config: BrakitConfig): string {
         <span class="item-label">Logs</span>
         <span class="item-count" id="sidebar-count-logs">0</span>
       </button>
+      <button class="sidebar-item" data-view="security">
+        <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+        <span class="item-label">Security</span>
+        <span class="item-count" id="sidebar-count-security" style="display:none">0</span>
+      </button>
       <button class="sidebar-item" data-view="performance">
         <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
         <span class="item-label">Performance</span>
@@ -125,6 +130,9 @@ export function getLayoutHtml(config: BrakitConfig): string {
           <span style="width:130px;text-align:right">Time</span>
         </div>
         <div id="log-list"></div>
+      </div>
+      <div class="view-telemetry" id="security-container" style="display:none">
+        <div class="sec-container" id="security-content"></div>
       </div>
       <div class="view-telemetry" id="performance-container" style="display:none">
         <div id="graph-content"></div>

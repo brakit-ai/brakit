@@ -4,6 +4,7 @@ import { getFlowStyles } from "./styles/flows.js";
 import { getRequestStyles } from "./styles/requests.js";
 import { getPerformanceStyles } from "./styles/performance.js";
 import { getOverviewStyles } from "./styles/overview.js";
+import { getSecurityStyles } from "./styles/security.js";
 
 export function getStyles(): string {
   return (
@@ -12,6 +13,7 @@ export function getStyles(): string {
     getFlowStyles() +
     getRequestStyles() +
     getPerformanceStyles() +
-    getOverviewStyles()
+    getOverviewStyles() +
+    getSecurityStyles()
   );
 }

@@ -180,6 +180,12 @@ export function getOverviewView(): string {
       }
     }
 
+    // --- Security Rules ---
+    var secFindings = computeSecurityFindings();
+    for (var si = 0; si < secFindings.length; si++) {
+      insights.push(secFindings[si]);
+    }
+
     // Sort: critical first, then by type for grouping
     var severityOrder = { critical: 0, warning: 1 };
     insights.sort(function(a, b) {

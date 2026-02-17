@@ -19,7 +19,8 @@ export function getApp(): string {
     queries: 'query-container',
     errors: 'error-container',
     logs: 'log-container',
-    performance: 'performance-container'
+    performance: 'performance-container',
+    security: 'security-container'
   };
 
   var VIEW_TITLES = {
@@ -30,7 +31,8 @@ export function getApp(): string {
     queries: 'Queries',
     errors: 'Errors',
     logs: 'Logs',
-    performance: 'Performance'
+    performance: 'Performance',
+    security: 'Security'
   };
 
   async function init() {
@@ -128,6 +130,7 @@ export function getApp(): string {
       document.getElementById('header-title').textContent = VIEW_TITLES[view] || view;
       document.getElementById('mode-toggle').style.display = view === 'actions' ? 'flex' : 'none';
       if (view === 'overview') renderOverview();
+      if (view === 'security') renderSecurity();
       if (view === 'performance') loadMetrics();
       switchView(view);
     });
@@ -168,6 +171,12 @@ export function getApp(): string {
     if (errorCount) errorCount.textContent = state.errors.length;
     if (logCount) logCount.textContent = state.logs.length;
     if (queryCount) queryCount.textContent = state.queries.length;
+    var secCount = document.getElementById('sidebar-count-security');
+    if (secCount) {
+      var secFindings = computeSecurityFindings();
+      secCount.textContent = secFindings.length;
+      secCount.style.display = secFindings.length > 0 ? '' : 'none';
+    }
   }
 
   function copyAsCurl(req) {
@@ -185,7 +194,7 @@ export function getApp(): string {
     await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
     state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = []; state.queries = [];
     graphData = []; selectedEndpoint = '__all__';
-    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); renderOverview(); updateStats();
+    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); renderOverview(); renderSecurity(); updateStats();
     showToast('Cleared');
   });
 
