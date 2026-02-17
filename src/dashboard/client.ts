@@ -76,126 +76,203 @@ export function getClientScript(config: BrakitConfig): string {
       return;
     }
     emptyFlows.style.display = 'none';
-    for (const flow of state.flows) {
-      if (state.viewMode === 'simple') {
-        flowListEl.appendChild(createSimpleFlowCard(flow));
-      } else {
-        flowListEl.appendChild(createDetailedFlowCard(flow));
-      }
+    for (var i = 0; i < state.flows.length; i++) {
+      var result = createFlowRow(state.flows[i]);
+      flowListEl.appendChild(result.row);
+      flowListEl.appendChild(result.expand);
     }
   }
 
-  function createFlowHeader(flow) {
-    const header = document.createElement('div');
-    header.className = 'flow-header';
+  function flowDotClass(flow) {
+    if (flow.hasErrors) return 'dot-error';
+    if (flow.redundancyPct > 0) return 'dot-warn';
+    return 'dot-clean';
+  }
 
-    const icon = document.createElement('span');
-    icon.className = 'flow-icon';
-    icon.textContent = getFlowIcon(flow);
+  function flowBadgeText(flow) {
+    if (flow.hasErrors) {
+      var errCount = flow.requests.filter(function(r){ return r.statusCode >= 400; }).length;
+      return { text: errCount + ' error' + (errCount !== 1 ? 's' : ''), cls: 'has-error' };
+    }
+    if (flow.redundancyPct > 0) {
+      return { text: flow.redundancyPct + '% redundant', cls: 'has-warn' };
+    }
+    return { text: 'clean', cls: '' };
+  }
 
-    const label = document.createElement('span');
+  function createFlowRow(flow) {
+    var row = document.createElement('div');
+    row.className = 'flow-row';
+
+    var summary = document.createElement('div');
+    summary.className = 'flow-summary-row';
+
+    var dot = document.createElement('span');
+    dot.className = 'flow-status-dot ' + flowDotClass(flow);
+
+    var label = document.createElement('span');
     label.className = 'flow-label';
     label.textContent = flow.label;
 
-    const dur = document.createElement('span');
+    var count = document.createElement('span');
+    count.className = 'flow-req-count';
+    count.textContent = flow.requests.length + ' req' + (flow.requests.length !== 1 ? 's' : '');
+
+    var badgeInfo = flowBadgeText(flow);
+    var badge = document.createElement('span');
+    badge.className = 'flow-badge-text' + (badgeInfo.cls ? ' ' + badgeInfo.cls : '');
+    badge.textContent = badgeInfo.text;
+
+    var dur = document.createElement('span');
     dur.className = 'flow-duration';
     dur.textContent = formatDuration(flow.totalDurationMs);
 
-    const badge = document.createElement('span');
-    badge.className = 'badge';
-    if (flow.hasErrors) {
-      badge.className += ' badge-error';
-      badge.textContent = 'Error';
-    } else if (flow.redundancyPct > 0) {
-      badge.className += ' badge-warn';
-      badge.textContent = flow.redundancyPct + '% redundant';
-    } else {
-      badge.className += ' badge-clean';
-      badge.textContent = '\\u2713 Clean';
-    }
+    summary.appendChild(dot);
+    summary.appendChild(label);
+    summary.appendChild(count);
+    summary.appendChild(badge);
+    summary.appendChild(dur);
+    row.appendChild(summary);
 
-    header.appendChild(icon);
-    header.appendChild(label);
-    header.appendChild(badge);
-    header.appendChild(dur);
-    return header;
-  }
+    var expand = document.createElement('div');
+    expand.className = 'flow-expand';
 
-  function getFlowIcon(flow) {
-    if (flow.hasErrors) return '\\u26A0';
-    const l = flow.label.toLowerCase();
-    if (l.includes('page')) return '\\uD83D\\uDCC4';
-    if (l.includes('creat') || l.includes('generat') || l.includes('submit')) return '\\u26A1';
-    if (l.includes('delet') || l.includes('remov')) return '\\uD83D\\uDDD1';
-    if (l.includes('updat') || l.includes('edit') || l.includes('save')) return '\\u270F';
-    return '\\uD83D\\uDD0D';
-  }
+    row.addEventListener('click', function() {
+      var wasOpen = row.classList.contains('expanded');
+      document.querySelectorAll('.flow-row.expanded').forEach(function(r){ r.classList.remove('expanded'); });
+      document.querySelectorAll('.flow-expand.open').forEach(function(d){ d.classList.remove('open'); });
+      if (!wasOpen) {
+        row.classList.add('expanded');
+        expand.classList.add('open');
+        expand.innerHTML = '';
+        if (state.viewMode === 'simple') {
+          expand.appendChild(createFlowInsights(flow));
+        } else {
+          expand.appendChild(createFlowSubReqs(flow));
+        }
+      }
+    });
 
-  function flowCardClass(flow) {
-    if (flow.hasErrors) return 'flow-card has-errors';
-    if (flow.redundancyPct > 0) return 'flow-card has-redundancy';
-    return 'flow-card is-clean';
+    return { row: row, expand: expand };
   }
 
   // ===== SIMPLE =====
-  function createSimpleFlowCard(flow) {
-    const card = document.createElement('div');
-    card.className = flowCardClass(flow);
-    card.appendChild(createFlowHeader(flow));
+  function createFlowInsights(flow) {
+    var container = document.createElement('div');
 
-    const body = document.createElement('div');
-    body.className = 'simple-body';
-    const insights = analyzeFlow(flow);
+    // Block 1: Traffic table
+    var traffic = document.createElement('div');
+    traffic.className = 'flow-traffic';
+    var skipCats = { 'auth-handshake': 1, 'auth-check': 1, 'middleware': 1 };
 
-    if (insights.successes.length > 0) {
-      const el = document.createElement('div');
-      el.className = 'simple-success';
-      el.innerHTML = '\\u2713 <span>' + escHtml(insights.successes.join(', ')) + '</span>';
-      body.appendChild(el);
-    }
+    for (var i = 0; i < flow.requests.length; i++) {
+      var req = flow.requests[i];
+      if (skipCats[req.category]) continue;
 
-    if (insights.errors.length > 0) {
-      const el = document.createElement('div');
-      el.className = 'simple-errors';
-      for (const err of insights.errors) {
-        const item = document.createElement('div');
-        item.className = 'simple-error-item';
-        item.textContent = '\\u2717 ' + err;
-        el.appendChild(item);
+      var sClass = req.statusCode >= 500 ? 'status-5xx' : req.statusCode >= 400 ? 'status-4xx' : req.statusCode >= 300 ? 'status-3xx' : 'status-2xx';
+
+      var row = document.createElement('div');
+      row.className = 'traffic-row';
+
+      var mEl = document.createElement('span');
+      mEl.className = 't-method method-' + req.method;
+      mEl.textContent = req.method;
+
+      var pEl = document.createElement('span');
+      pEl.className = 't-path' + (req.isDuplicate ? ' is-dup' : '');
+      pEl.textContent = req.path || req.url;
+
+      var stEl = document.createElement('span');
+      stEl.className = 't-status ' + sClass;
+      stEl.textContent = String(req.statusCode);
+
+      var dEl = document.createElement('span');
+      dEl.className = 't-dur';
+      dEl.textContent = formatDuration(req.pollingDurationMs || req.durationMs);
+
+      row.appendChild(mEl);
+      row.appendChild(pEl);
+      row.appendChild(stEl);
+      row.appendChild(dEl);
+
+      if (req.isDuplicate) {
+        var dupEl = document.createElement('span');
+        dupEl.className = 't-dup';
+        dupEl.textContent = 'dup';
+        row.appendChild(dupEl);
+      } else {
+        var szEl = document.createElement('span');
+        szEl.className = 't-size';
+        szEl.textContent = formatSize(req.responseSize);
+        row.appendChild(szEl);
       }
-      body.appendChild(el);
-    }
 
-    if (insights.duplicates.length > 0) {
-      const el = document.createElement('div');
-      el.className = 'simple-problems';
-      for (const dup of insights.duplicates) {
-        const item = document.createElement('div');
-        item.className = 'simple-problem';
-        item.innerHTML = '\\u26A0 <span class="simple-problem-label">' + escHtml(dup.name) +
-          '</span> \\u2014 loaded ' + dup.count + ' times ' +
-          '<span class="simple-problem-waste">(wasting ~' + formatDuration(dup.wastedMs) + ')</span>';
-        el.appendChild(item);
+      traffic.appendChild(row);
+
+      // Request body (non-GET only)
+      if (req.requestBody && req.method !== 'GET') {
+        var reqBlock = document.createElement('div');
+        reqBlock.className = 'traffic-body';
+        reqBlock.innerHTML = '<div class="traffic-body-label"><span class="arrow-out">\\u2192</span> Request Body</div><pre>' + formatJsonBody(req.requestBody) + '</pre>';
+        traffic.appendChild(reqBlock);
       }
-      body.appendChild(el);
+
+      // Response body
+      if (req.responseBody) {
+        var resBlock = document.createElement('div');
+        resBlock.className = 'traffic-body';
+        resBlock.innerHTML = '<div class="traffic-body-label"><span class="arrow-in">\\u2190</span> Response Body</div><pre>' + formatJsonBody(req.responseBody) + '</pre>';
+        traffic.appendChild(resBlock);
+      }
+
+      // Separator between requests
+      if (i < flow.requests.length - 1) {
+        var sep = document.createElement('div');
+        sep.className = 'traffic-separator';
+        traffic.appendChild(sep);
+      }
     }
 
-    if (insights.tip) {
-      const tip = document.createElement('div');
-      tip.className = 'simple-tip';
-      tip.innerHTML = '<strong>Tip:</strong> ' + escHtml(insights.tip);
-      body.appendChild(tip);
+    container.appendChild(traffic);
+
+    // Block 2: Insights (only if there are issues)
+    var insights = analyzeFlow(flow);
+    var hasIssues = insights.errors.length > 0 || insights.duplicates.length > 0 || !!insights.tip;
+
+    if (hasIssues) {
+      var divider = document.createElement('div');
+      divider.className = 'flow-divider';
+      container.appendChild(divider);
+
+      var insightsEl = document.createElement('div');
+      insightsEl.className = 'flow-insights';
+
+      for (var ei = 0; ei < insights.errors.length; ei++) {
+        var errLine = document.createElement('div');
+        errLine.className = 'insight-line insight-error';
+        errLine.textContent = '\\u2717 ' + insights.errors[ei];
+        insightsEl.appendChild(errLine);
+      }
+
+      for (var di = 0; di < insights.duplicates.length; di++) {
+        var dup = insights.duplicates[di];
+        var dupLine = document.createElement('div');
+        dupLine.className = 'insight-line insight-warn';
+        dupLine.textContent = '\\u26A0 ' + dup.name + ' \\u2014 loaded ' + dup.count + 'x (wasting ~' + formatDuration(dup.wastedMs) + ')';
+        insightsEl.appendChild(dupLine);
+      }
+
+      if (insights.tip) {
+        var tipLine = document.createElement('div');
+        tipLine.className = 'insight-line insight-tip';
+        tipLine.textContent = 'Tip: ' + insights.tip;
+        insightsEl.appendChild(tipLine);
+      }
+
+      container.appendChild(insightsEl);
     }
 
-    if (insights.errors.length === 0 && insights.duplicates.length === 0) {
-      const ok = document.createElement('div');
-      ok.className = 'simple-ok';
-      ok.textContent = '\\u2713 Everything looks good!';
-      body.appendChild(ok);
-    }
-
-    card.appendChild(body);
-    return card;
+    return container;
   }
 
   function analyzeFlow(flow) {
@@ -239,82 +316,68 @@ export function getClientScript(config: BrakitConfig): string {
   }
 
   // ===== DETAILED =====
-  function createDetailedFlowCard(flow) {
-    const card = document.createElement('div');
-    card.className = flowCardClass(flow);
-    card.appendChild(createFlowHeader(flow));
+  function createFlowSubReqs(flow) {
+    var container = document.createElement('div');
+    container.className = 'flow-subreqs';
 
-    const reqList = document.createElement('div');
-    reqList.className = 'flow-requests';
+    flow.requests.forEach(function(req) {
+      var isDup = req.isDuplicate;
+      var sClass = req.statusCode >= 500 ? 'status-5xx' : req.statusCode >= 400 ? 'status-4xx' : req.statusCode >= 300 ? 'status-3xx' : 'status-2xx';
 
-    flow.requests.forEach((req) => {
-      const st = statusIcon(req.statusCode);
-      const isDup = req.isDuplicate;
+      var subRow = document.createElement('div');
+      subRow.className = 'flow-subreq';
 
-      const row = document.createElement('div');
-      row.className = 'flow-req';
+      var methodEl = document.createElement('span');
+      methodEl.className = 'subreq-method method-' + req.method;
+      methodEl.textContent = req.method;
 
-      const labelEl = document.createElement('span');
-      labelEl.className = 'flow-req-label' + (isDup ? ' is-dup' : '');
+      var labelEl = document.createElement('span');
+      labelEl.className = 'subreq-label' + (isDup ? ' is-dup' : '');
       labelEl.textContent = req.label;
 
-      const dots = document.createElement('span');
-      dots.className = 'flow-req-dots';
+      var statusEl = document.createElement('span');
+      statusEl.className = 'subreq-status ' + sClass;
+      statusEl.textContent = String(req.statusCode);
 
-      const durEl = document.createElement('span');
-      durEl.className = 'flow-req-dur';
+      var durEl = document.createElement('span');
+      durEl.className = 'subreq-dur';
       durEl.textContent = req.pollingDurationMs ? formatDuration(req.pollingDurationMs) : formatDuration(req.durationMs);
 
-      const statusEl = document.createElement('span');
-      statusEl.className = 'flow-req-status tooltip ' + st.cls;
-      statusEl.textContent = st.icon;
-      statusEl.setAttribute('data-tip', st.tip);
-
-      row.appendChild(labelEl);
-      row.appendChild(dots);
-      row.appendChild(durEl);
-      row.appendChild(statusEl);
+      subRow.appendChild(methodEl);
+      subRow.appendChild(labelEl);
 
       if (isDup) {
-        const dupEl = document.createElement('span');
-        dupEl.className = 'dup-badge';
-        dupEl.textContent = 'duplicate';
-        row.appendChild(dupEl);
+        var dupTag = document.createElement('span');
+        dupTag.className = 'subreq-dup-tag';
+        dupTag.textContent = 'dup';
+        subRow.appendChild(dupTag);
       }
 
-      const detail = document.createElement('div');
-      detail.className = 'flow-req-detail';
+      subRow.appendChild(statusEl);
+      subRow.appendChild(durEl);
 
-      row.addEventListener('click', () => {
-        const wasOpen = detail.classList.contains('open');
-        card.querySelectorAll('.flow-req-detail.open').forEach(d => d.classList.remove('open'));
-        card.querySelectorAll('.flow-req.expanded').forEach(r => r.classList.remove('expanded'));
+      var detail = document.createElement('div');
+      detail.className = 'flow-subreq-detail';
+
+      subRow.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var wasOpen = detail.classList.contains('open');
+        container.querySelectorAll('.flow-subreq-detail.open').forEach(function(d){ d.classList.remove('open'); });
+        container.querySelectorAll('.flow-subreq.expanded').forEach(function(r){ r.classList.remove('expanded'); });
         if (!wasOpen) {
-          row.classList.add('expanded');
+          subRow.classList.add('expanded');
           detail.classList.add('open');
           detail.innerHTML = renderDetail(req);
-          const curlBtn = detail.querySelector('.btn-curl');
-          if (curlBtn) curlBtn.addEventListener('click', (e) => { e.stopPropagation(); copyAsCurl(req); });
+          var curlBtn = detail.querySelector('.btn-curl');
+          if (curlBtn) curlBtn.addEventListener('click', function(ev) { ev.stopPropagation(); copyAsCurl(req); });
         }
       });
 
-      reqList.appendChild(row);
-      reqList.appendChild(detail);
+      container.appendChild(subRow);
+      container.appendChild(detail);
     });
-    card.appendChild(reqList);
 
-    const summary = document.createElement('div');
-    summary.className = 'flow-summary';
-    if (flow.warnings.length > 0) {
-      summary.className += ' summary-warn';
-      summary.innerHTML = '\\u26A0 ' + escHtml(flow.warnings[0]);
-      if (flow.warnings.length > 1) summary.innerHTML += ' <span style="color:var(--text-muted)">(+' + (flow.warnings.length - 1) + ' more)</span>';
-    } else {
-      summary.className += ' summary-ok';
-      summary.textContent = '\\u2713 No issues';
-    }
-    card.appendChild(summary);
-    return card;
+    return container;
   }
 
   function renderDetail(req) {
@@ -413,17 +476,19 @@ export function getClientScript(config: BrakitConfig): string {
   });
 
   // ===== MODE TOGGLE =====
-  document.getElementById('mode-simple').addEventListener('click', () => {
+  document.getElementById('mode-simple').addEventListener('click', function() {
     state.viewMode = 'simple';
     document.getElementById('mode-simple').classList.add('active');
     document.getElementById('mode-detailed').classList.remove('active');
-    renderFlows();
+    document.querySelectorAll('.flow-row.expanded').forEach(function(r){ r.classList.remove('expanded'); });
+    document.querySelectorAll('.flow-expand.open').forEach(function(d){ d.classList.remove('open'); });
   });
-  document.getElementById('mode-detailed').addEventListener('click', () => {
+  document.getElementById('mode-detailed').addEventListener('click', function() {
     state.viewMode = 'detailed';
     document.getElementById('mode-detailed').classList.add('active');
     document.getElementById('mode-simple').classList.remove('active');
-    renderFlows();
+    document.querySelectorAll('.flow-row.expanded').forEach(function(r){ r.classList.remove('expanded'); });
+    document.querySelectorAll('.flow-expand.open').forEach(function(d){ d.classList.remove('open'); });
   });
 
   // ===== STATS =====

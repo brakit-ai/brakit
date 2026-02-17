@@ -57,9 +57,8 @@ export function getLayoutHtml(config: BrakitConfig): string {
     </div>
     <div class="main-content">
       <div class="view-flows" id="flow-container">
-        <div class="content" id="flow-list">
+        <div id="flow-list">
           <div class="empty" id="empty-flows">
-            <span class="empty-icon">&#9889;</span>
             <span class="empty-title">Waiting for requests...</span>
             <span class="empty-sub">Use your app and actions will appear here</span>
           </div>
