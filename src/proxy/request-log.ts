@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { IncomingHttpHeaders } from "node:http";
 import type { TracedRequest, BrakitConfig, FlatHeaders, RequestListener } from "../types.js";
 import { MAX_REQUEST_ENTRIES } from "../constants.js";
@@ -24,6 +23,7 @@ export function flattenHeaders(headers: IncomingHttpHeaders): FlatHeaders {
 }
 
 export interface CaptureInput {
+  requestId: string;
   method: string;
   url: string;
   requestHeaders: IncomingHttpHeaders;
@@ -64,7 +64,7 @@ export class RequestStore {
     }
 
     const entry: TracedRequest = {
-      id: randomUUID(),
+      id: input.requestId,
       method: input.method,
       url,
       path,

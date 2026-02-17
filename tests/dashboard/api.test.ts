@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { randomUUID } from "node:crypto";
 import {
   captureRequest,
   clearRequests,
@@ -10,6 +11,7 @@ function makeCaptureInput(
   overrides: Partial<CaptureInput> = {},
 ): CaptureInput {
   return {
+    requestId: randomUUID(),
     method: "GET",
     url: "/api/users",
     requestHeaders: {},

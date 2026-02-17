@@ -26,6 +26,7 @@ export const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 export const DEFAULT_API_LIMIT = 500;
 
 // Instrumentation
+export const BRAKIT_REQUEST_ID_HEADER = "x-brakit-request-id";
 export const MAX_TELEMETRY_ENTRIES = 1_000;
 
 // Client-side (injected into browser JS template strings)

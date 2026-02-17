@@ -103,7 +103,12 @@ export function handleApiFetches(
     sendJson(res, 405, { error: "Method not allowed" });
     return;
   }
-  const entries = [...defaultFetchStore.getAll()].reverse();
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const requestId = url.searchParams.get("requestId");
+  let entries = requestId
+    ? defaultFetchStore.getByRequest(requestId)
+    : [...defaultFetchStore.getAll()];
+  entries = entries.reverse();
   sendJson(res, 200, { total: entries.length, entries });
 }
 
@@ -115,7 +120,12 @@ export function handleApiLogs(
     sendJson(res, 405, { error: "Method not allowed" });
     return;
   }
-  const entries = [...defaultLogStore.getAll()].reverse();
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const requestId = url.searchParams.get("requestId");
+  let entries = requestId
+    ? defaultLogStore.getByRequest(requestId)
+    : [...defaultLogStore.getAll()];
+  entries = entries.reverse();
   sendJson(res, 200, { total: entries.length, entries });
 }
 
@@ -127,7 +137,12 @@ export function handleApiErrors(
     sendJson(res, 405, { error: "Method not allowed" });
     return;
   }
-  const entries = [...defaultErrorStore.getAll()].reverse();
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const requestId = url.searchParams.get("requestId");
+  let entries = requestId
+    ? defaultErrorStore.getByRequest(requestId)
+    : [...defaultErrorStore.getAll()];
+  entries = entries.reverse();
   sendJson(res, 200, { total: entries.length, entries });
 }
 

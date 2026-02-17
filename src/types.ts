@@ -77,7 +77,7 @@ export interface RequestFlow {
 
 export type RequestListener = (req: TracedRequest) => void;
 
-// Telemetry event types (sent from instrumented child process via IPC)
+// Telemetry event types (sent from instrumented processes via HTTP ingest)
 
 export interface TracedFetch {
   id: string;

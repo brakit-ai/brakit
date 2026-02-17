@@ -3,8 +3,10 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import { randomUUID } from "node:crypto";
 import type { BrakitConfig } from "../types.js";
 import { captureRequest } from "./request-log.js";
+import { BRAKIT_REQUEST_ID_HEADER } from "../constants.js";
 
 export function proxyRequest(
   clientReq: IncomingMessage,
@@ -13,6 +15,7 @@ export function proxyRequest(
 ): void {
   const startTime = performance.now();
   const method = clientReq.method ?? "GET";
+  const requestId = randomUUID();
 
   const shouldCaptureBody = method !== "GET" && method !== "HEAD";
   const bodyChunks: Buffer[] = [];
@@ -30,6 +33,7 @@ export function proxyRequest(
   // Keep original Host so Next.js Server Actions origin check passes
   const proxyHeaders = { ...clientReq.headers };
   proxyHeaders["accept-encoding"] = "identity";
+  proxyHeaders[BRAKIT_REQUEST_ID_HEADER] = requestId;
 
   const proxyReq = httpRequest(
     {
@@ -47,6 +51,7 @@ export function proxyRequest(
         startTime,
         shouldCaptureBody ? bodyChunks : [],
         config,
+        requestId,
       );
     },
   );
@@ -79,6 +84,7 @@ function handleProxyResponse(
   startTime: number,
   bodyChunks: Buffer[],
   config: BrakitConfig,
+  requestId: string,
 ): void {
   const responseChunks: Buffer[] = [];
   let responseSize = 0;
@@ -102,6 +108,7 @@ function handleProxyResponse(
       responseChunks.length > 0 ? Buffer.concat(responseChunks) : null;
 
     captureRequest({
+      requestId,
       method: clientReq.method ?? "GET",
       url: clientReq.url ?? "/",
       requestHeaders: clientReq.headers,

@@ -47,6 +47,8 @@ export function getRequestsView(): string {
         detail.innerHTML = renderDetail(req);
         var curlBtn = detail.querySelector('.btn-curl');
         if (curlBtn) curlBtn.addEventListener('click', function(e) { e.stopPropagation(); copyAsCurl(req); });
+        var saEl = detail.querySelector('.server-activity');
+        if (saEl) loadServerActivity(saEl);
       }
     });
     return { row: row, detail: detail };

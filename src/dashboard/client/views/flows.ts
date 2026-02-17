@@ -1,4 +1,9 @@
-import { SLOW_REQUEST_THRESHOLD_MS } from "../../../constants.js";
+import {
+  SLOW_REQUEST_THRESHOLD_MS,
+  DASHBOARD_API_FETCHES,
+  DASHBOARD_API_LOGS,
+  DASHBOARD_API_ERRORS,
+} from "../../../constants.js";
 
 export function getFlowsView(): string {
   return `
@@ -262,6 +267,8 @@ export function getFlowsView(): string {
           detail.innerHTML = renderDetail(req);
           var curlBtn = detail.querySelector('.btn-curl');
           if (curlBtn) curlBtn.addEventListener('click', function(ev) { ev.stopPropagation(); copyAsCurl(req); });
+          var saEl = detail.querySelector('.server-activity');
+          if (saEl) loadServerActivity(saEl);
         }
       });
       container.appendChild(subRow);
@@ -277,6 +284,7 @@ export function getFlowsView(): string {
     h += '<span>' + req.durationMs + 'ms</span>';
     if (req.responseSize) h += '<span>' + formatSize(req.responseSize) + '</span>';
     h += '</div>';
+    h += '<div class="server-activity" data-request-id="' + req.id + '"><div class="server-activity-loading" style="color:var(--dim);padding:8px 0;font-size:12px">Loading server activity...</div></div>';
     h += '<div class="detail-grid">';
     h += '<div class="detail-section"><h4>Request Headers</h4><pre>' + formatHeaders(req.headers) + '</pre></div>';
     h += '<div class="detail-section"><h4>Response Headers</h4><pre>' + formatHeaders(req.responseHeaders) + '</pre></div>';
@@ -285,6 +293,66 @@ export function getFlowsView(): string {
     h += '</div>';
     h += '<div class="detail-actions"><button class="btn btn-curl">Copy cURL</button></div>';
     return h;
+  }
+
+  async function loadServerActivity(container) {
+    var rid = container.getAttribute('data-request-id');
+    if (!rid) return;
+    try {
+      var results = await Promise.all([
+        fetch('${DASHBOARD_API_FETCHES}?requestId=' + rid).then(function(r) { return r.json(); }),
+        fetch('${DASHBOARD_API_LOGS}?requestId=' + rid).then(function(r) { return r.json(); }),
+        fetch('${DASHBOARD_API_ERRORS}?requestId=' + rid).then(function(r) { return r.json(); })
+      ]);
+      var fetches = results[0].entries || [];
+      var logs = results[1].entries || [];
+      var errors = results[2].entries || [];
+      if (fetches.length === 0 && logs.length === 0 && errors.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      var h = '<div class="server-activity-header">Server Activity</div>';
+      if (fetches.length > 0) {
+        h += '<div class="sa-section"><div class="sa-label">Fetches (' + fetches.length + ')</div>';
+        for (var i = 0; i < fetches.length; i++) {
+          var f = fetches[i];
+          var sCls = f.statusCode >= 400 ? ' style="color:var(--red)"' : '';
+          h += '<div class="sa-row">' +
+            '<span class="sa-method">' + escHtml(f.method) + '</span>' +
+            '<span class="sa-url" title="' + escHtml(f.url) + '">' + escHtml(f.url) + '</span>' +
+            '<span class="sa-status"' + sCls + '>' + f.statusCode + '</span>' +
+            '<span class="sa-dur">' + formatDuration(f.durationMs) + '</span>' +
+          '</div>';
+        }
+        h += '</div>';
+      }
+      if (logs.length > 0) {
+        h += '<div class="sa-section"><div class="sa-label">Logs (' + logs.length + ')</div>';
+        for (var j = 0; j < logs.length; j++) {
+          var l = logs[j];
+          var lColor = LOG_LEVEL_COLORS[l.level] || 'var(--fg)';
+          h += '<div class="sa-row">' +
+            '<span class="sa-level" style="color:' + lColor + '">' + l.level.toUpperCase() + '</span>' +
+            '<span class="sa-msg" title="' + escHtml(l.message) + '">' + escHtml(l.message) + '</span>' +
+          '</div>';
+        }
+        h += '</div>';
+      }
+      if (errors.length > 0) {
+        h += '<div class="sa-section"><div class="sa-label" style="color:var(--red)">Errors (' + errors.length + ')</div>';
+        for (var k = 0; k < errors.length; k++) {
+          var e = errors[k];
+          h += '<div class="sa-row">' +
+            '<span class="sa-err-name">' + escHtml(e.name) + '</span>' +
+            '<span class="sa-msg" title="' + escHtml(e.message) + '">' + escHtml(e.message) + '</span>' +
+          '</div>';
+        }
+        h += '</div>';
+      }
+      container.innerHTML = h;
+    } catch(ex) {
+      container.innerHTML = '';
+    }
   }
   `;
 }

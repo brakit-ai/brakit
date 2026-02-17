@@ -133,6 +133,20 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .detail-meta span{display:flex;align-items:center;gap:6px}
 .detail-actions{margin-top:14px;display:flex;gap:8px}
 
+/* ===== SERVER ACTIVITY (correlated telemetry) ===== */
+.server-activity{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+.server-activity-header{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);font-weight:600;margin-bottom:10px}
+.sa-section{margin-bottom:12px}
+.sa-label{font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:4px}
+.sa-row{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;padding:4px 0;color:var(--text)}
+.sa-method{width:40px;font-weight:600;flex-shrink:0}
+.sa-url{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim)}
+.sa-status{width:36px;text-align:right;font-weight:600}
+.sa-dur{width:60px;text-align:right;color:var(--text-muted)}
+.sa-level{width:50px;font-weight:600;flex-shrink:0;font-size:11px}
+.sa-msg{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim);font-size:12px}
+.sa-err-name{width:100px;color:var(--red);font-weight:600;flex-shrink:0}
+
 /* ===== ALL REQUESTS VIEW ===== */
 .req-row{padding:12px 28px;border-bottom:1px solid var(--border-subtle);cursor:pointer;transition:background .1s}
 .req-row:hover{background:var(--bg-hover)}
