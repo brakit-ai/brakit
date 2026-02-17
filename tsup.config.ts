@@ -1,4 +1,7 @@
 import { defineConfig } from "tsup";
+import { readFileSync } from "fs";
+
+const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
 
 export default defineConfig({
   entry: {
@@ -10,6 +13,9 @@ export default defineConfig({
   clean: true,
   target: "node18",
   splitting: false,
+  define: {
+    "process.env.BRAKIT_VERSION": JSON.stringify(pkg.version),
+  },
   banner: {
     js: "",
   },

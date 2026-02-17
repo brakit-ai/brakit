@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { getRequests, clearRequests } from "../proxy/request-log.js";
-import { groupRequestsIntoFlows } from "./flows.js";
+import { groupRequestsIntoFlows } from "../analysis/group.js";
+import { DEFAULT_API_LIMIT } from "../constants.js";
 
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
   const body = JSON.stringify(data);
@@ -25,10 +26,10 @@ export function handleApiRequests(
   const method = url.searchParams.get("method");
   const status = url.searchParams.get("status");
   const search = url.searchParams.get("search");
-  const limit = parseInt(url.searchParams.get("limit") ?? "500", 10);
+  const limit = parseInt(url.searchParams.get("limit") ?? String(DEFAULT_API_LIMIT), 10);
   const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
 
-  let results = [...getRequests()].reverse(); // newest first
+  let results = [...getRequests()].reverse();
 
   if (method) {
     results = results.filter((r) => r.method === method.toUpperCase());
@@ -71,7 +72,7 @@ export function handleApiFlows(
     return;
   }
 
-  const flows = groupRequestsIntoFlows(getRequests()).reverse(); // newest first
+  const flows = groupRequestsIntoFlows(getRequests()).reverse();
   sendJson(res, 200, { total: flows.length, flows });
 }
 

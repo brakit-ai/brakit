@@ -1,7 +1,7 @@
 import type { BrakitConfig } from "../types.js";
 import { getStyles } from "./styles.js";
 import { getLayoutHtml } from "./layout.js";
-import { getClientScript } from "./client.js";
+import { getClientScript } from "./client/index.js";
 
 export function getDashboardHtml(config: BrakitConfig): string {
   return `<!DOCTYPE html>

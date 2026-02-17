@@ -1,29 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingHttpHeaders } from "node:http";
-import type { TracedRequest, BrakitConfig } from "../types.js";
-
-const MAX_ENTRIES = 1000;
-const requests: TracedRequest[] = [];
-
-type RequestListener = (req: TracedRequest) => void;
-const listeners: RequestListener[] = [];
-
-export function onRequest(fn: RequestListener): void {
-  listeners.push(fn);
-}
-
-export function offRequest(fn: RequestListener): void {
-  const idx = listeners.indexOf(fn);
-  if (idx !== -1) listeners.splice(idx, 1);
-}
-
-export function getRequests(): readonly TracedRequest[] {
-  return requests;
-}
-
-export function clearRequests(): void {
-  requests.length = 0;
-}
+import type { TracedRequest, BrakitConfig, FlatHeaders, RequestListener } from "../types.js";
+import { MAX_REQUEST_ENTRIES } from "../constants.js";
 
 const STATIC_PATTERNS = [
   /^\/_next\//,
@@ -36,10 +14,8 @@ export function isStaticPath(urlPath: string): boolean {
   return STATIC_PATTERNS.some((p) => p.test(urlPath));
 }
 
-export function flattenHeaders(
-  headers: IncomingHttpHeaders,
-): Record<string, string> {
-  const flat: Record<string, string> = {};
+export function flattenHeaders(headers: IncomingHttpHeaders): FlatHeaders {
+  const flat: FlatHeaders = {};
   for (const [key, value] of Object.entries(headers)) {
     if (value === undefined) continue;
     flat[key] = Array.isArray(value) ? value.join(", ") : value;
@@ -60,51 +36,83 @@ export interface CaptureInput {
   config: Pick<BrakitConfig, "maxBodyCapture">;
 }
 
-export function captureRequest(input: CaptureInput): TracedRequest {
-  const url = input.url;
-  const path = url.split("?")[0];
+export class RequestStore {
+  private requests: TracedRequest[] = [];
+  private listeners: RequestListener[] = [];
 
-  let requestBodyStr: string | null = null;
-  if (input.requestBody && input.requestBody.length > 0) {
-    requestBodyStr = input.requestBody
-      .subarray(0, input.config.maxBodyCapture)
-      .toString("utf-8");
-  }
+  constructor(private maxEntries = MAX_REQUEST_ENTRIES) {}
 
-  let responseBodyStr: string | null = null;
-  if (input.responseBody && input.responseBody.length > 0) {
-    const ct = input.responseContentType;
-    if (ct.includes("json") || ct.includes("text") || ct.includes("html")) {
-      responseBodyStr = input.responseBody
+  capture(input: CaptureInput): TracedRequest {
+    const url = input.url;
+    const path = url.split("?")[0];
+
+    let requestBodyStr: string | null = null;
+    if (input.requestBody && input.requestBody.length > 0) {
+      requestBodyStr = input.requestBody
         .subarray(0, input.config.maxBodyCapture)
         .toString("utf-8");
     }
+
+    let responseBodyStr: string | null = null;
+    if (input.responseBody && input.responseBody.length > 0) {
+      const ct = input.responseContentType;
+      if (ct.includes("json") || ct.includes("text") || ct.includes("html")) {
+        responseBodyStr = input.responseBody
+          .subarray(0, input.config.maxBodyCapture)
+          .toString("utf-8");
+      }
+    }
+
+    const entry: TracedRequest = {
+      id: randomUUID(),
+      method: input.method,
+      url,
+      path,
+      headers: flattenHeaders(input.requestHeaders),
+      requestBody: requestBodyStr,
+      statusCode: input.statusCode,
+      responseHeaders: flattenHeaders(input.responseHeaders),
+      responseBody: responseBodyStr,
+      startedAt: input.startTime,
+      durationMs: Math.round(performance.now() - input.startTime),
+      responseSize: input.responseBody?.length ?? 0,
+      isStatic: isStaticPath(path),
+    };
+
+    this.requests.push(entry);
+    if (this.requests.length > this.maxEntries) {
+      this.requests.shift();
+    }
+
+    for (const fn of this.listeners) {
+      fn(entry);
+    }
+
+    return entry;
   }
 
-  const entry: TracedRequest = {
-    id: randomUUID(),
-    method: input.method,
-    url,
-    path,
-    headers: flattenHeaders(input.requestHeaders),
-    requestBody: requestBodyStr,
-    statusCode: input.statusCode,
-    responseHeaders: flattenHeaders(input.responseHeaders),
-    responseBody: responseBodyStr,
-    startedAt: input.startTime,
-    durationMs: Math.round(performance.now() - input.startTime),
-    responseSize: input.responseBody?.length ?? 0,
-    isStatic: isStaticPath(path),
-  };
-
-  requests.push(entry);
-  if (requests.length > MAX_ENTRIES) {
-    requests.shift();
+  getAll(): readonly TracedRequest[] {
+    return this.requests;
   }
 
-  for (const fn of listeners) {
-    fn(entry);
+  clear(): void {
+    this.requests.length = 0;
   }
 
-  return entry;
+  onRequest(fn: RequestListener): void {
+    this.listeners.push(fn);
+  }
+
+  offRequest(fn: RequestListener): void {
+    const idx = this.listeners.indexOf(fn);
+    if (idx !== -1) this.listeners.splice(idx, 1);
+  }
 }
+
+export const defaultStore = new RequestStore();
+
+export const captureRequest = (input: CaptureInput) => defaultStore.capture(input);
+export const getRequests = () => defaultStore.getAll();
+export const clearRequests = () => defaultStore.clear();
+export const onRequest = (fn: RequestListener) => defaultStore.onRequest(fn);
+export const offRequest = (fn: RequestListener) => defaultStore.offRequest(fn);

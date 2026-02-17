@@ -1,11 +1,18 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { BrakitConfig } from "../types.js";
+import {
+  DASHBOARD_PREFIX,
+  DASHBOARD_API_REQUESTS,
+  DASHBOARD_API_EVENTS,
+  DASHBOARD_API_FLOWS,
+  DASHBOARD_API_CLEAR,
+} from "../constants.js";
 import { handleApiRequests, handleApiFlows, handleApiClear } from "./api.js";
 import { handleSSE } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
 
 export function isDashboardRequest(url: string): boolean {
-  return url === "/__brakit" || url.startsWith("/__brakit/");
+  return url === DASHBOARD_PREFIX || url.startsWith(DASHBOARD_PREFIX + "/");
 }
 
 export function handleDashboardRequest(
@@ -16,27 +23,26 @@ export function handleDashboardRequest(
   const url = req.url ?? "/";
   const path = url.split("?")[0];
 
-  if (path === "/__brakit/api/requests") {
+  if (path === DASHBOARD_API_REQUESTS) {
     handleApiRequests(req, res);
     return;
   }
 
-  if (path === "/__brakit/api/events") {
+  if (path === DASHBOARD_API_EVENTS) {
     handleSSE(req, res);
     return;
   }
 
-  if (path === "/__brakit/api/flows") {
+  if (path === DASHBOARD_API_FLOWS) {
     handleApiFlows(req, res);
     return;
   }
 
-  if (path === "/__brakit/api/clear") {
+  if (path === DASHBOARD_API_CLEAR) {
     handleApiClear(req, res);
     return;
   }
 
-  // Serve the dashboard SPA for all other /__brakit paths
   res.writeHead(200, {
     "content-type": "text/html; charset=utf-8",
     "cache-control": "no-cache",

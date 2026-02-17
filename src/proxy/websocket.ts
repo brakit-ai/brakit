@@ -40,7 +40,6 @@ export function handleUpgrade(
       clientSocket.write(targetHead);
     }
 
-    // Bidirectional pipe
     targetSocket.pipe(clientSocket);
     clientSocket.pipe(targetSocket);
 

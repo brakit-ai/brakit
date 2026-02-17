@@ -1,5 +1,7 @@
 import pc from "picocolors";
 import type { TracedRequest } from "../types.js";
+import { VERSION } from "../index.js";
+import { DASHBOARD_PREFIX } from "../constants.js";
 
 function statusColor(code: number): (s: string) => string {
   if (code >= 500) return pc.red;
@@ -43,7 +45,7 @@ export function formatRequest(req: TracedRequest): string {
 
 export function printBanner(proxyPort: number, targetPort: number): void {
   console.log();
-  console.log(`  ${pc.bold(pc.magenta("brakit"))} ${pc.dim("v0.2.0")}`);
+  console.log(`  ${pc.bold(pc.magenta("brakit"))} ${pc.dim(`v${VERSION}`)}`);
   console.log();
   console.log(
     `  ${pc.dim("proxy")}    ${pc.bold(`http://localhost:${proxyPort}`)}`,
@@ -52,7 +54,7 @@ export function printBanner(proxyPort: number, targetPort: number): void {
     `  ${pc.dim("target")}   ${pc.dim(`http://localhost:${targetPort}`)}`,
   );
   console.log(
-    `  ${pc.dim("inspect")}  ${pc.bold(pc.magenta(`http://localhost:${proxyPort}/__brakit`))}`,
+    `  ${pc.dim("inspect")}  ${pc.bold(pc.magenta(`http://localhost:${proxyPort}${DASHBOARD_PREFIX}`))}`,
   );
   console.log();
   console.log(`  ${pc.dim("Waiting for requests...")}`);

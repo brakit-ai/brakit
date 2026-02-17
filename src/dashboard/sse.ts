@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { onRequest, offRequest } from "../proxy/request-log.js";
 import type { TracedRequest } from "../types.js";
+import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants.js";
 
 export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
   res.writeHead(200, {
@@ -10,7 +11,6 @@ export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
     "access-control-allow-origin": "*",
   });
 
-  // Initial keepalive
   res.write(":ok\n\n");
 
   const listener = (traced: TracedRequest) => {
@@ -21,14 +21,13 @@ export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
 
   onRequest(listener);
 
-  // Heartbeat every 30s
   const heartbeat = setInterval(() => {
     if (res.destroyed) {
       clearInterval(heartbeat);
       return;
     }
     res.write(":heartbeat\n\n");
-  }, 30000);
+  }, SSE_HEARTBEAT_INTERVAL_MS);
 
   req.on("close", () => {
     clearInterval(heartbeat);
