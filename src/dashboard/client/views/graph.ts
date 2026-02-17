@@ -48,7 +48,7 @@ export function getGraphView(): string {
     container.appendChild(selector);
 
     if (selectedEndpoint === '__all__') {
-      renderOverview(container);
+      renderPerfOverview(container);
     } else {
       renderEndpointDetail(container);
     }

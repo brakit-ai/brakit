@@ -12,6 +12,7 @@ import {
 export function getApp(): string {
   return `
   var VIEW_CONTAINERS = {
+    overview: 'overview-container',
     actions: 'flow-container',
     requests: 'request-container',
     fetches: 'fetch-container',
@@ -22,6 +23,7 @@ export function getApp(): string {
   };
 
   var VIEW_TITLES = {
+    overview: 'Overview',
     actions: 'Actions',
     requests: 'Requests',
     fetches: 'Server Fetches',
@@ -46,13 +48,10 @@ export function getApp(): string {
       renderRequests();
     } catch(e) {}
 
-    loadFetches();
-    loadErrors();
-    loadLogs();
-    loadQueries();
-    loadMetrics();
+    await Promise.all([loadFetches(), loadErrors(), loadLogs(), loadQueries(), loadMetrics()]);
 
     updateStats();
+    renderOverview();
 
     var events = new EventSource('${DASHBOARD_API_EVENTS}');
     var reloadTimer = null;
@@ -107,6 +106,7 @@ export function getApp(): string {
       state.flows = data.flows;
       renderFlows();
       updateStats();
+      renderOverview();
     } catch(e) {}
   }
 
@@ -127,6 +127,7 @@ export function getApp(): string {
       state.activeView = view;
       document.getElementById('header-title').textContent = VIEW_TITLES[view] || view;
       document.getElementById('mode-toggle').style.display = view === 'actions' ? 'flex' : 'none';
+      if (view === 'overview') renderOverview();
       if (view === 'performance') loadMetrics();
       switchView(view);
     });
@@ -184,7 +185,7 @@ export function getApp(): string {
     await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
     state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = []; state.queries = [];
     graphData = []; selectedEndpoint = '__all__';
-    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); updateStats();
+    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); renderOverview(); updateStats();
     showToast('Cleared');
   });
 

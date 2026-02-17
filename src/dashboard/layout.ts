@@ -9,8 +9,12 @@ export function getLayoutHtml(config: BrakitConfig): string {
       <span class="logo-version">v1.0</span>
     </div>
     <nav class="sidebar-nav">
+      <button class="sidebar-item active" data-view="overview">
+        <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+        <span class="item-label">Overview</span>
+      </button>
       <div class="sidebar-section">Monitor</div>
-      <button class="sidebar-item active" data-view="actions">
+      <button class="sidebar-item" data-view="actions">
         <span class="item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
         <span class="item-label">Actions</span>
         <span class="item-count" id="sidebar-count-actions">0</span>
@@ -50,9 +54,9 @@ export function getLayoutHtml(config: BrakitConfig): string {
   </aside>
   <div class="main-panel">
     <div class="header">
-      <span class="header-title" id="header-title">Actions</span>
+      <span class="header-title" id="header-title">Overview</span>
       <div class="header-right">
-        <div class="segmented-control" id="mode-toggle">
+        <div class="segmented-control" id="mode-toggle" style="display:none">
           <button class="segmented-btn active" id="mode-simple">Simple</button>
           <button class="segmented-btn" id="mode-detailed">Detailed</button>
         </div>
@@ -60,7 +64,10 @@ export function getLayoutHtml(config: BrakitConfig): string {
       </div>
     </div>
     <div class="main-content">
-      <div class="view-flows" id="flow-container">
+      <div id="overview-container">
+        <div class="ov-container" id="overview-content"></div>
+      </div>
+      <div class="view-flows" id="flow-container" style="display:none">
         <div class="col-header" id="flow-col-header">
           <span style="width:8px"></span>
           <span style="flex:1">Action</span>

@@ -8,13 +8,14 @@ import { getErrorsView } from "./views/errors.js";
 import { getLogsView } from "./views/logs.js";
 import { getQueriesView } from "./views/queries.js";
 import { getGraphView } from "./views/graph.js";
+import { getOverviewView } from "./views/overview.js";
 import { getApp } from "./app.js";
 
 export function getClientScript(config: BrakitConfig): string {
   return `
 (function(){
   var PORT = ${config.proxyPort};
-  var state = { flows: [], requests: [], fetches: [], errors: [], logs: [], queries: [], viewMode: 'simple', activeView: 'actions' };
+  var state = { flows: [], requests: [], fetches: [], errors: [], logs: [], queries: [], viewMode: 'simple', activeView: 'overview' };
 
   var appEl = document.getElementById('app');
   var flowListEl = document.getElementById('flow-list');
@@ -31,6 +32,7 @@ export function getClientScript(config: BrakitConfig): string {
   ${getLogsView()}
   ${getQueriesView()}
   ${getGraphView()}
+  ${getOverviewView()}
   ${getApp()}
 })();
 `;

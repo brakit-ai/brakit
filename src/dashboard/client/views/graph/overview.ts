@@ -1,6 +1,6 @@
 export function getGraphOverview(): string {
   return `
-  function renderOverview(container) {
+  function renderPerfOverview(container) {
     var totalReqs = 0, totalErrors = 0, weightedDuration = 0, totalCount = 0;
     var slowest = null, slowestMs = 0;
     var fastest = null, fastestMs = Infinity;

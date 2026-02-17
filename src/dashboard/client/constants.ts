@@ -21,3 +21,9 @@ export const TREND_STABLE_ABS_MS = 150;
 // Query display thresholds
 export const SLOW_QUERY_THRESHOLD_MS = 100;
 export const HIGH_QUERY_COUNT_PER_REQ = 5;
+
+// Overview insight thresholds
+export const N1_QUERY_THRESHOLD = 5;
+export const ERROR_RATE_THRESHOLD_PCT = 20;
+export const SLOW_ENDPOINT_THRESHOLD_MS = 1000;
+export const MIN_REQUESTS_FOR_INSIGHT = 2;
