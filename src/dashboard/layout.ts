@@ -1,4 +1,4 @@
-import type { BrakitConfig } from "../types.js";
+import type { BrakitConfig } from "../types/index.js";
 
 export function getLayoutHtml(config: BrakitConfig): string {
   return `

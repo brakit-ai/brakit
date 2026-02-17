@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { BrakitConfig } from "../types.js";
+import type { BrakitConfig } from "../types/index.js";
 import {
   DASHBOARD_PREFIX,
   DASHBOARD_API_REQUESTS,
@@ -23,9 +23,24 @@ import {
   handleApiQueries,
   handleApiMetrics,
   handleApiIngest,
-} from "./api.js";
+} from "./api/index.js";
 import { handleSSE } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
+
+type RouteHandler = (req: IncomingMessage, res: ServerResponse) => void;
+
+const routes: Record<string, RouteHandler> = {
+  [DASHBOARD_API_REQUESTS]: handleApiRequests,
+  [DASHBOARD_API_EVENTS]: handleSSE,
+  [DASHBOARD_API_FLOWS]: handleApiFlows,
+  [DASHBOARD_API_CLEAR]: handleApiClear,
+  [DASHBOARD_API_LOGS]: handleApiLogs,
+  [DASHBOARD_API_FETCHES]: handleApiFetches,
+  [DASHBOARD_API_ERRORS]: handleApiErrors,
+  [DASHBOARD_API_QUERIES]: handleApiQueries,
+  [DASHBOARD_API_METRICS]: handleApiMetrics,
+  [DASHBOARD_API_INGEST]: handleApiIngest,
+};
 
 export function isDashboardRequest(url: string): boolean {
   return url === DASHBOARD_PREFIX || url.startsWith(DASHBOARD_PREFIX + "/");
@@ -36,56 +51,11 @@ export function handleDashboardRequest(
   res: ServerResponse,
   config: BrakitConfig,
 ): void {
-  const url = req.url ?? "/";
-  const path = url.split("?")[0];
+  const path = (req.url ?? "/").split("?")[0];
+  const handler = routes[path];
 
-  if (path === DASHBOARD_API_REQUESTS) {
-    handleApiRequests(req, res);
-    return;
-  }
-
-  if (path === DASHBOARD_API_EVENTS) {
-    handleSSE(req, res);
-    return;
-  }
-
-  if (path === DASHBOARD_API_FLOWS) {
-    handleApiFlows(req, res);
-    return;
-  }
-
-  if (path === DASHBOARD_API_CLEAR) {
-    handleApiClear(req, res);
-    return;
-  }
-
-  if (path === DASHBOARD_API_LOGS) {
-    handleApiLogs(req, res);
-    return;
-  }
-
-  if (path === DASHBOARD_API_FETCHES) {
-    handleApiFetches(req, res);
-    return;
-  }
-
-  if (path === DASHBOARD_API_ERRORS) {
-    handleApiErrors(req, res);
-    return;
-  }
-
-  if (path === DASHBOARD_API_QUERIES) {
-    handleApiQueries(req, res);
-    return;
-  }
-
-  if (path === DASHBOARD_API_METRICS) {
-    handleApiMetrics(req, res);
-    return;
-  }
-
-  if (path === DASHBOARD_API_INGEST) {
-    handleApiIngest(req, res);
+  if (handler) {
+    handler(req, res);
     return;
   }
 

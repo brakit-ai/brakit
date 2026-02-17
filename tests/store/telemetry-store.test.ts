@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { TelemetryStore } from "../../src/store/telemetry-store.js";
-import type { TelemetryEntry } from "../../src/types.js";
+import type { TelemetryEntry } from "../../src/types/index.js";
 
 interface TestEntry extends TelemetryEntry {
   value: string;

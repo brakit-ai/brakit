@@ -1,4 +1,4 @@
-import type { TracedRequest, RequestCategory } from "../types.js";
+import type { TracedRequest, RequestCategory } from "../types/index.js";
 
 export function detectCategory(req: TracedRequest): RequestCategory {
   const { method, url, statusCode, responseHeaders } = req;

@@ -1,5 +1,5 @@
 import pc from "picocolors";
-import type { TracedRequest } from "../types.js";
+import type { TracedRequest } from "../types/index.js";
 import { VERSION } from "../index.js";
 import { DASHBOARD_PREFIX } from "../constants.js";
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { formatRequest, formatSize } from "../../src/output/terminal.js";
-import type { TracedRequest } from "../../src/types.js";
+import type { TracedRequest } from "../../src/types/index.js";
 
 function makeRequest(overrides: Partial<TracedRequest> = {}): TracedRequest {
   return {

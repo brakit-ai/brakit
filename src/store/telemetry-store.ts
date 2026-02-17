@@ -1,5 +1,6 @@
+/** Generic bounded in-memory store for telemetry entries with pub/sub support. */
 import { randomUUID } from "node:crypto";
-import type { TelemetryEntry } from "../types.js";
+import type { TelemetryEntry } from "../types/index.js";
 import { MAX_TELEMETRY_ENTRIES } from "../constants.js";
 
 export type TelemetryListener<T> = (entry: T) => void;

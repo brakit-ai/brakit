@@ -1,10 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { onRequest, offRequest } from "../proxy/request-log.js";
-import { defaultFetchStore } from "../store/fetch-store.js";
-import { defaultLogStore } from "../store/log-store.js";
-import { defaultErrorStore } from "../store/error-store.js";
-import { defaultQueryStore } from "../store/query-store.js";
-import type { TracedRequest, TracedFetch, TracedLog, TracedError, TracedQuery } from "../types.js";
+import {
+  defaultFetchStore,
+  defaultLogStore,
+  defaultErrorStore,
+  defaultQueryStore,
+} from "../store/index.js";
+import type { TracedRequest, TracedFetch, TracedLog, TracedError, TracedQuery } from "../types/index.js";
 import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants.js";
 
 export function handleSSE(req: IncomingMessage, res: ServerResponse): void {

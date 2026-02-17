@@ -1,8 +1,7 @@
 import http from "node:http";
 import { randomUUID } from "node:crypto";
 import { requestContextStorage, type RequestContext } from "./context.js";
-
-const REQUEST_ID_HEADER = "x-brakit-request-id";
+import { BRAKIT_REQUEST_ID_HEADER } from "../../constants.js";
 
 // Patch http.Server to wrap every incoming request in an AsyncLocalStorage
 // context. This lets all async operations (fetches, queries, logs) within
@@ -22,7 +21,7 @@ export function setupHttpContextHook(): void {
       const req = args[0] as http.IncomingMessage;
       const ctx: RequestContext = {
         requestId:
-          (req.headers[REQUEST_ID_HEADER] as string) ?? randomUUID(),
+          (req.headers[BRAKIT_REQUEST_ID_HEADER] as string) ?? randomUUID(),
         url: req.url ?? "/",
         method: req.method ?? "GET",
       };

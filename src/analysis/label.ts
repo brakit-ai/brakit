@@ -1,4 +1,8 @@
-import type { TracedRequest, LabeledRequest, RequestCategory } from "../types.js";
+import type {
+  TracedRequest,
+  LabeledRequest,
+  RequestCategory,
+} from "../types/index.js";
 import { ENDPOINT_TRUNCATE_LENGTH } from "../constants.js";
 import { detectCategory, getEffectivePath } from "./categorize.js";
 
@@ -20,7 +24,10 @@ export function labelRequest(req: TracedRequest): LabeledRequest {
   return { ...req, category, label, sourcePage };
 }
 
-function generateHumanLabel(req: TracedRequest, category: RequestCategory): string {
+function generateHumanLabel(
+  req: TracedRequest,
+  category: RequestCategory,
+): string {
   const effectivePath = getEffectivePath(req);
   const endpointName = getEndpointName(effectivePath);
   const failed = req.statusCode >= 400;
@@ -74,7 +81,8 @@ export function prettifyEndpoint(name: string): string {
   return cleaned
     .split(" ")
     .map((word) => {
-      if (word.endsWith("ses") || word.endsWith("us") || word.endsWith("ss")) return word;
+      if (word.endsWith("ses") || word.endsWith("us") || word.endsWith("ss"))
+        return word;
       if (word.endsWith("ies")) return word.slice(0, -3) + "y";
       if (word.endsWith("s") && word.length > 3) return word.slice(0, -1);
       return word;
@@ -105,11 +113,15 @@ export function deriveActionVerb(method: string, endpointName: string): string {
   }
 
   switch (method) {
-    case "POST": return "Created";
+    case "POST":
+      return "Created";
     case "PUT":
-    case "PATCH": return "Updated";
-    case "DELETE": return "Deleted";
-    default: return "Called";
+    case "PATCH":
+      return "Updated";
+    case "DELETE":
+      return "Deleted";
+    default:
+      return "Called";
   }
 }
 
@@ -122,9 +134,7 @@ function getEndpointName(path: string): string {
 }
 
 export function prettifyPageName(path: string): string {
-  const clean = path
-    .replace(/^\//, "")
-    .replace(/\/$/, "");
+  const clean = path.replace(/^\//, "").replace(/\/$/, "");
 
   if (!clean) return "Home";
 

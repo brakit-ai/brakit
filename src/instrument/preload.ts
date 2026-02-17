@@ -1,5 +1,3 @@
-// Preload module — loaded via --import flag and NODE_OPTIONS.
-// Activates in any process that has BRAKIT_PORT set.
 export {};
 
 if (process.env.BRAKIT_PORT && process.env.BRAKIT_INSTRUMENT !== "0") {

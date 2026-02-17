@@ -8,6 +8,6 @@ export type {
   FlatHeaders,
   RequestCategory,
   RequestListener,
-} from "./types.js";
+} from "./types/index.js";
 export { createProxyServer } from "./proxy/server.js";
 export { detectProject } from "./detect/project.js";

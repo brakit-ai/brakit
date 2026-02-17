@@ -1,3 +1,4 @@
+/** Monkey-patch database drivers (pg, mysql2, Prisma) to capture query telemetry. */
 import { createRequire } from "node:module";
 import { send } from "../transport.js";
 import { getRequestContext } from "./context.js";

@@ -1,4 +1,4 @@
-import type { BrakitConfig } from "../../types.js";
+import type { BrakitConfig } from "../../types/index.js";
 import { getHelpers } from "./helpers.js";
 import { getTelemetryViewHelpers } from "./view-helpers.js";
 import { getFlowsView } from "./views/flows.js";
@@ -8,8 +8,8 @@ import { getErrorsView } from "./views/errors.js";
 import { getLogsView } from "./views/logs.js";
 import { getQueriesView } from "./views/queries.js";
 import { getGraphView } from "./views/graph.js";
-import { getOverviewView } from "./views/overview.js";
-import { getSecurityRules } from "./rules.js";
+import { getOverviewView } from "./views/overview/index.js";
+import { getSecurityRules } from "./rules/index.js";
 import { getSecurityView } from "./views/security.js";
 import { getApp } from "./app.js";
 

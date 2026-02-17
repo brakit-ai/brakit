@@ -4,7 +4,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import { randomUUID } from "node:crypto";
-import type { BrakitConfig } from "../types.js";
+import type { BrakitConfig } from "../types/index.js";
 import { captureRequest } from "./request-log.js";
 import { BRAKIT_REQUEST_ID_HEADER } from "../constants.js";
 

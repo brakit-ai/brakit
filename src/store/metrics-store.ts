@@ -12,7 +12,7 @@ import type {
   SessionMetric,
   EndpointMetrics,
   TracedRequest,
-} from "../types.js";
+} from "../types/index.js";
 import {
   METRICS_DIR,
   METRICS_FILE,

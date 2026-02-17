@@ -1,4 +1,4 @@
-import type { LabeledRequest } from "../types.js";
+import type { LabeledRequest } from "../types/index.js";
 import {
   SLOW_REQUEST_THRESHOLD_MS,
   MIN_POLLING_SEQUENCE,

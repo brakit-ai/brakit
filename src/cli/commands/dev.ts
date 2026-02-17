@@ -9,10 +9,9 @@ import { spawnDevServer } from "../../process/spawn.js";
 import { pipeDevOutput } from "../../process/output-filter.js";
 import { VERSION } from "../../index.js";
 import { DEFAULT_MAX_BODY_CAPTURE, SHUTDOWN_TIMEOUT_MS } from "../../constants.js";
-import type { BrakitConfig } from "../../types.js";
-import { MetricsStore } from "../../store/metrics-store.js";
-import { setMetricsStore } from "../../dashboard/api.js";
-import { defaultQueryStore } from "../../store/query-store.js";
+import type { BrakitConfig } from "../../types/index.js";
+import { MetricsStore, defaultQueryStore } from "../../store/index.js";
+import { setMetricsStore } from "../../dashboard/api/index.js";
 
 export default defineCommand({
   meta: {

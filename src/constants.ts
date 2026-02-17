@@ -31,6 +31,10 @@ export const DEFAULT_API_LIMIT = 500;
 export const BRAKIT_REQUEST_ID_HEADER = "x-brakit-request-id";
 export const MAX_TELEMETRY_ENTRIES = 1_000;
 
+// Transport (preload → proxy batching)
+export const TRANSPORT_FLUSH_INTERVAL_MS = 50;
+export const TRANSPORT_FLUSH_BATCH_SIZE = 20;
+
 // Client-side (injected into browser JS template strings)
 export const CLIENT_MAX_REQUESTS = 1_000;
 export const CLIENT_RELOAD_DEBOUNCE_MS = 300;

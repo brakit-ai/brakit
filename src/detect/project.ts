@@ -1,6 +1,6 @@
 import { readFile, access } from "node:fs/promises";
 import { join } from "node:path";
-import type { DetectedProject } from "../types.js";
+import type { DetectedProject } from "../types/index.js";
 
 export async function detectProject(
   rootDir: string,

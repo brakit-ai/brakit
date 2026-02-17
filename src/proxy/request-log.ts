@@ -1,5 +1,5 @@
 import type { IncomingHttpHeaders } from "node:http";
-import type { TracedRequest, BrakitConfig, FlatHeaders, RequestListener } from "../types.js";
+import type { TracedRequest, BrakitConfig, FlatHeaders, RequestListener } from "../types/index.js";
 import { MAX_REQUEST_ENTRIES } from "../constants.js";
 
 const STATIC_PATTERNS = [

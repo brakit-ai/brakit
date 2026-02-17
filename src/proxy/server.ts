@@ -1,5 +1,5 @@
 import { createServer, type Server } from "node:http";
-import type { BrakitConfig } from "../types.js";
+import type { BrakitConfig } from "../types/index.js";
 import { proxyRequest } from "./handler.js";
 import { handleUpgrade } from "./websocket.js";
 import {

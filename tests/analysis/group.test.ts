@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { groupRequestsIntoFlows } from "../../src/analysis/group.js";
-import type { TracedRequest } from "../../src/types.js";
+import type { TracedRequest } from "../../src/types/index.js";
 
 function makeReq(overrides: Partial<TracedRequest> = {}): TracedRequest {
   return {

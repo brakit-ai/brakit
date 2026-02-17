@@ -1,4 +1,4 @@
-import type { BrakitConfig } from "../types.js";
+import type { BrakitConfig } from "../types/index.js";
 import { getStyles } from "./styles.js";
 import { getLayoutHtml } from "./layout.js";
 import { getClientScript } from "./client/index.js";

@@ -1,8 +1,10 @@
 import { request } from "node:http";
-import type { TelemetryEvent, TelemetryBatch } from "../types.js";
-
-const FLUSH_INTERVAL_MS = 50;
-const FLUSH_BATCH_SIZE = 20;
+import type { TelemetryEvent, TelemetryBatch } from "../types/index.js";
+import {
+  DASHBOARD_API_INGEST,
+  TRANSPORT_FLUSH_INTERVAL_MS,
+  TRANSPORT_FLUSH_BATCH_SIZE,
+} from "../constants.js";
 
 const brakitPort = parseInt(process.env.BRAKIT_PORT ?? "0", 10);
 
@@ -20,7 +22,7 @@ function flush(): void {
       {
         hostname: "127.0.0.1",
         port: brakitPort,
-        path: "/__brakit/api/ingest",
+        path: DASHBOARD_API_INGEST,
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -44,7 +46,7 @@ function scheduleFlush(): void {
   timer = setTimeout(() => {
     timer = null;
     flush();
-  }, FLUSH_INTERVAL_MS);
+  }, TRANSPORT_FLUSH_INTERVAL_MS);
   if (timer && typeof timer === "object" && "unref" in timer) {
     timer.unref();
   }
@@ -52,7 +54,7 @@ function scheduleFlush(): void {
 
 export function send(event: TelemetryEvent): void {
   buffer.push(event);
-  if (buffer.length >= FLUSH_BATCH_SIZE) {
+  if (buffer.length >= TRANSPORT_FLUSH_BATCH_SIZE) {
     if (timer !== null) {
       clearTimeout(timer);
       timer = null;
