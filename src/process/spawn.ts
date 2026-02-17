@@ -24,7 +24,7 @@ export function spawnDevServer(
     [devBin, "dev", "--port", String(targetPort)],
     {
       cwd,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", "inherit", "inherit"],
       env: {
         ...process.env,
         PORT: String(targetPort),

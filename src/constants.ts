@@ -10,7 +10,6 @@ export const ENDPOINT_TRUNCATE_LENGTH = 12;
 
 // Process
 export const SHUTDOWN_TIMEOUT_MS = 3_000;
-export const DEV_OUTPUT_MAX_LINE_LENGTH = 300;
 
 // Dashboard routes
 export const DASHBOARD_PREFIX = "/__brakit";

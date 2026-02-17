@@ -4,9 +4,8 @@ import pc from "picocolors";
 import { detectProject } from "../../detect/project.js";
 import { createProxyServer } from "../../proxy/server.js";
 import { onRequest } from "../../proxy/request-log.js";
-import { formatRequest, printBanner } from "../../output/terminal.js";
+import { printBanner } from "../../output/terminal.js";
 import { spawnDevServer } from "../../process/spawn.js";
-import { pipeDevOutput } from "../../process/output-filter.js";
 import { VERSION } from "../../index.js";
 import { DEFAULT_MAX_BODY_CAPTURE, SHUTDOWN_TIMEOUT_MS } from "../../constants.js";
 import type { BrakitConfig } from "../../types/index.js";
@@ -87,16 +86,9 @@ export default defineCommand({
     });
 
     onRequest((req) => {
-      if (!config.showStatic && req.isStatic) return;
-      console.log(formatRequest(req));
-    });
-
-    onRequest((req) => {
       const queryCount = defaultQueryStore.getByRequest(req.id).length;
       metricsStore.recordRequest(req, queryCount);
     });
-
-    pipeDevOutput(devProcess);
 
     let shuttingDown = false;
     const cleanup = () => {
