@@ -27,3 +27,12 @@ export const N1_QUERY_THRESHOLD = 5;
 export const ERROR_RATE_THRESHOLD_PCT = 20;
 export const SLOW_ENDPOINT_THRESHOLD_MS = 1000;
 export const MIN_REQUESTS_FOR_INSIGHT = 2;
+
+// Auth overhead detection
+export const AUTH_OVERHEAD_PCT = 30;
+export const AUTH_SLOW_MS = 500;
+
+// Over-fetching detection
+export const LARGE_RESPONSE_BYTES = 51_200; // 50KB
+export const HIGH_ROW_COUNT = 100;
+export const OVERFETCH_MIN_REQUESTS = 2;

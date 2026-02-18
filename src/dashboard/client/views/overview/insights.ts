@@ -4,6 +4,10 @@ import {
   SLOW_ENDPOINT_THRESHOLD_MS,
   MIN_REQUESTS_FOR_INSIGHT,
   HIGH_QUERY_COUNT_PER_REQ,
+  AUTH_OVERHEAD_PCT,
+  LARGE_RESPONSE_BYTES,
+  HIGH_ROW_COUNT,
+  OVERFETCH_MIN_REQUESTS,
 } from "../../constants.js";
 import { DASHBOARD_PREFIX } from "../../../../constants/index.js";
 
@@ -171,6 +175,113 @@ export function getOverviewInsights(): string {
           title: 'Query-Heavy Endpoint',
           desc: '<strong>' + escHtml(qhKey) + '</strong> — avg ' + avgQueries + ' queries/request',
           nav: 'queries'
+        });
+      }
+    }
+
+    // Auth Overhead
+    var authCats = { 'auth-handshake': 1, 'auth-check': 1, 'middleware': 1 };
+    for (var afi = 0; afi < state.flows.length; afi++) {
+      var af = state.flows[afi];
+      if (!af.requests || af.requests.length < 2) continue;
+      var afAuthMs = 0;
+      var afTotalMs = 0;
+      for (var ari = 0; ari < af.requests.length; ari++) {
+        var ar = af.requests[ari];
+        var arDur = ar.pollingDurationMs || ar.durationMs;
+        afTotalMs += arDur;
+        if (authCats[ar.category]) afAuthMs += arDur;
+      }
+      if (afTotalMs > 0 && afAuthMs > 0) {
+        var afPct = Math.round((afAuthMs / afTotalMs) * 100);
+        if (afPct >= ${AUTH_OVERHEAD_PCT}) {
+          insights.push({
+            severity: 'warning',
+            type: 'auth-overhead',
+            title: 'Auth Overhead',
+            desc: '<strong>' + escHtml(af.label) + '</strong> \\u2014 ' + afPct + '% of time (' + formatDuration(afAuthMs) + ') spent in auth/middleware',
+            nav: 'actions'
+          });
+        }
+      }
+    }
+
+    // Over-fetching: SELECT * queries
+    var selectStarSeen = {};
+    for (var sqReqId in queriesByReq) {
+      var sqQueries = queriesByReq[sqReqId];
+      for (var sqi = 0; sqi < sqQueries.length; sqi++) {
+        var sq = sqQueries[sqi];
+        if (!sq.sql) continue;
+        var sqlUp = sq.sql.trim();
+        var isSelectStar = /^SELECT\\s+\\*/i.test(sqlUp) || /\\.\\*\\s+FROM/i.test(sqlUp);
+        if (isSelectStar) {
+          var sqInfo = simplifySQL(sq.sql);
+          var sqKey = sqInfo.table || 'unknown';
+          if (!selectStarSeen[sqKey]) {
+            selectStarSeen[sqKey] = 0;
+          }
+          selectStarSeen[sqKey]++;
+        }
+      }
+    }
+    for (var ssKey in selectStarSeen) {
+      if (selectStarSeen[ssKey] >= ${OVERFETCH_MIN_REQUESTS}) {
+        insights.push({
+          severity: 'warning',
+          type: 'select-star',
+          title: 'SELECT * Query',
+          desc: '<strong>SELECT *</strong> on <strong>' + escHtml(ssKey) + '</strong> \\u2014 ' + selectStarSeen[ssKey] + ' occurrence' + (selectStarSeen[ssKey] !== 1 ? 's' : '') + '. Select only the columns you need.',
+          nav: 'queries'
+        });
+      }
+    }
+
+    // Over-fetching: High row counts
+    var highRowSeen = {};
+    for (var hrReqId in queriesByReq) {
+      var hrQueries = queriesByReq[hrReqId];
+      for (var hri = 0; hri < hrQueries.length; hri++) {
+        var hq = hrQueries[hri];
+        if (hq.rowCount && hq.rowCount > ${HIGH_ROW_COUNT}) {
+          var hrInfo = hq.sql ? simplifySQL(hq.sql) : { op: hq.operation || '?', table: hq.model || '' };
+          var hrKey = hrInfo.op + ' ' + (hrInfo.table || 'unknown');
+          if (!highRowSeen[hrKey]) highRowSeen[hrKey] = { max: 0, count: 0 };
+          highRowSeen[hrKey].count++;
+          if (hq.rowCount > highRowSeen[hrKey].max) highRowSeen[hrKey].max = hq.rowCount;
+        }
+      }
+    }
+    for (var hrk in highRowSeen) {
+      var hrs = highRowSeen[hrk];
+      if (hrs.count >= ${OVERFETCH_MIN_REQUESTS}) {
+        insights.push({
+          severity: 'warning',
+          type: 'high-rows',
+          title: 'Large Result Set',
+          desc: '<strong>' + escHtml(hrk) + '</strong> returns ' + hrs.max + '+ rows (' + hrs.count + 'x). Consider pagination or adding a LIMIT.',
+          nav: 'queries'
+        });
+      }
+    }
+
+    // Over-fetching: Large API responses
+    for (var lrKey in endpointGroups) {
+      var lr = endpointGroups[lrKey];
+      if (lr.total < ${OVERFETCH_MIN_REQUESTS}) continue;
+      var lrTotalSize = 0;
+      for (var lri = 0; lri < nonStatic.length; lri++) {
+        var lrr = nonStatic[lri];
+        if ((lrr.method + ' ' + lrr.path) === lrKey) lrTotalSize += lrr.responseSize || 0;
+      }
+      var lrAvg = Math.round(lrTotalSize / lr.total);
+      if (lrAvg > ${LARGE_RESPONSE_BYTES}) {
+        insights.push({
+          severity: 'info',
+          type: 'large-response',
+          title: 'Large Response',
+          desc: '<strong>' + escHtml(lrKey) + '</strong> \\u2014 avg ' + formatSize(lrAvg) + ' response. Consider pagination or field filtering.',
+          nav: 'requests'
         });
       }
     }

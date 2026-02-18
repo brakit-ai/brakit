@@ -1,4 +1,9 @@
 import { SLOW_REQUEST_THRESHOLD_MS } from "../../../../constants/index.js";
+import {
+  AUTH_OVERHEAD_PCT,
+  AUTH_SLOW_MS,
+  LARGE_RESPONSE_BYTES,
+} from "../../constants.js";
 
 export function getFlowInsights(): string {
   return `
@@ -81,7 +86,7 @@ export function getFlowInsights(): string {
     container.appendChild(traffic);
 
     var insights = analyzeFlow(flow);
-    var hasIssues = insights.errors.length > 0 || insights.duplicates.length > 0 || !!insights.tip;
+    var hasIssues = insights.errors.length > 0 || insights.duplicates.length > 0 || insights.warnings.length > 0 || !!insights.tip;
     if (hasIssues) {
       var divider = document.createElement('div');
       divider.className = 'flow-divider';
@@ -101,6 +106,12 @@ export function getFlowInsights(): string {
         dupLine.textContent = '\\u26A0 ' + dup.name + ' \\u2014 loaded ' + dup.count + 'x (wasting ~' + formatDuration(dup.wastedMs) + ')';
         insightsEl.appendChild(dupLine);
       }
+      for (var wi = 0; wi < insights.warnings.length; wi++) {
+        var warnLine = document.createElement('div');
+        warnLine.className = 'insight-line insight-warn';
+        warnLine.textContent = '\\u26A0 ' + insights.warnings[wi];
+        insightsEl.appendChild(warnLine);
+      }
       if (insights.tip) {
         var tipLine = document.createElement('div');
         tipLine.className = 'insight-line insight-tip';
@@ -117,25 +128,50 @@ export function getFlowInsights(): string {
     var reqs = flow.requests;
     var successes = [];
     var errors = [];
+    var warnings = [];
     var duplicates = [];
     var seen = new Map();
+    var authMs = 0;
+    var totalMs = 0;
     for (var i = 0; i < reqs.length; i++) {
       var req = reqs[i];
       var label = req.label;
+      var dur = req.pollingDurationMs || req.durationMs;
+      totalMs += dur;
+
+      if (req.category === 'auth-handshake' || req.category === 'auth-check' || req.category === 'middleware') {
+        authMs += dur;
+        if (dur > ${AUTH_SLOW_MS}) {
+          warnings.push('Slow auth: ' + label + ' took ' + formatDuration(dur));
+        }
+        continue;
+      }
+
       if (req.isDuplicate) {
         var ex = seen.get(label);
-        if (ex) { ex.count++; ex.wastedMs += req.pollingDurationMs || req.durationMs; }
-        else seen.set(label, { name: label, count: 2, wastedMs: req.pollingDurationMs || req.durationMs });
+        if (ex) { ex.count++; ex.wastedMs += dur; }
+        else seen.set(label, { name: label, count: 2, wastedMs: dur });
         continue;
       }
       if (req.statusCode >= 400) {
         errors.push(label + ' (' + httpStatus(req.statusCode) + ')');
         continue;
       }
-      if (req.category !== 'auth-handshake' && req.category !== 'auth-check' && req.category !== 'middleware') {
-        successes.push(label);
+
+      if (req.responseSize > ${LARGE_RESPONSE_BYTES}) {
+        warnings.push('Large response: ' + label + ' returned ' + formatSize(req.responseSize));
+      }
+
+      successes.push(label);
+    }
+
+    if (totalMs > 0 && authMs > 0) {
+      var authPct = Math.round((authMs / totalMs) * 100);
+      if (authPct >= ${AUTH_OVERHEAD_PCT}) {
+        warnings.unshift('Auth overhead: ' + authPct + '% of this action (' + formatDuration(authMs) + ') is spent in auth/middleware');
       }
     }
+
     for (var d of seen.values()) duplicates.push(d);
     var tip = '';
     if (duplicates.length > 0) {
@@ -149,7 +185,7 @@ export function getFlowInsights(): string {
     if (slow.length > 0 && !tip) {
       tip = slow.map(function(r) { return r.label; }).join(', ') + ' is taking over 2 seconds. Consider adding caching or optimizing the backend query.';
     }
-    return { successes: successes, errors: errors, duplicates: duplicates, tip: tip };
+    return { successes: successes, errors: errors, warnings: warnings, duplicates: duplicates, tip: tip };
   }
   `;
 }
