@@ -26,12 +26,12 @@ export function getRequestsView(): string {
   function createReqRow(req) {
     var row = document.createElement('div');
     row.className = 'req-row';
-    var sClass = req.statusCode >= 500 ? 'status-5xx' : req.statusCode >= 400 ? 'status-4xx' : req.statusCode >= 300 ? 'status-3xx' : 'status-2xx';
+    var sClass = req.statusCode >= 500 ? 'status-pill-5xx' : req.statusCode >= 400 ? 'status-pill-4xx' : req.statusCode >= 300 ? 'status-pill-3xx' : 'status-pill-2xx';
     row.innerHTML =
       '<div class="req-summary">' +
-        '<span class="req-method method-' + req.method + '">' + req.method + '</span>' +
+        '<span class="method-badge method-badge-' + req.method + '">' + req.method + '</span>' +
         '<span class="req-url">' + escHtml(req.url) + '</span>' +
-        '<span class="req-status ' + sClass + '">' + req.statusCode + '</span>' +
+        '<span class="status-pill ' + sClass + '">' + req.statusCode + '</span>' +
         '<span class="req-duration">' + req.durationMs + 'ms</span>' +
         '<span class="req-size">' + formatSize(req.responseSize) + '</span>' +
       '</div>';

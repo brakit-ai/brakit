@@ -27,15 +27,15 @@ export function getFlowsView(): string {
     return 'dot-clean';
   }
 
-  function flowBadgeText(flow) {
+  function flowBadgeInfo(flow) {
     if (flow.hasErrors) {
       var errCount = flow.requests.filter(function(r){ return r.statusCode >= 400; }).length;
-      return { text: errCount + ' error' + (errCount !== 1 ? 's' : ''), cls: 'has-error' };
+      return { text: errCount + ' error' + (errCount !== 1 ? 's' : ''), cls: 'badge-error' };
     }
     if (flow.redundancyPct > 0) {
-      return { text: flow.redundancyPct + '% redundant', cls: 'has-warn' };
+      return { text: flow.redundancyPct + '% redundant', cls: 'badge-warn' };
     }
-    return { text: 'clean', cls: '' };
+    return { text: 'clean', cls: 'badge-clean' };
   }
 
   function createFlowRow(flow) {
@@ -51,9 +51,9 @@ export function getFlowsView(): string {
     var count = document.createElement('span');
     count.className = 'flow-req-count';
     count.textContent = flow.requests.length + ' req' + (flow.requests.length !== 1 ? 's' : '');
-    var badgeInfo = flowBadgeText(flow);
+    var badgeInfo = flowBadgeInfo(flow);
     var badge = document.createElement('span');
-    badge.className = 'flow-badge-text' + (badgeInfo.cls ? ' ' + badgeInfo.cls : '');
+    badge.className = 'flow-badge-pill ' + badgeInfo.cls;
     badge.textContent = badgeInfo.text;
     var dur = document.createElement('span');
     dur.className = 'flow-duration';

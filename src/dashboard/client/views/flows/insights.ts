@@ -6,65 +6,76 @@ export function getFlowInsights(): string {
     var container = document.createElement('div');
     var traffic = document.createElement('div');
     traffic.className = 'flow-traffic';
-    var tHeader = document.createElement('div');
-    tHeader.className = 'traffic-row traffic-header';
-    tHeader.innerHTML = '<span class="t-method">Method</span><span class="t-path">Request</span><span class="t-status">Code</span><span class="t-dur">Time</span><span class="t-size">Size</span>';
-    traffic.appendChild(tHeader);
 
     var skipCats = { 'auth-handshake': 1, 'auth-check': 1, 'middleware': 1 };
 
     for (var i = 0; i < flow.requests.length; i++) {
       var req = flow.requests[i];
       if (skipCats[req.category]) continue;
-      var sClass = req.statusCode >= 500 ? 'status-5xx' : req.statusCode >= 400 ? 'status-4xx' : req.statusCode >= 300 ? 'status-3xx' : 'status-2xx';
-      var row = document.createElement('div');
-      row.className = 'traffic-row';
+      var sClass = req.statusCode >= 500 ? 'status-pill-5xx' : req.statusCode >= 400 ? 'status-pill-4xx' : req.statusCode >= 300 ? 'status-pill-3xx' : 'status-pill-2xx';
+
+      var card = document.createElement('div');
+      card.className = 'traffic-card';
+
+      var header = document.createElement('div');
+      header.className = 'traffic-card-header';
+
       var mEl = document.createElement('span');
-      mEl.className = 't-method method-' + req.method;
+      mEl.className = 'method-badge method-badge-' + req.method;
       mEl.textContent = req.method;
+
       var pEl = document.createElement('span');
-      pEl.className = 't-path' + (req.isDuplicate ? ' is-dup' : '');
+      pEl.className = 'traffic-card-path' + (req.isDuplicate ? ' is-dup' : '');
       pEl.textContent = req.label;
+
       var stEl = document.createElement('span');
-      stEl.className = 't-status ' + sClass;
+      stEl.className = 'status-pill ' + sClass;
       stEl.textContent = String(req.statusCode);
+
       var dEl = document.createElement('span');
-      dEl.className = 't-dur';
+      dEl.className = 'traffic-card-dur';
       dEl.textContent = formatDuration(req.pollingDurationMs || req.durationMs);
-      row.appendChild(mEl);
-      row.appendChild(pEl);
-      row.appendChild(stEl);
-      row.appendChild(dEl);
+
+      header.appendChild(mEl);
+      header.appendChild(pEl);
+      header.appendChild(stEl);
+      header.appendChild(dEl);
+
       if (req.isDuplicate) {
         var dupEl = document.createElement('span');
-        dupEl.className = 't-dup';
-        dupEl.textContent = 'dup';
-        row.appendChild(dupEl);
+        dupEl.className = 'traffic-card-dup';
+        dupEl.textContent = 'duplicate';
+        header.appendChild(dupEl);
       } else {
         var szEl = document.createElement('span');
-        szEl.className = 't-size';
+        szEl.className = 'traffic-card-size';
         szEl.textContent = formatSize(req.responseSize);
-        row.appendChild(szEl);
+        header.appendChild(szEl);
       }
-      traffic.appendChild(row);
+
+      card.appendChild(header);
+
+      var hasDetails = false;
       if (!req.isDuplicate && req.category !== 'static' && req.category !== 'polling') {
         var tlEl = document.createElement('div');
         tlEl.className = 'request-timeline';
         tlEl.setAttribute('data-request-id', req.id);
         tlEl.setAttribute('data-request-started', String(req.startedAt));
-        traffic.appendChild(tlEl);
+        card.appendChild(tlEl);
+        hasDetails = true;
       }
       if (req.requestBody && req.method !== 'GET') {
-        traffic.appendChild(buildBodyToggle('out', 'Request Body', req.requestBody));
+        card.appendChild(buildBodyToggle('out', 'Request Body', req.requestBody));
+        hasDetails = true;
       }
       if (req.responseBody) {
-        traffic.appendChild(buildBodyToggle('in', 'Response Body', req.responseBody));
+        card.appendChild(buildBodyToggle('in', 'Response Body', req.responseBody));
+        hasDetails = true;
       }
-      if (i < flow.requests.length - 1) {
-        var sep = document.createElement('div');
-        sep.className = 'traffic-separator';
-        traffic.appendChild(sep);
-      }
+
+      if (hasDetails) header.classList.add('has-details');
+
+      traffic.appendChild(card);
     }
 
     container.appendChild(traffic);

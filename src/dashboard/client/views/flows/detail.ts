@@ -5,17 +5,17 @@ export function getFlowDetail(): string {
     container.className = 'flow-subreqs';
     flow.requests.forEach(function(req) {
       var isDup = req.isDuplicate;
-      var sClass = req.statusCode >= 500 ? 'status-5xx' : req.statusCode >= 400 ? 'status-4xx' : req.statusCode >= 300 ? 'status-3xx' : 'status-2xx';
+      var sClass = req.statusCode >= 500 ? 'status-pill-5xx' : req.statusCode >= 400 ? 'status-pill-4xx' : req.statusCode >= 300 ? 'status-pill-3xx' : 'status-pill-2xx';
       var subRow = document.createElement('div');
       subRow.className = 'flow-subreq';
       var methodEl = document.createElement('span');
-      methodEl.className = 'subreq-method method-' + req.method;
+      methodEl.className = 'method-badge method-badge-' + req.method;
       methodEl.textContent = req.method;
       var labelEl = document.createElement('span');
       labelEl.className = 'subreq-label' + (isDup ? ' is-dup' : '');
       labelEl.textContent = req.path || req.url;
       var statusEl = document.createElement('span');
-      statusEl.className = 'subreq-status ' + sClass;
+      statusEl.className = 'status-pill ' + sClass;
       statusEl.textContent = String(req.statusCode);
       var durEl = document.createElement('span');
       durEl.className = 'subreq-dur';
@@ -25,7 +25,7 @@ export function getFlowDetail(): string {
       if (isDup) {
         var dupTag = document.createElement('span');
         dupTag.className = 'subreq-dup-tag';
-        dupTag.textContent = 'dup';
+        dupTag.textContent = 'duplicate';
         subRow.appendChild(dupTag);
       }
       subRow.appendChild(statusEl);
@@ -55,9 +55,10 @@ export function getFlowDetail(): string {
   }
 
   function renderDetail(req) {
+    var sClass = req.statusCode >= 500 ? 'status-pill-5xx' : req.statusCode >= 400 ? 'status-pill-4xx' : req.statusCode >= 300 ? 'status-pill-3xx' : 'status-pill-2xx';
     var h = '<div class="detail-meta">';
-    h += '<span><strong>' + req.method + '</strong> ' + escHtml(req.url) + '</span>';
-    h += '<span>Status: ' + req.statusCode + '</span>';
+    h += '<span><span class="method-badge method-badge-' + req.method + '">' + req.method + '</span> ' + escHtml(req.url) + '</span>';
+    h += '<span><span class="status-pill ' + sClass + '">' + req.statusCode + '</span></span>';
     h += '<span>' + req.durationMs + 'ms</span>';
     if (req.responseSize) h += '<span>' + formatSize(req.responseSize) + '</span>';
     h += '</div>';
