@@ -36,7 +36,7 @@ export function getQueriesView(): string {
     row.className = 'req-row query-row tel-clickable';
 
     var info = q.sql ? simplifySQL(q.sql) : { op: q.operation || '?', table: q.model || '' };
-    var opColor = QUERY_OP_COLORS[info.op] || 'var(--fg)';
+    var opColor = QUERY_OP_COLORS[info.op] || 'var(--text-dim)';
     var slowCls = q.durationMs > ${SLOW_QUERY_THRESHOLD_MS} ? ' query-slow' : '';
     var preview = q.sql ? truncateSQL(q.sql, 60) : info.op + ' ' + info.table;
 

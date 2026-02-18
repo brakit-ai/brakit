@@ -23,7 +23,7 @@ export function getGraphChart(): string {
     maxVal = Math.max(maxVal, 10);
     maxVal = Math.ceil(maxVal * 1.1 / 10) * 10;
 
-    ctx.strokeStyle = 'rgba(63,63,70,0.3)';
+    ctx.strokeStyle = 'rgba(228,228,231,0.8)';
     ctx.lineWidth = 1;
     var gridLines = 4;
     for (var gi = 0; gi <= gridLines; gi++) {
@@ -32,7 +32,7 @@ export function getGraphChart(): string {
       ctx.moveTo(pad.left, gy);
       ctx.lineTo(pad.left + cw, gy);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(161,161,170,0.5)';
+      ctx.fillStyle = 'rgba(113,113,122,0.7)';
       ctx.font = '10px monospace';
       ctx.textAlign = 'right';
       ctx.fillText(fmtMs(Math.round((gi / gridLines) * maxVal)), pad.left - 8, gy + 3);
@@ -42,7 +42,7 @@ export function getGraphChart(): string {
 
     if (sessions.length > 1) {
       ctx.beginPath();
-      ctx.fillStyle = 'rgba(168,85,247,0.06)';
+      ctx.fillStyle = 'rgba(124,58,237,0.06)';
       sessions.forEach(function(s, i) {
         var x = pad.left + i * step;
         var y = pad.top + ch - (s.p95DurationMs / maxVal) * ch;
@@ -56,7 +56,7 @@ export function getGraphChart(): string {
 
     if (sessions.length > 1) {
       ctx.beginPath();
-      ctx.fillStyle = 'rgba(96,165,250,0.08)';
+      ctx.fillStyle = 'rgba(37,99,235,0.08)';
       sessions.forEach(function(s, i) {
         var x = pad.left + i * step;
         var y = pad.top + ch - (s.avgDurationMs / maxVal) * ch;
@@ -69,7 +69,7 @@ export function getGraphChart(): string {
     }
 
     ctx.beginPath();
-    ctx.strokeStyle = '#a855f7';
+    ctx.strokeStyle = '#7c3aed';
     ctx.lineWidth = 1.5;
     sessions.forEach(function(s, i) {
       var x = sessions.length === 1 ? pad.left + cw / 2 : pad.left + i * step;
@@ -79,7 +79,7 @@ export function getGraphChart(): string {
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.strokeStyle = '#60a5fa';
+    ctx.strokeStyle = '#2563eb';
     ctx.lineWidth = 2;
     sessions.forEach(function(s, i) {
       var x = sessions.length === 1 ? pad.left + cw / 2 : pad.left + i * step;
@@ -93,18 +93,18 @@ export function getGraphChart(): string {
       var yAvg = pad.top + ch - (s.avgDurationMs / maxVal) * ch;
       var yP95 = pad.top + ch - (s.p95DurationMs / maxVal) * ch;
 
-      ctx.beginPath(); ctx.arc(x, yP95, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#a855f7'; ctx.fill();
-      ctx.beginPath(); ctx.arc(x, yAvg, 3, 0, Math.PI * 2); ctx.fillStyle = '#60a5fa'; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, yP95, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#7c3aed'; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, yAvg, 3, 0, Math.PI * 2); ctx.fillStyle = '#2563eb'; ctx.fill();
 
       if (sessions.length <= 12 || i === 0 || i === sessions.length - 1) {
         ctx.font = '10px monospace';
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#60a5fa';
+        ctx.fillStyle = '#2563eb';
         ctx.fillText(fmtMs(s.avgDurationMs), x, yAvg - 8);
       }
     });
 
-    ctx.fillStyle = 'rgba(161,161,170,0.5)';
+    ctx.fillStyle = 'rgba(113,113,122,0.7)';
     ctx.font = '9px monospace';
     ctx.textAlign = 'center';
     var labelStep = Math.max(1, Math.floor(sessions.length / 6));
@@ -117,10 +117,10 @@ export function getGraphChart(): string {
 
     ctx.font = '10px monospace';
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#60a5fa'; ctx.fillRect(w - 120, 6, 8, 8);
-    ctx.fillStyle = 'rgba(161,161,170,0.7)'; ctx.fillText('avg', w - 108, 14);
-    ctx.fillStyle = '#a855f7'; ctx.fillRect(w - 68, 6, 8, 8);
-    ctx.fillStyle = 'rgba(161,161,170,0.7)'; ctx.fillText('p95', w - 56, 14);
+    ctx.fillStyle = '#2563eb'; ctx.fillRect(w - 120, 6, 8, 8);
+    ctx.fillStyle = 'rgba(113,113,122,0.7)'; ctx.fillText('avg', w - 108, 14);
+    ctx.fillStyle = '#7c3aed'; ctx.fillRect(w - 68, 6, 8, 8);
+    ctx.fillStyle = 'rgba(113,113,122,0.7)'; ctx.fillText('p95', w - 56, 14);
   }
   `;
 }

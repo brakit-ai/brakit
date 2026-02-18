@@ -2,7 +2,7 @@ import { DASHBOARD_API_ACTIVITY } from "../../../constants/index.js";
 
 export function getTimelineView(): string {
   return `
-  var TL_TYPE_COLORS = { fetch: 'var(--blue)', log: 'var(--dim)', error: 'var(--red)', query: '#a855f7' };
+  var TL_TYPE_COLORS = { fetch: 'var(--blue)', log: 'var(--text-muted)', error: 'var(--red)', query: 'var(--accent)' };
   var TL_TYPE_LABELS = { fetch: 'FETCH', log: 'LOG', error: 'ERROR', query: 'QUERY' };
 
   var timelineCache = {};
@@ -50,7 +50,7 @@ export function getTimelineView(): string {
 
     for (var i = 0; i < data.timeline.length; i++) {
       var evt = data.timeline[i];
-      var color = TL_TYPE_COLORS[evt.type] || 'var(--fg)';
+      var color = TL_TYPE_COLORS[evt.type] || 'var(--text-dim)';
       var label = TL_TYPE_LABELS[evt.type] || evt.type;
       var relMs = Math.round(evt.timestamp - baseTs);
       var relStr = '+' + formatDuration(relMs);
@@ -76,12 +76,12 @@ export function getTimelineView(): string {
     }
     if (evt.type === 'query') {
       var info = d.sql ? simplifySQL(d.sql) : { op: d.operation || '?', table: d.model || '' };
-      var opColor = QUERY_OP_COLORS[info.op] || 'var(--fg)';
+      var opColor = QUERY_OP_COLORS[info.op] || 'var(--text-dim)';
       return '<span class="tl-event-summary"><span style="color:' + opColor + ';font-weight:600">' + escHtml(info.op) + '</span> ' + escHtml(info.table) + '</span>' +
              '<span class="tl-event-dur">' + queryDuration(d.durationMs) + '</span>';
     }
     if (evt.type === 'log') {
-      var lColor = LOG_LEVEL_COLORS[d.level] || 'var(--fg)';
+      var lColor = LOG_LEVEL_COLORS[d.level] || 'var(--text-dim)';
       return '<span class="tl-event-summary"><span style="color:' + lColor + '">' + d.level.toUpperCase() + '</span> ' + escHtml(d.message) + '</span>';
     }
     if (evt.type === 'error') {

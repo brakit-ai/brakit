@@ -2,11 +2,11 @@
 // Values here are JS source fragments (strings/numbers) interpolated at build time.
 
 // Color maps for telemetry displays
-export const QUERY_OP_COLORS = `{ SELECT: 'var(--blue)', INSERT: '#22c55e', UPDATE: '#f59e0b', DELETE: 'var(--red)', COUNT: 'var(--dim)' }`;
+export const QUERY_OP_COLORS = `{ SELECT: 'var(--blue)', INSERT: 'var(--green)', UPDATE: 'var(--amber)', DELETE: 'var(--red)', COUNT: 'var(--text-muted)' }`;
 
-export const LOG_LEVEL_COLORS = `{ error: 'var(--red)', warn: '#f59e0b', info: 'var(--blue)', debug: 'var(--dim)', log: 'var(--fg)' }`;
+export const LOG_LEVEL_COLORS = `{ error: 'var(--red)', warn: 'var(--amber)', info: 'var(--blue)', debug: 'var(--text-muted)', log: 'var(--text-dim)' }`;
 
-export const GRAPH_COLORS = `['#60a5fa','#a855f7','#4ade80','#fbbf24','#f87171','#22d3ee','#fb923c','#e879f9','#34d399','#f472b6']`;
+export const GRAPH_COLORS = `['#2563eb','#7c3aed','#16a34a','#d97706','#dc2626','#0891b2','#ea580c','#c026d3','#059669','#db2777']`;
 
 // Health grade thresholds (ms)
 export const HEALTH_FAST_MS = 100;

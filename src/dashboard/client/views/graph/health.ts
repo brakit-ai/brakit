@@ -10,11 +10,11 @@ import {
 export function getGraphHealthUtils(): string {
   return `
   function healthGrade(ms) {
-    if (ms < ${HEALTH_FAST_MS}) return { label: 'Fast', color: 'var(--green)', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.25)' };
-    if (ms < ${HEALTH_GOOD_MS}) return { label: 'Good', color: 'var(--green)', bg: 'rgba(74,222,128,0.08)', border: 'rgba(74,222,128,0.2)' };
-    if (ms < ${HEALTH_OK_MS}) return { label: 'OK', color: 'var(--amber)', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.2)' };
-    if (ms < ${HEALTH_SLOW_MS}) return { label: 'Slow', color: 'var(--red)', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.2)' };
-    return { label: 'Critical', color: 'var(--red)', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)' };
+    if (ms < ${HEALTH_FAST_MS}) return { label: 'Fast', color: 'var(--green)', bg: 'rgba(22,163,74,0.08)', border: 'rgba(22,163,74,0.2)' };
+    if (ms < ${HEALTH_GOOD_MS}) return { label: 'Good', color: 'var(--green)', bg: 'rgba(22,163,74,0.06)', border: 'rgba(22,163,74,0.15)' };
+    if (ms < ${HEALTH_OK_MS}) return { label: 'OK', color: 'var(--amber)', bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.15)' };
+    if (ms < ${HEALTH_SLOW_MS}) return { label: 'Slow', color: 'var(--red)', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.15)' };
+    return { label: 'Critical', color: 'var(--red)', bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.2)' };
   }
 
   function fmtMs(ms) {

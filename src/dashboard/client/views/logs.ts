@@ -9,7 +9,7 @@ export function getLogsView(): string {
     var row = document.createElement('div');
     row.className = 'req-row';
     var ts = new Date(l.timestamp).toLocaleTimeString();
-    var color = LOG_LEVEL_COLORS[l.level] || 'var(--fg)';
+    var color = LOG_LEVEL_COLORS[l.level] || 'var(--text-dim)';
     row.innerHTML =
       '<span class="tel-level" style="color:' + color + '">' + l.level.toUpperCase() + '</span>' +
       '<span class="tel-message tel-mono" title="' + escHtml(l.message) + '">' + escHtml(l.message) + '</span>' +
