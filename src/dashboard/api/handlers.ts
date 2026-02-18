@@ -7,9 +7,9 @@ import {
   defaultErrorStore,
   defaultQueryStore,
 } from "../../store/index.js";
-import { DEFAULT_API_LIMIT } from "../../constants.js";
+import { DEFAULT_API_LIMIT } from "../../constants/index.js";
+import type { MetricsStore } from "../../store/index.js";
 import { sendJson, requireGet, handleTelemetryGet } from "./shared.js";
-import { metricsStoreRef } from "./metrics.js";
 
 export function handleApiRequests(
   req: IncomingMessage,
@@ -70,21 +70,22 @@ export function handleApiFlows(
   sendJson(res, 200, { total: flows.length, flows });
 }
 
-export function handleApiClear(
-  req: IncomingMessage,
-  res: ServerResponse,
-): void {
-  if (req.method !== "POST") {
-    sendJson(res, 405, { error: "Method not allowed" });
-    return;
-  }
-  clearRequests();
-  defaultFetchStore.clear();
-  defaultLogStore.clear();
-  defaultErrorStore.clear();
-  defaultQueryStore.clear();
-  if (metricsStoreRef) metricsStoreRef.reset();
-  sendJson(res, 200, { cleared: true });
+export function createClearHandler(
+  metricsStore: MetricsStore,
+): (req: IncomingMessage, res: ServerResponse) => void {
+  return (req, res) => {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { error: "Method not allowed" });
+      return;
+    }
+    clearRequests();
+    defaultFetchStore.clear();
+    defaultLogStore.clear();
+    defaultErrorStore.clear();
+    defaultQueryStore.clear();
+    metricsStore.reset();
+    sendJson(res, 200, { cleared: true });
+  };
 }
 
 export function handleApiFetches(

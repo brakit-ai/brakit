@@ -5,7 +5,7 @@ import {
   MIN_REQUESTS_FOR_INSIGHT,
   HIGH_QUERY_COUNT_PER_REQ,
 } from "../../constants.js";
-import { DASHBOARD_PREFIX } from "../../../../constants.js";
+import { DASHBOARD_PREFIX } from "../../../../constants/index.js";
 
 export function getOverviewInsights(): string {
   return `

@@ -1,4 +1,4 @@
-import { DASHBOARD_API_METRICS } from "../../../constants.js";
+import { DASHBOARD_API_METRICS } from "../../../constants/index.js";
 import { GRAPH_COLORS } from "../constants.js";
 import { getGraphHealthUtils } from "./graph/health.js";
 import { getGraphOverview } from "./graph/overview.js";

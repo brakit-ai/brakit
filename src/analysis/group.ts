@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { TracedRequest, LabeledRequest, RequestFlow } from "../types/index.js";
-import { FLOW_GAP_MS, DASHBOARD_PREFIX } from "../constants.js";
+import { FLOW_GAP_MS, DASHBOARD_PREFIX } from "../constants/index.js";
 import { labelRequest, prettifyEndpoint, prettifyPageName, capitalize, deriveActionVerb } from "./label.js";
 import { getEffectivePath } from "./categorize.js";
 import { markDuplicates, collapsePolling, detectWarnings } from "./transforms.js";

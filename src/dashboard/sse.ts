@@ -7,7 +7,7 @@ import {
   defaultQueryStore,
 } from "../store/index.js";
 import type { TracedRequest, TracedFetch, TracedLog, TracedError, TracedQuery } from "../types/index.js";
-import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants.js";
+import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants/index.js";
 
 export function handleSSE(req: IncomingMessage, res: ServerResponse): void {
   res.writeHead(200, {

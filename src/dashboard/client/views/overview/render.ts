@@ -1,4 +1,4 @@
-import { DASHBOARD_PREFIX } from "../../../../constants.js";
+import { DASHBOARD_PREFIX } from "../../../../constants/index.js";
 
 export function getOverviewRender(): string {
   return `

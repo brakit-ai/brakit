@@ -1,7 +1,7 @@
 import {
   CLIENT_SENSITIVE_MASK_THRESHOLD,
   CLIENT_TOAST_DURATION_MS,
-} from "../../constants.js";
+} from "../../constants/index.js";
 
 export function getHelpers(): string {
   return `

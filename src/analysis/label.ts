@@ -3,7 +3,7 @@ import type {
   LabeledRequest,
   RequestCategory,
 } from "../types/index.js";
-import { ENDPOINT_TRUNCATE_LENGTH } from "../constants.js";
+import { ENDPOINT_TRUNCATE_LENGTH } from "../constants/index.js";
 import { detectCategory, getEffectivePath } from "./categorize.js";
 
 export function extractSourcePage(req: TracedRequest): string | undefined {

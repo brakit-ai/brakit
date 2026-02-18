@@ -1,6 +1,7 @@
-import { readFile, access } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { DetectedProject } from "../types/index.js";
+import { fileExists } from "../utils/fs.js";
 
 export async function detectProject(
   rootDir: string,
@@ -36,13 +37,4 @@ async function detectPackageManager(
   if (await fileExists(join(rootDir, "yarn.lock"))) return "yarn";
   if (await fileExists(join(rootDir, "package-lock.json"))) return "npm";
   return "unknown";
-}
-
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
 }

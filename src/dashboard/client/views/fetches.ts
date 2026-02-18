@@ -1,4 +1,4 @@
-import { DASHBOARD_API_FETCHES } from "../../../constants.js";
+import { DASHBOARD_API_FETCHES } from "../../../constants/index.js";
 
 export function getFetchesView(): string {
   return `

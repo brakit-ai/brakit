@@ -4,7 +4,7 @@ import {
   DASHBOARD_API_INGEST,
   TRANSPORT_FLUSH_INTERVAL_MS,
   TRANSPORT_FLUSH_BATCH_SIZE,
-} from "../constants.js";
+} from "../constants/index.js";
 
 const brakitPort = parseInt(process.env.BRAKIT_PORT ?? "0", 10);
 

@@ -1,4 +1,4 @@
-import { SLOW_REQUEST_THRESHOLD_MS } from "../../../../constants.js";
+import { SLOW_REQUEST_THRESHOLD_MS } from "../../../../constants/index.js";
 
 export function getFlowInsights(): string {
   return `

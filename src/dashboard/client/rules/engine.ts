@@ -1,4 +1,4 @@
-import { DASHBOARD_PREFIX } from "../../../constants.js";
+import { DASHBOARD_PREFIX } from "../../../constants/index.js";
 
 /** Runs all security rules against captured state and deduplicates findings. */
 export function getSecurityEngine(): string {

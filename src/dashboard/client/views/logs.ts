@@ -1,4 +1,4 @@
-import { DASHBOARD_API_LOGS } from "../../../constants.js";
+import { DASHBOARD_API_LOGS } from "../../../constants/index.js";
 import { LOG_LEVEL_COLORS } from "../constants.js";
 
 export function getLogsView(): string {

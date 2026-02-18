@@ -1,4 +1,4 @@
-import { DASHBOARD_API_QUERIES } from "../../../constants.js";
+import { DASHBOARD_API_QUERIES } from "../../../constants/index.js";
 import { QUERY_OP_COLORS, SLOW_QUERY_THRESHOLD_MS } from "../constants.js";
 
 export function getQueriesView(): string {

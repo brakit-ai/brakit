@@ -1,4 +1,4 @@
-import { DASHBOARD_API_ERRORS } from "../../../constants.js";
+import { DASHBOARD_API_ERRORS } from "../../../constants/index.js";
 
 export function getErrorsView(): string {
   return `

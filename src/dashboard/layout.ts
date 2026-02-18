@@ -1,4 +1,5 @@
 import type { BrakitConfig } from "../types/index.js";
+import { VERSION } from "../index.js";
 
 export function getLayoutHtml(config: BrakitConfig): string {
   return `
@@ -6,7 +7,7 @@ export function getLayoutHtml(config: BrakitConfig): string {
   <aside class="sidebar">
     <div class="sidebar-logo">
       <span class="logo-text">brakit</span>
-      <span class="logo-version">v1.0</span>
+      <span class="logo-version">v${VERSION}</span>
     </div>
     <nav class="sidebar-nav">
       <button class="sidebar-item active" data-view="overview">

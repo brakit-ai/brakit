@@ -73,13 +73,15 @@ export function getCriticalRules(): string {
 
   function ruleErrorInfoLeak(requests, findings) {
     var seen = {};
-    var patterns = [
-      { re: EMAIL_RE, label: 'email address' },
+    var criticalPatterns = [
       { re: DB_CONN_RE, label: 'database connection string' },
-      { re: INTERNAL_PATH_RE, label: 'internal file path' },
-      { re: INTERNAL_URL_RE, label: 'internal service URL' },
       { re: SQL_FRAGMENT_RE, label: 'SQL query fragment' },
       { re: SECRET_VAL_RE, label: 'secret value' }
+    ];
+    var infoPatterns = [
+      { re: EMAIL_RE, label: 'email address' },
+      { re: INTERNAL_PATH_RE, label: 'internal file path' },
+      { re: INTERNAL_URL_RE, label: 'internal service URL' }
     ];
     for (var i = 0; i < requests.length; i++) {
       var r = requests[i];
@@ -87,8 +89,8 @@ export function getCriticalRules(): string {
       if (!r.responseBody) continue;
       if (r.responseHeaders && (r.responseHeaders['x-nextjs-error'] || r.responseHeaders['x-nextjs-matched-path'])) continue;
       var ep = r.method + ' ' + r.path;
-      for (var pi = 0; pi < patterns.length; pi++) {
-        var p = patterns[pi];
+      for (var pi = 0; pi < criticalPatterns.length; pi++) {
+        var p = criticalPatterns[pi];
         if (!p.re.test(r.responseBody)) continue;
         var key = ep + ':' + p.label;
         if (seen[key]) { seen[key].count++; continue; }
@@ -99,6 +101,20 @@ export function getCriticalRules(): string {
           nav: 'security', hint: RULE_HINTS['error-info-leak'], endpoint: ep, count: 1
         };
         findings.push(seen[key]);
+      }
+      for (var ii = 0; ii < infoPatterns.length; ii++) {
+        var ip = infoPatterns[ii];
+        if (!ip.re.test(r.responseBody)) continue;
+        var ikey = ep + ':' + ip.label;
+        if (seen[ikey]) { seen[ikey].count++; continue; }
+        seen[ikey] = {
+          severity: 'info', type: 'security', rule: 'error-info-leak',
+          title: 'Dev Error Detail Exposed',
+          desc: '<strong>' + escHtml(ep) + '</strong> — error response contains <strong>' + ip.label + '</strong> (expected in dev)',
+          nav: 'security', hint: 'Dev servers include paths and URLs in error responses for debugging. Verify your production error handler returns generic messages.',
+          endpoint: ep, count: 1
+        };
+        findings.push(seen[ikey]);
       }
     }
   }

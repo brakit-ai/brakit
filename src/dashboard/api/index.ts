@@ -1,11 +1,11 @@
 export {
   handleApiRequests,
   handleApiFlows,
-  handleApiClear,
+  createClearHandler,
   handleApiFetches,
   handleApiLogs,
   handleApiErrors,
   handleApiQueries,
 } from "./handlers.js";
 export { handleApiIngest } from "./ingest.js";
-export { handleApiMetrics, setMetricsStore } from "./metrics.js";
+export { createMetricsHandler } from "./metrics.js";

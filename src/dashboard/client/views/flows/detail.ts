@@ -3,7 +3,7 @@ import {
   DASHBOARD_API_LOGS,
   DASHBOARD_API_ERRORS,
   DASHBOARD_API_QUERIES,
-} from "../../../../constants.js";
+} from "../../../../constants/index.js";
 import { SLOW_QUERY_THRESHOLD_MS } from "../../constants.js";
 
 export function getFlowDetail(): string {

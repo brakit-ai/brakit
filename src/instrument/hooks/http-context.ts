@@ -1,7 +1,7 @@
 import http from "node:http";
 import { randomUUID } from "node:crypto";
 import { requestContextStorage, type RequestContext } from "./context.js";
-import { BRAKIT_REQUEST_ID_HEADER } from "../../constants.js";
+import { BRAKIT_REQUEST_ID_HEADER } from "../../constants/index.js";
 
 // Patch http.Server to wrap every incoming request in an AsyncLocalStorage
 // context. This lets all async operations (fetches, queries, logs) within

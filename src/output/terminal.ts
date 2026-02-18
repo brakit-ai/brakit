@@ -1,6 +1,6 @@
 import pc from "picocolors";
 import { VERSION } from "../index.js";
-import { DASHBOARD_PREFIX } from "../constants.js";
+import { DASHBOARD_PREFIX } from "../constants/index.js";
 
 export function printBanner(proxyPort: number, targetPort: number): void {
   console.log();

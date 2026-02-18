@@ -2,7 +2,7 @@ import type { LabeledRequest } from "../types/index.js";
 import {
   SLOW_REQUEST_THRESHOLD_MS,
   MIN_POLLING_SEQUENCE,
-} from "../constants.js";
+} from "../constants/index.js";
 import { getEffectivePath } from "./categorize.js";
 import { prettifyEndpoint } from "./label.js";
 

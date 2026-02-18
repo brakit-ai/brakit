@@ -7,7 +7,7 @@ import {
   DASHBOARD_API_EVENTS,
   DASHBOARD_API_CLEAR,
   MAX_TELEMETRY_ENTRIES,
-} from "../../constants.js";
+} from "../../constants/index.js";
 
 export function getApp(): string {
   return `
