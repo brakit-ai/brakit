@@ -14,6 +14,7 @@ export function getTimelineView(): string {
       return;
     }
 
+    container.classList.remove('tl-hidden');
     container.innerHTML = '<div class="tl-loading">Loading activity...</div>';
 
     try {
@@ -27,14 +28,17 @@ export function getTimelineView(): string {
       renderTimelineContent(data, container, requestStartedAt);
     } catch(ex) {
       container.innerHTML = '';
+      container.classList.add('tl-hidden');
     }
   }
 
   function renderTimelineContent(data, container, requestStartedAt) {
     if (data.total === 0) {
       container.innerHTML = '';
+      container.classList.add('tl-hidden');
       return;
     }
+    container.classList.remove('tl-hidden');
 
     var h = '<div class="tl-header">';
     h += '<span class="tl-title">Activity Timeline</span>';
@@ -54,16 +58,37 @@ export function getTimelineView(): string {
       var label = TL_TYPE_LABELS[evt.type] || evt.type;
       var relMs = Math.round(evt.timestamp - baseTs);
       var relStr = '+' + formatDuration(relMs);
+      var isQuery = evt.type === 'query' && evt.data && evt.data.sql;
 
-      h += '<div class="tl-event" style="border-left-color:' + color + '">';
+      h += '<div class="tl-event' + (isQuery ? ' tl-clickable' : '') + '"' + (isQuery ? '' : ' style="border-left-color:' + color + '"') + '>';
       h += '<span class="tl-event-time">' + relStr + '</span>';
       h += '<span class="tl-event-type" style="color:' + color + '">' + label + '</span>';
       h += renderTimelineEvent(evt);
+      if (isQuery) {
+        h += '<div class="tl-event-sql" data-sql="' + escHtml(evt.data.sql) + '"><button class="tl-sql-copy">Copy</button>' + escHtml(evt.data.sql) + '</div>';
+      }
       h += '</div>';
     }
 
     h += '</div>';
     container.innerHTML = h;
+
+    container.querySelectorAll('.tl-clickable').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var sqlEl = el.querySelector('.tl-event-sql');
+        if (sqlEl) sqlEl.classList.toggle('open');
+      });
+    });
+    container.querySelectorAll('.tl-sql-copy').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var sqlEl = btn.closest('.tl-event-sql');
+        if (sqlEl) {
+          navigator.clipboard.writeText(sqlEl.getAttribute('data-sql')).then(function() { showToast('SQL copied'); });
+        }
+      });
+    });
   }
 
   function renderTimelineEvent(evt) {

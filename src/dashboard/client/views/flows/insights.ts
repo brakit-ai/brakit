@@ -58,7 +58,7 @@ export function getFlowInsights(): string {
       var hasDetails = false;
       if (!req.isDuplicate && req.category !== 'static' && req.category !== 'polling') {
         var tlEl = document.createElement('div');
-        tlEl.className = 'request-timeline';
+        tlEl.className = 'request-timeline tl-hidden';
         tlEl.setAttribute('data-request-id', req.id);
         tlEl.setAttribute('data-request-started', String(req.startedAt));
         card.appendChild(tlEl);

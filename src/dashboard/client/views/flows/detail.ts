@@ -62,7 +62,7 @@ export function getFlowDetail(): string {
     h += '<span>' + req.durationMs + 'ms</span>';
     if (req.responseSize) h += '<span>' + formatSize(req.responseSize) + '</span>';
     h += '</div>';
-    h += '<div class="request-timeline" data-request-id="' + req.id + '" data-request-started="' + req.startedAt + '"></div>';
+    h += '<div class="request-timeline tl-hidden" data-request-id="' + req.id + '" data-request-started="' + req.startedAt + '"></div>';
     h += '<div class="detail-grid">';
     h += '<div class="detail-section"><h4>Request Headers</h4><pre>' + formatHeaders(req.headers) + '</pre></div>';
     h += '<div class="detail-section"><h4>Response Headers</h4><pre>' + formatHeaders(req.responseHeaders) + '</pre></div>';
