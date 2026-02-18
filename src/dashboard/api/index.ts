@@ -9,3 +9,4 @@ export {
 } from "./handlers.js";
 export { handleApiIngest } from "./ingest.js";
 export { createMetricsHandler } from "./metrics.js";
+export { handleApiActivity } from "./activity.js";

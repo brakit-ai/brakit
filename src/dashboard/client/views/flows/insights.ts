@@ -47,6 +47,13 @@ export function getFlowInsights(): string {
         row.appendChild(szEl);
       }
       traffic.appendChild(row);
+      if (!req.isDuplicate && req.category !== 'static' && req.category !== 'polling') {
+        var tlEl = document.createElement('div');
+        tlEl.className = 'request-timeline';
+        tlEl.setAttribute('data-request-id', req.id);
+        tlEl.setAttribute('data-request-started', String(req.startedAt));
+        traffic.appendChild(tlEl);
+      }
       if (req.requestBody && req.method !== 'GET') {
         traffic.appendChild(buildBodyToggle('out', 'Request Body', req.requestBody));
       }

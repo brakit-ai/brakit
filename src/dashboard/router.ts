@@ -13,6 +13,7 @@ import {
   DASHBOARD_API_QUERIES,
   DASHBOARD_API_INGEST,
   DASHBOARD_API_METRICS,
+  DASHBOARD_API_ACTIVITY,
 } from "../constants/index.js";
 import {
   handleApiRequests,
@@ -24,6 +25,7 @@ import {
   handleApiQueries,
   handleApiIngest,
   createMetricsHandler,
+  handleApiActivity,
 } from "./api/index.js";
 import { handleSSE } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
@@ -52,6 +54,7 @@ export function createDashboardHandler(
     [DASHBOARD_API_QUERIES]: handleApiQueries,
     [DASHBOARD_API_METRICS]: createMetricsHandler(deps.metricsStore),
     [DASHBOARD_API_INGEST]: handleApiIngest,
+    [DASHBOARD_API_ACTIVITY]: handleApiActivity,
   };
 
   return (req, res, config) => {

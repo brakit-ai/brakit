@@ -7,6 +7,7 @@ import { getFetchesView } from "./views/fetches.js";
 import { getErrorsView } from "./views/errors.js";
 import { getLogsView } from "./views/logs.js";
 import { getQueriesView } from "./views/queries.js";
+import { getTimelineView } from "./views/timeline.js";
 import { getGraphView } from "./views/graph.js";
 import { getOverviewView } from "./views/overview/index.js";
 import { getSecurityRules } from "./rules/index.js";
@@ -33,6 +34,7 @@ export function getClientScript(config: BrakitConfig): string {
   ${getErrorsView()}
   ${getLogsView()}
   ${getQueriesView()}
+  ${getTimelineView()}
   ${getGraphView()}
   ${getSecurityRules()}
   ${getOverviewView()}

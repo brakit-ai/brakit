@@ -74,6 +74,7 @@ export function getApp(): string {
       if (state.fetches.length > ${MAX_TELEMETRY_ENTRIES}) state.fetches.pop();
       prependFetchRow(f);
       updateStats();
+      if (f.parentRequestId) { invalidateTimelineCache(f.parentRequestId); refreshVisibleTimeline(f.parentRequestId); }
     });
 
     events.addEventListener('log', function(e) {
@@ -82,6 +83,7 @@ export function getApp(): string {
       if (state.logs.length > ${MAX_TELEMETRY_ENTRIES}) state.logs.pop();
       prependLogRow(l);
       updateStats();
+      if (l.parentRequestId) { invalidateTimelineCache(l.parentRequestId); refreshVisibleTimeline(l.parentRequestId); }
     });
 
     events.addEventListener('error_event', function(e) {
@@ -90,6 +92,7 @@ export function getApp(): string {
       if (state.errors.length > ${MAX_TELEMETRY_ENTRIES}) state.errors.pop();
       prependErrorRow(err);
       updateStats();
+      if (err.parentRequestId) { invalidateTimelineCache(err.parentRequestId); refreshVisibleTimeline(err.parentRequestId); }
     });
 
     events.addEventListener('query', function(e) {
@@ -98,6 +101,7 @@ export function getApp(): string {
       if (state.queries.length > ${MAX_TELEMETRY_ENTRIES}) state.queries.pop();
       prependQueryRow(q);
       updateStats();
+      if (q.parentRequestId) { invalidateTimelineCache(q.parentRequestId); refreshVisibleTimeline(q.parentRequestId); }
     });
   }
 
@@ -193,7 +197,7 @@ export function getApp(): string {
     if (!confirm('This will clear all data including performance metrics history. Continue?')) return;
     await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
     state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = []; state.queries = [];
-    graphData = []; selectedEndpoint = '__all__';
+    graphData = []; selectedEndpoint = '__all__'; timelineCache = {};
     renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); renderOverview(); renderSecurity(); updateStats();
     showToast('Cleared');
   });

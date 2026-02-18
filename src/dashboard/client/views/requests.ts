@@ -47,8 +47,8 @@ export function getRequestsView(): string {
         detail.innerHTML = renderDetail(req);
         var curlBtn = detail.querySelector('.btn-curl');
         if (curlBtn) curlBtn.addEventListener('click', function(e) { e.stopPropagation(); copyAsCurl(req); });
-        var saEl = detail.querySelector('.server-activity');
-        if (saEl) loadServerActivity(saEl);
+        var tlEl = detail.querySelector('.request-timeline');
+        if (tlEl) loadTimeline(tlEl.getAttribute('data-request-id'), tlEl, 0);
       }
     });
     return { row: row, detail: detail };

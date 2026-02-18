@@ -81,6 +81,12 @@ export function getFlowsView(): string {
         } else {
           expand.appendChild(createFlowSubReqs(flow));
         }
+        var tlEls = expand.querySelectorAll('.request-timeline');
+        for (var ti = 0; ti < tlEls.length; ti++) {
+          var tlItem = tlEls[ti];
+          var rid = tlItem.getAttribute('data-request-id');
+          if (rid) loadTimeline(rid, tlItem, 0);
+        }
       }
     });
 
