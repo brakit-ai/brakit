@@ -50,6 +50,7 @@ export function getWarningRules(): string {
     for (var i = 0; i < state.logs.length; i++) {
       var msg = state.logs[i].message;
       if (!msg) continue;
+      if (msg.indexOf('[brakit]') === 0) continue;
       if (EMAIL_RE.test(msg)) counts.email++;
       if (LOG_SECRET_RE.test(msg)) counts.secret++;
       if (CC_RE.test(msg)) counts.creditCard++;
@@ -154,9 +155,11 @@ export function getWarningRules(): string {
 
   function ruleMissingSecurityHeaders(requests, findings) {
     var checked = {};
-    var headerChecks = [
+    var devHeaders = [
       { header: 'x-content-type-options', expected: 'nosniff', label: 'X-Content-Type-Options' },
-      { header: 'x-frame-options', expected: null, label: 'X-Frame-Options' },
+      { header: 'x-frame-options', expected: null, label: 'X-Frame-Options' }
+    ];
+    var prodHeaders = [
       { header: 'strict-transport-security', expected: null, label: 'Strict-Transport-Security' }
     ];
     for (var i = 0; i < requests.length; i++) {
@@ -165,8 +168,8 @@ export function getWarningRules(): string {
       var ct = r.responseHeaders['content-type'] || '';
       if (ct.indexOf('json') === -1 && ct.indexOf('html') === -1) continue;
       var ep = r.method + ' ' + r.path;
-      for (var hi = 0; hi < headerChecks.length; hi++) {
-        var check = headerChecks[hi];
+      for (var hi = 0; hi < devHeaders.length; hi++) {
+        var check = devHeaders[hi];
         var val = r.responseHeaders[check.header];
         if (val) continue;
         var key = ep + ':' + check.header;
@@ -175,14 +178,34 @@ export function getWarningRules(): string {
         var ruleKey = 'missing:' + check.header;
         if (!checked[ruleKey]) {
           checked[ruleKey] = {
-            severity: 'warning', type: 'security', rule: 'missing-security-headers',
-            title: 'Missing Security Header',
-            desc: '<strong>' + check.label + '</strong> header not set on API responses',
+            severity: 'info', type: 'security', rule: 'missing-security-headers',
+            title: 'Verify Header in Production',
+            desc: '<strong>' + check.label + '</strong> header not set on dev server responses',
             nav: 'security', hint: RULE_HINTS['missing-security-headers'], endpoint: check.label, count: 1
           };
           findings.push(checked[ruleKey]);
         } else {
           checked[ruleKey].count++;
+        }
+      }
+      for (var pi = 0; pi < prodHeaders.length; pi++) {
+        var pcheck = prodHeaders[pi];
+        var pval = r.responseHeaders[pcheck.header];
+        if (pval) continue;
+        var pkey = ep + ':' + pcheck.header;
+        if (checked[pkey]) continue;
+        checked[pkey] = true;
+        var pruleKey = 'missing-prod:' + pcheck.header;
+        if (!checked[pruleKey]) {
+          checked[pruleKey] = {
+            severity: 'info', type: 'security', rule: 'missing-security-headers-prod',
+            title: 'Verify Header in Production',
+            desc: '<strong>' + pcheck.label + '</strong> not set — expected in dev, but verify it\\'s configured for production',
+            nav: 'security', hint: RULE_HINTS['missing-security-headers-prod'], endpoint: pcheck.label, count: 1
+          };
+          findings.push(checked[pruleKey]);
+        } else {
+          checked[pruleKey].count++;
         }
       }
     }

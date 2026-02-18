@@ -18,9 +18,10 @@ export function getSecurityView(): string {
     }
 
     // Summary bar
-    var critCount = 0, warnCount = 0;
+    var critCount = 0, warnCount = 0, infoCount = 0;
     for (var ci = 0; ci < findings.length; ci++) {
       if (findings[ci].severity === 'critical') critCount++;
+      else if (findings[ci].severity === 'info') infoCount++;
       else warnCount++;
     }
     var summaryEl = document.createElement('div');
@@ -33,6 +34,7 @@ export function getSecurityView(): string {
       '<div class="sec-summary-right">' +
         (critCount > 0 ? '<span class="sec-badge critical">' + critCount + ' critical</span>' : '') +
         (warnCount > 0 ? '<span class="sec-badge warning">' + warnCount + ' warning</span>' : '') +
+        (infoCount > 0 ? '<span class="sec-badge info">' + infoCount + ' info</span>' : '') +
       '</div>';
     container.appendChild(summaryEl);
 
@@ -48,10 +50,10 @@ export function getSecurityView(): string {
       groups[f.rule].items.push(f);
     }
 
-    // Sort groups: critical first
+    // Sort groups: critical first, then warning, then info
     groupOrder.sort(function(a, b) {
-      var sa = groups[a].severity === 'critical' ? 0 : 1;
-      var sb = groups[b].severity === 'critical' ? 0 : 1;
+      var sa = groups[a].severity === 'critical' ? 0 : groups[a].severity === 'warning' ? 1 : 2;
+      var sb = groups[b].severity === 'critical' ? 0 : groups[b].severity === 'warning' ? 1 : 2;
       if (sa !== sb) return sa - sb;
       return groups[b].items.length - groups[a].items.length;
     });
@@ -62,8 +64,8 @@ export function getSecurityView(): string {
       var section = document.createElement('div');
       section.className = 'sec-group';
 
-      var iconCls = group.severity === 'critical' ? 'critical' : 'warning';
-      var iconChar = group.severity === 'critical' ? '\\u2717' : '\\u26A0';
+      var iconCls = group.severity === 'critical' ? 'critical' : group.severity === 'info' ? 'info' : 'warning';
+      var iconChar = group.severity === 'critical' ? '\\u2717' : group.severity === 'info' ? '\\u2139' : '\\u26A0';
 
       var header = document.createElement('div');
       header.className = 'sec-group-header';

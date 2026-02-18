@@ -11,7 +11,7 @@ export function getSecurityPatterns(): string {
   var SQL_FRAGMENT_RE = /\\b(SELECT|INSERT|UPDATE|DELETE)\\s+\\w/i;
   var SECRET_VAL_RE = /(api_key|apiKey|secret|token)\\s*[:=]\\s*\\S+/;
   var CC_RE = /\\b\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}\\b/;
-  var LOG_SECRET_RE = /(password|secret|token|api_key|apiKey)\\s*[:=]\\s*\\S+/i;
+  var LOG_SECRET_RE = /(password|secret|token|api_key|apiKey)\\s*[:=]\\s*["']?[A-Za-z0-9_\\-\\.\\+\\/]{8,}/i;
 
   var PII_KEYS = /^(email|e_mail|phone|phone_number|phoneNumber|ssn|social_security|socialSecurity|date_of_birth|dateOfBirth|dob|address|street|zip_code|zipCode|credit_card|creditCard|bank_account|bankAccount)$/i;
 
@@ -27,7 +27,8 @@ export function getSecurityPatterns(): string {
     '200-error': 'Return appropriate HTTP status codes (4xx/5xx) for error responses.',
     'cors-credentials': 'Cannot use credentials:true with origin:*. Specify explicit origins.',
     'insecure-cookie': 'Set HttpOnly, Secure, and SameSite flags on all cookies.',
-    'missing-security-headers': 'Add standard security headers to all responses.'
+    'missing-security-headers': 'Dev servers often omit these headers. Verify your production deployment (framework, reverse proxy, or CDN) sets them.',
+    'missing-security-headers-prod': 'HSTS is not expected on localhost. Verify your production deployment (reverse proxy, CDN, or framework config) sets this header.'
   };
   `;
 }

@@ -18,6 +18,7 @@ export function getSecurityStyles(): string {
 .sec-badge{font-size:12px;font-weight:600;padding:3px 10px;border-radius:10px}
 .sec-badge.critical{background:rgba(248,113,113,.12);color:var(--red)}
 .sec-badge.warning{background:rgba(251,191,36,.12);color:var(--amber)}
+.sec-badge.info{background:rgba(96,165,250,.12);color:var(--blue, #60a5fa)}
 
 /* Rule group */
 .sec-group{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden}
@@ -25,6 +26,7 @@ export function getSecurityStyles(): string {
 .sec-group-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;border-radius:50%}
 .sec-group-icon.critical{background:rgba(248,113,113,.12);color:var(--red)}
 .sec-group-icon.warning{background:rgba(251,191,36,.12);color:var(--amber)}
+.sec-group-icon.info{background:rgba(96,165,250,.12);color:var(--blue, #60a5fa)}
 .sec-group-title{font-size:14px;font-weight:600;color:var(--text);flex:1}
 .sec-group-count{font-size:12px;font-family:var(--mono);color:var(--text-dim);background:var(--bg);padding:1px 8px;border-radius:10px;border:1px solid var(--border)}
 

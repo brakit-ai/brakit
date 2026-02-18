@@ -57,8 +57,8 @@ export function getOverviewRender(): string {
         var card = document.createElement('div');
         card.className = 'ov-card';
 
-        var iconCls = insight.severity === 'critical' ? 'critical' : 'warning';
-        var iconChar = insight.severity === 'critical' ? '\\u2717' : '\\u26A0';
+        var iconCls = insight.severity === 'critical' ? 'critical' : insight.severity === 'info' ? 'info' : 'warning';
+        var iconChar = insight.severity === 'critical' ? '\\u2717' : insight.severity === 'info' ? '\\u2139' : '\\u26A0';
 
         card.innerHTML =
           '<span class="ov-card-icon ' + iconCls + '">' + iconChar + '</span>' +

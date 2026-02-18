@@ -181,7 +181,7 @@ export function getOverviewInsights(): string {
       insights.push(secFindings[si]);
     }
 
-    var severityOrder = { critical: 0, warning: 1 };
+    var severityOrder = { critical: 0, warning: 1, info: 2 };
     insights.sort(function(a, b) {
       return (severityOrder[a.severity] || 2) - (severityOrder[b.severity] || 2);
     });

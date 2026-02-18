@@ -20,6 +20,7 @@ export function getOverviewStyles(): string {
 .ov-card-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;border-radius:50%;margin-top:2px}
 .ov-card-icon.critical{background:rgba(248,113,113,.12);color:var(--red)}
 .ov-card-icon.warning{background:rgba(251,191,36,.12);color:var(--amber)}
+.ov-card-icon.info{background:rgba(96,165,250,.12);color:var(--blue, #60a5fa)}
 .ov-card-body{flex:1;min-width:0}
 .ov-card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
 .ov-card-desc{font-size:13px;color:var(--text-dim);line-height:1.5}
