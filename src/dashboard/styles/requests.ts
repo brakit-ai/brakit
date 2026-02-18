@@ -39,5 +39,10 @@ export function getRequestStyles(): string {
 .query-preview{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:10px;border-right:1px solid var(--border-subtle);padding-right:16px}
 .query-dur{width:60px;flex-shrink:0;text-align:right}
 .query-slow{color:var(--red);font-weight:500}
+.query-detail{display:none;padding:0 28px 12px;position:relative}
+.query-detail.open{display:block}
+.query-detail-sql{background:var(--bg-muted);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:var(--mono);font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);max-height:200px;overflow-y:auto;margin:0}
+.query-detail-copy{position:absolute;top:8px;right:36px;padding:2px 8px;font-size:9px;font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-muted);cursor:pointer;transition:all .15s}
+.query-detail-copy:hover{background:var(--bg-hover);color:var(--text);border-color:var(--border-light)}
 `;
 }

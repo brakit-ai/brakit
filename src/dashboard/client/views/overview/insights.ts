@@ -20,7 +20,7 @@ export function getOverviewInsights(): string {
       return !r.isStatic && (!r.path || r.path.indexOf('${DASHBOARD_PREFIX}') !== 0);
     });
 
-    // Real N+1: a single request makes N identical query patterns (same op+table)
+    // N+1: same query shape with different parameter values in a single request
     var queriesByReq = {};
     for (var qi = 0; qi < state.queries.length; qi++) {
       var q = state.queries[qi];
@@ -34,6 +34,14 @@ export function getOverviewInsights(): string {
       reqById[nonStatic[ri].id] = nonStatic[ri];
     }
 
+    function normalizeQueryParams(sql) {
+      if (!sql) return null;
+      var n = sql.replace(/'[^']*'/g, '?');
+      n = n.replace(/\\b\\d+(\\.\\d+)?\\b/g, '?');
+      n = n.replace(/\\$\\d+/g, '?');
+      return n;
+    }
+
     var n1Seen = {};
     for (var reqId in queriesByReq) {
       var reqQueries = queriesByReq[reqId];
@@ -41,26 +49,30 @@ export function getOverviewInsights(): string {
       if (!req) continue;
       var endpoint = req.method + ' ' + req.path;
 
-      var patternCounts = {};
+      var shapeGroups = {};
       for (var tqi = 0; tqi < reqQueries.length; tqi++) {
-        var info = reqQueries[tqi].sql ? simplifySQL(reqQueries[tqi].sql) : { op: reqQueries[tqi].operation || '?', table: reqQueries[tqi].model || '' };
-        var pattern = info.op + ':' + (info.table || 'unknown');
-        patternCounts[pattern] = (patternCounts[pattern] || 0) + 1;
+        var tq = reqQueries[tqi];
+        var normalized = tq.sql ? normalizeQueryParams(tq.sql) : null;
+        var shape = normalized || ((tq.operation || '?') + ':' + (tq.model || ''));
+        if (!shapeGroups[shape]) shapeGroups[shape] = { count: 0, distinctSql: {}, first: tq };
+        shapeGroups[shape].count++;
+        var sqlKey = tq.sql || shape;
+        shapeGroups[shape].distinctSql[sqlKey] = 1;
       }
 
-      for (var pat in patternCounts) {
-        if (patternCounts[pat] > ${N1_QUERY_THRESHOLD}) {
-          var parts = pat.split(':');
-          var patOp = parts[0];
-          var patTable = parts[1];
-          var key = endpoint + ':' + pat;
+      for (var shape in shapeGroups) {
+        var sg = shapeGroups[shape];
+        var distinctCount = Object.keys(sg.distinctSql).length;
+        if (sg.count > ${N1_QUERY_THRESHOLD} && distinctCount > 1) {
+          var info = sg.first.sql ? simplifySQL(sg.first.sql) : { op: sg.first.operation || '?', table: sg.first.model || '' };
+          var key = endpoint + ':' + info.op + ':' + (info.table || 'unknown');
           if (!n1Seen[key]) {
             n1Seen[key] = true;
             insights.push({
               severity: 'critical',
               type: 'n1',
               title: 'N+1 Query Pattern',
-              desc: '<strong>' + escHtml(endpoint) + '</strong> runs ' + patternCounts[pat] + 'x <strong>' + escHtml(patOp + ' ' + patTable) + '</strong> in a single request',
+              desc: '<strong>' + escHtml(endpoint) + '</strong> runs ' + sg.count + 'x <strong>' + escHtml(info.op + ' ' + info.table) + '</strong> with different params in a single request',
               nav: 'queries'
             });
           }
