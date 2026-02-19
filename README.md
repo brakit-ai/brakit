@@ -83,15 +83,15 @@ Brakit doesn't just capture — it understands what it sees:
 
 7 high-confidence rules that scan your live traffic and flag real issues — not theoretical ones:
 
-| | Rule | What it catches |
-|---|------|-----------------|
-| **Critical** | Exposed Secret | Response contains `password`, `api_key`, `client_secret` fields with real values |
-| **Critical** | Token in URL | Auth tokens in query parameters instead of headers |
-| **Critical** | Stack Trace Leak | Internal stack traces sent to the client |
-| **Critical** | Error Info Leak | DB connection strings, SQL queries, or secret values in error responses |
-| Warning | Insecure Cookie | Missing `HttpOnly` or `SameSite` flags |
-| Warning | Sensitive Logs | Passwords, secrets, or token values in console output |
-| Warning | CORS + Credentials | `credentials: true` with wildcard origin |
+|              | Rule               | What it catches                                                                  |
+| ------------ | ------------------ | -------------------------------------------------------------------------------- |
+| **Critical** | Exposed Secret     | Response contains `password`, `api_key`, `client_secret` fields with real values |
+| **Critical** | Token in URL       | Auth tokens in query parameters instead of headers                               |
+| **Critical** | Stack Trace Leak   | Internal stack traces sent to the client                                         |
+| **Critical** | Error Info Leak    | DB connection strings, SQL queries, or secret values in error responses          |
+| Warning      | Insecure Cookie    | Missing `HttpOnly` or `SameSite` flags                                           |
+| Warning      | Sensitive Logs     | Passwords, secrets, or token values in console output                            |
+| Warning      | CORS + Credentials | `credentials: true` with wildcard origin                                         |
 
 ### Performance Tracking
 
@@ -119,10 +119,10 @@ The instrumentation layer runs inside your dev server process (injected via `--i
 
 ### Supported Frameworks
 
-| Framework | Detection | Status |
-|-----------|-----------|--------|
-| **Next.js** | Auto-detected via `next` in `package.json` | Supported |
-| Any HTTP server | Specify port manually | Works via proxy |
+| Framework       | Detection                                  | Status          |
+| --------------- | ------------------------------------------ | --------------- |
+| **Next.js**     | Auto-detected via `next` in `package.json` | Supported       |
+| Any HTTP server | Specify port manually                      | Works via proxy |
 
 More frameworks coming — Express, Fastify, Remix, SvelteKit, Nuxt. PRs welcome.
 
@@ -142,7 +142,7 @@ npx brakit dev ./my-app       # Specify project directory
 ## Development
 
 ```bash
-git clone https://github.com/user/brakit.git
+git clone https://github.com/brakit-ai/brakit.git
 cd brakit
 
 npm install

@@ -1,7 +1,7 @@
 {
   "name": "brakit",
-  "version": "1.0.0",
-  "description": "Runtime request tracer for local development",
+  "version": "0.1.0",
+  "description": "Understand your every API call like never before.",
   "type": "module",
   "bin": {
     "brakit": "./dist/bin/brakit.js"
@@ -20,11 +20,21 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brakit-ai/brakit.git"
+  },
+  "homepage": "https://www.brakit.ai",
+  "bugs": {
+    "url": "https://github.com/brakit-ai/brakit/issues"
+  },
+  "author": "dev@brakit.ai",
   "dependencies": {
     "citty": "^0.1.6",
     "picocolors": "^1.1.1"
@@ -40,11 +50,17 @@
   },
   "license": "MIT",
   "keywords": [
+    "api-monitoring",
+    "request-tracing",
+    "n-plus-one",
+    "duplicate-detection",
+    "security-scanning",
     "devtools",
-    "proxy",
-    "request-tracer",
     "nextjs",
-    "debug",
-    "http"
+    "dashboard",
+    "performance",
+    "database-queries",
+    "http-proxy",
+    "zero-config"
   ]
 }

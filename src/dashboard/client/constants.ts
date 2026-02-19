@@ -28,6 +28,14 @@ export const MIN_REQUESTS_FOR_INSIGHT = 2;
 export const AUTH_OVERHEAD_PCT = 30;
 export const AUTH_SLOW_MS = 500;
 
+// Cross-endpoint query detection
+export const CROSS_ENDPOINT_MIN_ENDPOINTS = 3;
+export const CROSS_ENDPOINT_PCT = 50;
+export const CROSS_ENDPOINT_MIN_OCCURRENCES = 5;
+
+// Redundant same-query detection (exact duplicate within one request)
+export const REDUNDANT_QUERY_MIN_COUNT = 2;
+
 // Over-fetching detection
 export const LARGE_RESPONSE_BYTES = 51_200; // 50KB
 export const HIGH_ROW_COUNT = 100;

@@ -8,6 +8,10 @@ import {
   LARGE_RESPONSE_BYTES,
   HIGH_ROW_COUNT,
   OVERFETCH_MIN_REQUESTS,
+  CROSS_ENDPOINT_MIN_ENDPOINTS,
+  CROSS_ENDPOINT_PCT,
+  CROSS_ENDPOINT_MIN_OCCURRENCES,
+  REDUNDANT_QUERY_MIN_COUNT,
 } from "../../constants.js";
 import { DASHBOARD_PREFIX } from "../../../../constants/index.js";
 
@@ -73,10 +77,97 @@ export function getOverviewInsights(): string {
               type: 'n1',
               title: 'N+1 Query Pattern',
               desc: '<strong>' + escHtml(endpoint) + '</strong> runs ' + sg.count + 'x <strong>' + escHtml(info.op + ' ' + info.table) + '</strong> with different params in a single request',
+              hint: 'This typically happens when fetching related data in a loop. Use a batch query, JOIN, or include/eager-load to fetch all records at once.',
               nav: 'queries'
             });
           }
         }
+      }
+    }
+
+    // Cross-endpoint: same query shape appearing across many distinct endpoints
+    var ceQueryMap = {};
+    var ceAllEndpoints = {};
+    for (var ceReqId in queriesByReq) {
+      var ceReq = reqById[ceReqId];
+      if (!ceReq) continue;
+      var ceEndpoint = ceReq.method + ' ' + ceReq.path;
+      ceAllEndpoints[ceEndpoint] = 1;
+      var ceQueries = queriesByReq[ceReqId];
+      var ceSeenInReq = {};
+      for (var ceqi = 0; ceqi < ceQueries.length; ceqi++) {
+        var ceq = ceQueries[ceqi];
+        var ceNorm = ceq.sql ? normalizeQueryParams(ceq.sql) : null;
+        var ceShape = ceNorm || ((ceq.operation || '?') + ':' + (ceq.model || ''));
+        if (!ceQueryMap[ceShape]) ceQueryMap[ceShape] = { endpoints: {}, count: 0, first: ceq };
+        ceQueryMap[ceShape].count++;
+        if (!ceSeenInReq[ceShape]) {
+          ceSeenInReq[ceShape] = true;
+          ceQueryMap[ceShape].endpoints[ceEndpoint] = 1;
+        }
+      }
+    }
+    var ceTotalEndpoints = Object.keys(ceAllEndpoints).length;
+    if (ceTotalEndpoints >= ${CROSS_ENDPOINT_MIN_ENDPOINTS}) {
+      for (var ceShape in ceQueryMap) {
+        var cem = ceQueryMap[ceShape];
+        var ceEpCount = Object.keys(cem.endpoints).length;
+        if (cem.count < ${CROSS_ENDPOINT_MIN_OCCURRENCES}) continue;
+        if (ceEpCount < ${CROSS_ENDPOINT_MIN_ENDPOINTS}) continue;
+        var cePct = Math.round((ceEpCount / ceTotalEndpoints) * 100);
+        if (cePct < ${CROSS_ENDPOINT_PCT}) continue;
+        var ceInfo = cem.first.sql ? simplifySQL(cem.first.sql) : { op: cem.first.operation || '?', table: cem.first.model || '' };
+        var ceLabel = ceInfo.op + (ceInfo.table ? ' ' + ceInfo.table : '');
+        var ceEpList = Object.keys(cem.endpoints);
+        var ceDetailHtml = '';
+        for (var ceEpi = 0; ceEpi < ceEpList.length; ceEpi++) {
+          ceDetailHtml += '<div class="ov-detail-item">' + escHtml(ceEpList[ceEpi]) + '</div>';
+        }
+        insights.push({
+          severity: 'warning',
+          type: 'cross-endpoint',
+          title: 'Repeated Query Across Endpoints',
+          desc: '<strong>' + escHtml(ceLabel) + '</strong> runs on ' + ceEpCount + ' of ' + ceTotalEndpoints + ' endpoints (' + cePct + '%).',
+          detail: '<div class="ov-detail-label">Affected endpoints:</div>' + ceDetailHtml,
+          hint: 'This query runs on most of your endpoints. Load it once in middleware or cache the result to avoid redundant database calls.',
+          nav: 'queries'
+        });
+      }
+    }
+
+    // Redundant queries: exact same query (same params) fired 2+ times in one request
+    // Only checks queries with actual SQL — ORM-only queries (operation:model) can't
+    // distinguish different params, so we'd get false positives on N+1-style calls.
+    var rqSeen = {};
+    for (var rqReqId in queriesByReq) {
+      var rqReq = reqById[rqReqId];
+      if (!rqReq) continue;
+      var rqEndpoint = rqReq.method + ' ' + rqReq.path;
+      var rqQueries = queriesByReq[rqReqId];
+      var rqExact = {};
+      for (var rqi = 0; rqi < rqQueries.length; rqi++) {
+        var rqq = rqQueries[rqi];
+        if (!rqq.sql) continue;
+        var rqKey = rqq.sql;
+        if (!rqExact[rqKey]) rqExact[rqKey] = { count: 0, first: rqq };
+        rqExact[rqKey].count++;
+      }
+      for (var rqk in rqExact) {
+        var rqe = rqExact[rqk];
+        if (rqe.count < ${REDUNDANT_QUERY_MIN_COUNT}) continue;
+        var rqInfo = rqe.first.sql ? simplifySQL(rqe.first.sql) : { op: rqe.first.operation || '?', table: rqe.first.model || '' };
+        var rqLabel = rqInfo.op + (rqInfo.table ? ' ' + rqInfo.table : '');
+        var rqDedup = rqEndpoint + ':' + rqLabel;
+        if (rqSeen[rqDedup]) continue;
+        rqSeen[rqDedup] = true;
+        insights.push({
+          severity: 'warning',
+          type: 'redundant-query',
+          title: 'Redundant Query',
+          desc: '<strong>' + escHtml(rqLabel) + '</strong> runs ' + rqe.count + 'x with identical params in <strong>' + escHtml(rqEndpoint) + '</strong>.',
+          hint: 'The exact same query with identical parameters runs multiple times in one request. Cache the first result or lift the query to a shared function.',
+          nav: 'queries'
+        });
       }
     }
 
@@ -94,6 +185,7 @@ export function getOverviewInsights(): string {
           type: 'error',
           title: 'Unhandled Error',
           desc: '<strong>' + escHtml(errName) + '</strong> — occurred ' + cnt + ' time' + (cnt !== 1 ? 's' : ''),
+          hint: 'Unhandled errors crash request handlers. Wrap async code in try/catch or add error-handling middleware.',
           nav: 'errors'
         });
       }
@@ -121,6 +213,7 @@ export function getOverviewInsights(): string {
           type: 'error-hotspot',
           title: 'Error Hotspot',
           desc: '<strong>' + escHtml(epKey) + '</strong> — ' + errorRate + '% error rate (' + g.errors + '/' + g.total + ' requests)',
+          hint: 'This endpoint frequently returns errors. Check the response bodies for error details and stack traces.',
           nav: 'requests'
         });
       }
@@ -155,6 +248,7 @@ export function getOverviewInsights(): string {
         type: 'duplicate',
         title: 'Duplicate API Call',
         desc: '<strong>' + escHtml(d.key) + '</strong> loaded ' + d.count + 'x as duplicate across ' + d.flows + ' action' + (d.flows !== 1 ? 's' : ''),
+        hint: 'Multiple components independently fetch the same endpoint. Lift the fetch to a parent component, use a data cache, or deduplicate with React Query / SWR.',
         nav: 'actions'
       });
     }
@@ -170,6 +264,7 @@ export function getOverviewInsights(): string {
           type: 'slow',
           title: 'Slow Endpoint',
           desc: '<strong>' + escHtml(sepKey) + '</strong> — avg ' + formatDuration(avgMs) + ' across ' + sg.total + ' request' + (sg.total !== 1 ? 's' : ''),
+          hint: 'Consistently slow responses hurt user experience. Check the Queries tab to see if database queries are the bottleneck.',
           nav: 'requests'
         });
       }
@@ -186,6 +281,7 @@ export function getOverviewInsights(): string {
           type: 'query-heavy',
           title: 'Query-Heavy Endpoint',
           desc: '<strong>' + escHtml(qhKey) + '</strong> — avg ' + avgQueries + ' queries/request',
+          hint: 'Too many queries per request increases latency. Combine queries with JOINs, use batch operations, or reduce the number of data fetches.',
           nav: 'queries'
         });
       }
@@ -212,6 +308,7 @@ export function getOverviewInsights(): string {
             type: 'auth-overhead',
             title: 'Auth Overhead',
             desc: '<strong>' + escHtml(af.label) + '</strong> \\u2014 ' + afPct + '% of time (' + formatDuration(afAuthMs) + ') spent in auth/middleware',
+            hint: 'Auth checks consume a significant portion of this action. If using a third-party auth provider, check if session caching can reduce roundtrips.',
             nav: 'actions'
           });
         }
@@ -243,7 +340,8 @@ export function getOverviewInsights(): string {
           severity: 'warning',
           type: 'select-star',
           title: 'SELECT * Query',
-          desc: '<strong>SELECT *</strong> on <strong>' + escHtml(ssKey) + '</strong> \\u2014 ' + selectStarSeen[ssKey] + ' occurrence' + (selectStarSeen[ssKey] !== 1 ? 's' : '') + '. Select only the columns you need.',
+          desc: '<strong>SELECT *</strong> on <strong>' + escHtml(ssKey) + '</strong> \\u2014 ' + selectStarSeen[ssKey] + ' occurrence' + (selectStarSeen[ssKey] !== 1 ? 's' : ''),
+          hint: 'SELECT * fetches all columns including ones you don\\u2019t need. Specify only required columns to reduce data transfer and memory usage.',
           nav: 'queries'
         });
       }
@@ -271,7 +369,8 @@ export function getOverviewInsights(): string {
           severity: 'warning',
           type: 'high-rows',
           title: 'Large Result Set',
-          desc: '<strong>' + escHtml(hrk) + '</strong> returns ' + hrs.max + '+ rows (' + hrs.count + 'x). Consider pagination or adding a LIMIT.',
+          desc: '<strong>' + escHtml(hrk) + '</strong> returns ' + hrs.max + '+ rows (' + hrs.count + 'x)',
+          hint: 'Fetching many rows slows responses and wastes memory. Add a LIMIT clause, implement pagination, or filter with a WHERE condition.',
           nav: 'queries'
         });
       }
@@ -292,7 +391,8 @@ export function getOverviewInsights(): string {
           severity: 'info',
           type: 'large-response',
           title: 'Large Response',
-          desc: '<strong>' + escHtml(lrKey) + '</strong> \\u2014 avg ' + formatSize(lrAvg) + ' response. Consider pagination or field filtering.',
+          desc: '<strong>' + escHtml(lrKey) + '</strong> \\u2014 avg ' + formatSize(lrAvg) + ' response',
+          hint: 'Large API responses increase network transfer time. Implement pagination, field filtering, or response compression.',
           nav: 'requests'
         });
       }

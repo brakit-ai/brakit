@@ -25,7 +25,16 @@ export function getOverviewStyles(): string {
 .ov-card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
 .ov-card-desc{font-size:12px;color:var(--text-dim);line-height:1.5}
 .ov-card-desc strong{color:var(--text);font-family:var(--mono);font-weight:600}
-.ov-card-arrow{color:var(--text-muted);font-size:12px;flex-shrink:0;margin-top:2px;font-family:var(--mono)}
+.ov-card-arrow{color:var(--text-muted);font-size:12px;flex-shrink:0;margin-top:2px;font-family:var(--mono);transition:transform .15s}
+
+/* Expanded card */
+.ov-card.expanded{border-color:var(--border-light);box-shadow:var(--shadow-md)}
+.ov-card-expand{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.ov-card-hint{font-size:12px;color:var(--text-dim);line-height:1.5;margin-bottom:10px}
+.ov-card-link{font-size:12px;font-weight:600;color:var(--blue);cursor:pointer;display:inline-block;padding:4px 0}
+.ov-card-link:hover{text-decoration:underline}
+.ov-detail-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.ov-detail-item{font-size:12px;color:var(--text);font-family:var(--mono);padding:2px 0}
 
 /* All-clear banner */
 .ov-clear{display:flex;align-items:center;gap:12px;padding:16px 20px;background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.2);border-radius:var(--radius);color:var(--green);font-size:13px;font-weight:500}
