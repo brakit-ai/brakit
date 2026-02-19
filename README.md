@@ -72,7 +72,7 @@ Open `/__brakit` in your browser. Everything updates in real-time via SSE — no
 | **Queries** | Database queries with operation, table, duration, and row count |
 | **Errors** | Unhandled exceptions and promise rejections with full stack traces |
 | **Logs** | Console output correlated to the request that triggered it |
-| **Security** | 12 automated rules scanned against live traffic |
+| **Security** | 7 high-confidence rules scanned against live traffic |
 | **Performance** | Response time trends and health grades across sessions |
 
 ### Zero-Config Instrumentation
@@ -97,22 +97,17 @@ Brakit doesn't just capture — it understands what it sees:
 
 ### Security Scanner
 
-12 rules that scan your live traffic and flag real issues — not theoretical ones:
+7 high-confidence rules that scan your live traffic and flag real issues — not theoretical ones:
 
 | | Rule | What it catches |
 |---|------|-----------------|
-| **Critical** | Exposed Secret | Response contains `password`, `api_key`, `client_secret` fields |
+| **Critical** | Exposed Secret | Response contains `password`, `api_key`, `client_secret` fields with real values |
 | **Critical** | Token in URL | Auth tokens in query parameters instead of headers |
 | **Critical** | Stack Trace Leak | Internal stack traces sent to the client |
-| **Critical** | Error Info Leak | Emails, DB strings, file paths in error responses |
-| **Critical** | Insecure Cookie | Missing `HttpOnly`, `Secure`, or `SameSite` flags |
-| Warning | CORS Wildcard | `Access-Control-Allow-Origin: *` on API endpoints |
-| Warning | No Auth on PII | Personal data returned without authentication |
-| Warning | Sensitive Logs | Emails, secrets, or card numbers in console output |
-| Warning | Unbounded Query | `SELECT` without `WHERE` or `LIMIT` |
-| Warning | 200 Error | Error body returned with HTTP 200 |
+| **Critical** | Error Info Leak | DB connection strings, SQL queries, or secret values in error responses |
+| Warning | Insecure Cookie | Missing `HttpOnly` or `SameSite` flags |
+| Warning | Sensitive Logs | Passwords, secrets, or token values in console output |
 | Warning | CORS + Credentials | `credentials: true` with wildcard origin |
-| Warning | Missing Headers | `X-Content-Type-Options`, `X-Frame-Options`, `HSTS` not set |
 
 ### Performance Tracking
 

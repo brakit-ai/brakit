@@ -78,11 +78,6 @@ export function getCriticalRules(): string {
       { re: SQL_FRAGMENT_RE, label: 'SQL query fragment' },
       { re: SECRET_VAL_RE, label: 'secret value' }
     ];
-    var infoPatterns = [
-      { re: EMAIL_RE, label: 'email address' },
-      { re: INTERNAL_PATH_RE, label: 'internal file path' },
-      { re: INTERNAL_URL_RE, label: 'internal service URL' }
-    ];
     for (var i = 0; i < requests.length; i++) {
       var r = requests[i];
       if (r.statusCode < 400) continue;
@@ -102,20 +97,6 @@ export function getCriticalRules(): string {
         };
         findings.push(seen[key]);
       }
-      for (var ii = 0; ii < infoPatterns.length; ii++) {
-        var ip = infoPatterns[ii];
-        if (!ip.re.test(r.responseBody)) continue;
-        var ikey = ep + ':' + ip.label;
-        if (seen[ikey]) { seen[ikey].count++; continue; }
-        seen[ikey] = {
-          severity: 'info', type: 'security', rule: 'error-info-leak',
-          title: 'Dev Error Detail Exposed',
-          desc: '<strong>' + escHtml(ep) + '</strong> — error response contains <strong>' + ip.label + '</strong> (expected in dev)',
-          nav: 'security', hint: 'Dev servers include paths and URLs in error responses for debugging. Verify your production error handler returns generic messages.',
-          endpoint: ep, count: 1
-        };
-        findings.push(seen[ikey]);
-      }
     }
   }
 
@@ -133,13 +114,12 @@ export function getCriticalRules(): string {
         var lower = cookie.toLowerCase();
         var issues = [];
         if (lower.indexOf('httponly') === -1) issues.push('HttpOnly');
-        if (lower.indexOf('secure') === -1) issues.push('Secure');
         if (lower.indexOf('samesite') === -1) issues.push('SameSite');
         if (issues.length === 0) continue;
         var key = cookieName + ':' + issues.join(',');
         if (seen[key]) { seen[key].count++; continue; }
         seen[key] = {
-          severity: 'critical', type: 'security', rule: 'insecure-cookie',
+          severity: 'warning', type: 'security', rule: 'insecure-cookie',
           title: 'Insecure Cookie',
           desc: '<strong>' + escHtml(cookieName) + '</strong> — missing <strong>' + issues.join(', ') + '</strong> flag' + (issues.length > 1 ? 's' : ''),
           nav: 'security', hint: RULE_HINTS['insecure-cookie'], endpoint: cookieName, count: 1

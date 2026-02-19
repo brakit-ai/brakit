@@ -13,14 +13,9 @@ export function getSecurityEngine(): string {
     ruleTokenInUrl(nonDashboard, findings);
     ruleStackTraceLeak(nonDashboard, findings);
     ruleErrorInfoLeak(nonDashboard, findings);
-    ruleCorsWildcard(nonDashboard, findings);
-    ruleNoAuthData(nonDashboard, findings);
     ruleSensitiveLogs(findings);
-    ruleUnboundedQuery(findings);
-    rule200Error(nonDashboard, findings);
     ruleCorsCredentials(nonDashboard, findings);
     ruleInsecureCookie(nonDashboard, findings);
-    ruleMissingSecurityHeaders(nonDashboard, findings);
 
     return findings;
   }
