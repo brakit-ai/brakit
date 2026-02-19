@@ -6,12 +6,7 @@
 
 Brakit is a runtime devtool that sits between your browser and your dev server. It captures every HTTP request, groups them by user action, detects duplicates and N+1 queries, runs security checks, and gives you a live dashboard — all without touching your code.
 
-You shouldn't need to open Network tab, grep through logs, or add `console.log` everywhere just to understand what a page load actually does. Brakit shows you.
-
-[Quick Start](#quick-start) · [Features](#features) · [How It Works](#how-it-works) · [CLI Options](#cli-options) · [Contributing](#contributing)
-
-<!-- TODO: Add screenshot of dashboard here -->
-<!-- ![Brakit Dashboard](assets/screenshot.png) -->
+[Quick Start](#quick-start) · [What You Get](#what-you-get) · [Features](#features) · [How It Works](#how-it-works) · [CLI Options](#cli-options) · [Contributing](#contributing)
 
 ---
 
@@ -33,6 +28,17 @@ npx brakit dev ./my-app       # Specify project directory
 
 ---
 
+## What You Get
+
+- **Action-level visibility** — see "Sign Up" and "Load Dashboard", not raw HTTP requests
+- **Duplicate & N+1 detection** — automatically flags redundant API calls and repeated query patterns
+- **Live dashboard** at `/__brakit` — 9 tabs updating in real-time via SSE
+- **Full server tracing** — fetch calls, DB queries, console logs, errors — zero code changes
+- **7 security rules** scanned against actual traffic, not static analysis
+- **Performance tracking** — health grades and p95 trends across dev sessions
+
+---
+
 ## Features
 
 ### Actions, Not HTTP Noise
@@ -49,31 +55,11 @@ History Page                         1.6s   40% redundant
    Loaded page .................. 128ms  OK
 
    2 requests duplicated — same data loaded twice
-
-
-Prompt Page                          2.3s   Clean
-
-   Loaded user data ............. 530ms  OK
-   Loaded page ................... 42ms  OK
 ```
-
-No HTTP methods. No status codes. Just what happened and whether it was wasteful.
 
 ### Live Dashboard
 
-Open `/__brakit` in your browser. Everything updates in real-time via SSE — no refresh needed.
-
-| Tab | What it shows |
-|-----|---------------|
-| **Overview** | Summary stats + auto-detected issues (N+1 queries, error hotspots, duplicates, security findings) |
-| **Actions** | Request flows grouped by user action with redundancy % and warnings |
-| **Requests** | Every HTTP request — filterable by method, status, and full-text search |
-| **Fetches** | Server-side `fetch()` calls your app makes (API calls, webhooks, etc.) |
-| **Queries** | Database queries with operation, table, duration, and row count |
-| **Errors** | Unhandled exceptions and promise rejections with full stack traces |
-| **Logs** | Console output correlated to the request that triggered it |
-| **Security** | 7 high-confidence rules scanned against live traffic |
-| **Performance** | Response time trends and health grades across sessions |
+Open `/__brakit` in your browser. 9 tabs — actions, requests, server fetches, database queries, errors, logs, security, and performance — all updating in real-time via SSE.
 
 ### Zero-Config Instrumentation
 
@@ -83,8 +69,6 @@ Brakit hooks into your Node.js process via `--import` — no code changes, no SD
 - **Database queries** — pg, mysql2, Prisma with SQL, timing, and row counts
 - **Console output** — `log`, `warn`, `error` linked to the originating request
 - **Unhandled errors** — exceptions with full stack traces
-
-All telemetry is linked to the parent HTTP request via `AsyncLocalStorage`, so you can trace exactly which page load triggered which queries and fetches.
 
 ### Smart Analysis
 
@@ -126,7 +110,7 @@ Browser  -->  Brakit (:3000)  -->  Your dev server (:3001)
                   |
                   +-- Dashboard UI    (/__brakit)
                   +-- Live SSE stream (real-time updates)
-                  +-- Telemetry RX    (from instrumented process)
+                  +-- Telemetry       (from instrumented process)
 ```
 
 Brakit is a transparent HTTP reverse proxy. Every request passes through unchanged — your app works exactly the same. Brakit captures request/response pairs, groups them into flows, and streams everything to the dashboard.
@@ -168,6 +152,8 @@ npm run typecheck   # Type-check without emitting
 npm test            # Run tests with vitest
 ```
 
+Only 2 production dependencies: `citty` (CLI) and `picocolors` (terminal colors). Everything else is Node.js built-ins.
+
 ### Architecture
 
 ```
@@ -186,8 +172,6 @@ src/
   store/          In-memory telemetry stores + persistent metrics
   types/          TypeScript definitions by domain
 ```
-
-Only 2 production dependencies: `citty` (CLI) and `picocolors` (terminal colors). Everything else is Node.js built-ins.
 
 ---
 
