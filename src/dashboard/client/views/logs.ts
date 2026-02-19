@@ -27,7 +27,7 @@ export function getLogsView(): string {
       var data = await res.json();
       state.logs = data.entries;
       renderLogs();
-    } catch(e) {}
+    } catch(e) { console.warn('[brakit]', e); }
   }
   `;
 }

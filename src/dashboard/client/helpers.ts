@@ -19,6 +19,13 @@ export function getHelpers(): string {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  function statusPillClass(code) {
+    if (code >= 500) return 'status-pill-5xx';
+    if (code >= 400) return 'status-pill-4xx';
+    if (code >= 300) return 'status-pill-3xx';
+    return 'status-pill-2xx';
+  }
+
   function statusIcon(code) {
     if (code >= 500) return { icon: '\\u2717', cls: 'status-error', tip: code + ' Server Error' };
     if (code >= 400) return { icon: '\\u2717', cls: 'status-fail', tip: code + ' ' + httpStatus(code) };

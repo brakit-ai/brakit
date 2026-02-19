@@ -5,6 +5,7 @@ export function getQueriesView(): string {
   return `
   var QUERY_OP_COLORS = ${QUERY_OP_COLORS};
 
+  // Extracts operation (SELECT/INSERT/UPDATE/DELETE/COUNT) and table name from raw SQL via regex
   function simplifySQL(sql) {
     if (!sql) return { op: '?', table: '' };
     var trimmed = sql.trim();
@@ -83,7 +84,7 @@ export function getQueriesView(): string {
       var data = await res.json();
       state.queries = data.entries;
       renderQueries();
-    } catch(e) {}
+    } catch(e) { console.warn('[brakit]', e); }
   }
   `;
 }

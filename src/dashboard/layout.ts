@@ -60,10 +60,13 @@ export function getLayoutHtml(config: BrakitConfig): string {
   </aside>
   <div class="main-panel">
     <div class="header">
-      <span class="header-title" id="header-title">Overview</span>
+      <div class="header-left">
+        <span class="header-title" id="header-title">Overview</span>
+        <span class="header-sub" id="header-sub">Live summary of your application</span>
+      </div>
       <div class="header-right">
         <div class="segmented-control" id="mode-toggle" style="display:none">
-          <button class="segmented-btn active" id="mode-simple">Simple</button>
+          <button class="segmented-btn active" id="mode-simple">Quick</button>
           <button class="segmented-btn" id="mode-detailed">Detailed</button>
         </div>
         <button class="btn btn-danger" id="clear-btn">Clear</button>
@@ -99,13 +102,7 @@ export function getLayoutHtml(config: BrakitConfig): string {
         <div id="request-list"></div>
       </div>
       <div class="view-telemetry" id="fetch-container" style="display:none">
-        <div class="col-header">
-          <span style="width:50px">Method</span>
-          <span style="flex:1">URL</span>
-          <span style="width:50px;text-align:right">Status</span>
-          <span style="width:70px;text-align:right">Time</span>
-        </div>
-        <div id="fetch-list"></div>
+        <div class="fetch-analysis" id="fetch-analysis"></div>
       </div>
       <div class="view-telemetry" id="query-container" style="display:none">
         <div class="col-header">

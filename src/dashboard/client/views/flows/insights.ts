@@ -17,7 +17,7 @@ export function getFlowInsights(): string {
     for (var i = 0; i < flow.requests.length; i++) {
       var req = flow.requests[i];
       if (skipCats[req.category]) continue;
-      var sClass = req.statusCode >= 500 ? 'status-pill-5xx' : req.statusCode >= 400 ? 'status-pill-4xx' : req.statusCode >= 300 ? 'status-pill-3xx' : 'status-pill-2xx';
+      var sClass = statusPillClass(req.statusCode);
 
       var card = document.createElement('div');
       card.className = 'traffic-card';

@@ -36,13 +36,13 @@ export function handleApiActivity(
     const timeline: TimelineEvent[] = [];
 
     for (const f of fetches)
-      timeline.push({ type: "fetch", timestamp: f.timestamp, data: f as never });
+      timeline.push({ type: "fetch", timestamp: f.timestamp, data: { ...f } });
     for (const l of logs)
-      timeline.push({ type: "log", timestamp: l.timestamp, data: l as never });
+      timeline.push({ type: "log", timestamp: l.timestamp, data: { ...l } });
     for (const e of errors)
-      timeline.push({ type: "error", timestamp: e.timestamp, data: e as never });
+      timeline.push({ type: "error", timestamp: e.timestamp, data: { ...e } });
     for (const q of queries)
-      timeline.push({ type: "query", timestamp: q.timestamp, data: q as never });
+      timeline.push({ type: "query", timestamp: q.timestamp, data: { ...q } });
 
     timeline.sort((a, b) => a.timestamp - b.timestamp);
 

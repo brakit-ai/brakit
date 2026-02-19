@@ -14,10 +14,6 @@ export const HEALTH_GOOD_MS = 300;
 export const HEALTH_OK_MS = 800;
 export const HEALTH_SLOW_MS = 2000;
 
-// Trend detection — below these thresholds, performance is considered "stable"
-export const TREND_STABLE_PCT = 15;
-export const TREND_STABLE_ABS_MS = 150;
-
 // Query display thresholds
 export const SLOW_QUERY_THRESHOLD_MS = 100;
 export const HIGH_QUERY_COUNT_PER_REQ = 5;
@@ -36,3 +32,22 @@ export const AUTH_SLOW_MS = 500;
 export const LARGE_RESPONSE_BYTES = 51_200; // 50KB
 export const HIGH_ROW_COUNT = 100;
 export const OVERFETCH_MIN_REQUESTS = 2;
+
+// Canvas dot colors (CSS vars don't work on canvas — hex required)
+export const DOT_COLORS = `{ green: '#4ade80', amber: '#fbbf24', red: '#f87171' }`;
+
+// Health grade visual config (threshold-ordered for lookup)
+export const HEALTH_GRADES = `[
+  { max: ${HEALTH_FAST_MS}, label: 'Fast', color: 'var(--green)', bg: 'rgba(22,163,74,0.08)', border: 'rgba(22,163,74,0.2)' },
+  { max: ${HEALTH_GOOD_MS}, label: 'Good', color: 'var(--green)', bg: 'rgba(22,163,74,0.06)', border: 'rgba(22,163,74,0.15)' },
+  { max: ${HEALTH_OK_MS}, label: 'OK', color: 'var(--amber)', bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.15)' },
+  { max: ${HEALTH_SLOW_MS}, label: 'Slow', color: 'var(--red)', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.15)' },
+  { max: Infinity, label: 'Critical', color: 'var(--red)', bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.2)' }
+]`;
+
+// Chart canvas rendering constants
+export const CHART_GRID_COLOR = "'rgba(228,228,231,0.8)'";
+export const CHART_LABEL_COLOR = "'rgba(113,113,122,0.7)'";
+export const CHART_FONT = "'10px monospace'";
+export const CHART_FONT_SM = "'9px monospace'";
+export const CHART_PAD = `{ top: 16, right: 16, bottom: 28, left: 52 }`;

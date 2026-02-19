@@ -25,7 +25,9 @@ export function getLayoutStyles(): string {
 
 /* Header */
 .header{display:flex;align-items:center;gap:16px;padding:0 28px;height:var(--header-height);border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;box-shadow:0 1px 0 rgba(0,0,0,0.03)}
-.header-title{font-weight:600;font-size:19px;color:var(--text);letter-spacing:-.2px}
+.header-left{display:flex;flex-direction:column;justify-content:center}
+.header-title{font-weight:600;font-size:17px;color:var(--text);letter-spacing:-.2px;line-height:1.2}
+.header-sub{font-size:11px;color:var(--text-muted);line-height:1.2}
 .header-right{margin-left:auto;display:flex;gap:10px;align-items:center}
 
 /* Segmented control */

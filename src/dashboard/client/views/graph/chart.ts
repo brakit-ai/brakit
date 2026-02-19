@@ -1,29 +1,91 @@
+import {
+  HEALTH_GOOD_MS,
+  HEALTH_OK_MS,
+  CHART_GRID_COLOR,
+  CHART_LABEL_COLOR,
+  CHART_FONT,
+  CHART_FONT_SM,
+  CHART_PAD,
+} from "../../constants.js";
+
 export function getGraphChart(): string {
   return `
-  function drawDetailChart(canvas, sessions) {
+  var THRESHOLD_GOOD = ${HEALTH_GOOD_MS};
+  var THRESHOLD_OK = ${HEALTH_OK_MS};
+  var CHART_PAD = ${CHART_PAD};
+
+  var scatterDots = [];
+
+  function setupCanvas(canvas) {
     var ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return null;
     var dpr = window.devicePixelRatio || 1;
     var w = canvas.clientWidth;
     var h = canvas.clientHeight;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     ctx.scale(dpr, dpr);
+    return { ctx: ctx, w: w, h: h };
+  }
 
-    var pad = { top: 16, right: 16, bottom: 28, left: 52 };
+  function reqDotColor(r) {
+    if (r.statusCode >= 400) return DOT_COLORS.red;
+    return dotColor(r.durationMs);
+  }
+
+  function drawDot(ctx, x, y, radius, color) {
+    var r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+    ctx.beginPath();
+    ctx.arc(x, y, radius + 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.25)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function drawErrorX(ctx, x, y, size, color, lineWidth) {
+    var r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+    ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.3)';
+    ctx.lineWidth = lineWidth + 2;
+    ctx.beginPath();
+    ctx.moveTo(x - size, y - size); ctx.lineTo(x + size, y + size);
+    ctx.moveTo(x + size, y - size); ctx.lineTo(x - size, y + size);
+    ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.moveTo(x - size, y - size); ctx.lineTo(x + size, y + size);
+    ctx.moveTo(x + size, y - size); ctx.lineTo(x - size, y + size);
+    ctx.stroke();
+  }
+
+  // Maps time → x-axis, duration → y-axis as a scatter plot
+  function drawScatterChart(canvas, requests) {
+    scatterDots = [];
+    var setup = setupCanvas(canvas);
+    if (!setup) return;
+    var ctx = setup.ctx, w = setup.w, h = setup.h;
+    if (requests.length === 0) return;
+
+    var pad = CHART_PAD;
     var cw = w - pad.left - pad.right;
     var ch = h - pad.top - pad.bottom;
-    if (sessions.length < 1) return;
 
     var maxVal = 0;
-    sessions.forEach(function(s) {
-      if (s.p95DurationMs > maxVal) maxVal = s.p95DurationMs;
-      if (s.avgDurationMs > maxVal) maxVal = s.avgDurationMs;
+    var minTime = requests[0].timestamp, maxTime = requests[0].timestamp;
+    requests.forEach(function(r) {
+      if (r.durationMs > maxVal) maxVal = r.durationMs;
+      if (r.timestamp < minTime) minTime = r.timestamp;
+      if (r.timestamp > maxTime) maxTime = r.timestamp;
     });
     maxVal = Math.max(maxVal, 10);
-    maxVal = Math.ceil(maxVal * 1.1 / 10) * 10;
+    maxVal = Math.ceil(maxVal * 1.15 / 10) * 10;
+    var timeRange = maxTime - minTime || 1;
 
-    ctx.strokeStyle = 'rgba(228,228,231,0.8)';
+    // Grid
+    ctx.strokeStyle = ${CHART_GRID_COLOR};
     ctx.lineWidth = 1;
     var gridLines = 4;
     for (var gi = 0; gi <= gridLines; gi++) {
@@ -32,95 +94,138 @@ export function getGraphChart(): string {
       ctx.moveTo(pad.left, gy);
       ctx.lineTo(pad.left + cw, gy);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(113,113,122,0.7)';
-      ctx.font = '10px monospace';
+      ctx.fillStyle = ${CHART_LABEL_COLOR};
+      ctx.font = ${CHART_FONT};
       ctx.textAlign = 'right';
       ctx.fillText(fmtMs(Math.round((gi / gridLines) * maxVal)), pad.left - 8, gy + 3);
     }
 
-    var step = sessions.length > 1 ? cw / (sessions.length - 1) : 0;
-
-    if (sessions.length > 1) {
+    // Thresholds
+    var thresholds = [
+      { ms: THRESHOLD_GOOD, label: fmtMs(THRESHOLD_GOOD) },
+      { ms: THRESHOLD_OK, label: fmtMs(THRESHOLD_OK) }
+    ];
+    thresholds.forEach(function(t) {
+      if (t.ms >= maxVal) return;
+      var ty = pad.top + ch - (t.ms / maxVal) * ch;
       ctx.beginPath();
-      ctx.fillStyle = 'rgba(124,58,237,0.06)';
-      sessions.forEach(function(s, i) {
-        var x = pad.left + i * step;
-        var y = pad.top + ch - (s.p95DurationMs / maxVal) * ch;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.lineTo(pad.left + (sessions.length - 1) * step, pad.top + ch);
-      ctx.lineTo(pad.left, pad.top + ch);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    if (sessions.length > 1) {
-      ctx.beginPath();
-      ctx.fillStyle = 'rgba(37,99,235,0.08)';
-      sessions.forEach(function(s, i) {
-        var x = pad.left + i * step;
-        var y = pad.top + ch - (s.avgDurationMs / maxVal) * ch;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.lineTo(pad.left + (sessions.length - 1) * step, pad.top + ch);
-      ctx.lineTo(pad.left, pad.top + ch);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    ctx.beginPath();
-    ctx.strokeStyle = '#7c3aed';
-    ctx.lineWidth = 1.5;
-    sessions.forEach(function(s, i) {
-      var x = sessions.length === 1 ? pad.left + cw / 2 : pad.left + i * step;
-      var y = pad.top + ch - (s.p95DurationMs / maxVal) * ch;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(113,113,122,0.3)';
+      ctx.lineWidth = 1;
+      ctx.moveTo(pad.left, ty);
+      ctx.lineTo(pad.left + cw, ty);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(113,113,122,0.5)';
+      ctx.font = ${CHART_FONT_SM};
+      ctx.textAlign = 'left';
+      ctx.fillText(t.label, pad.left + cw + 2, ty + 3);
     });
-    ctx.stroke();
 
-    ctx.beginPath();
-    ctx.strokeStyle = '#2563eb';
-    ctx.lineWidth = 2;
-    sessions.forEach(function(s, i) {
-      var x = sessions.length === 1 ? pad.left + cw / 2 : pad.left + i * step;
-      var y = pad.top + ch - (s.avgDurationMs / maxVal) * ch;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
+    // Dots
+    requests.forEach(function(r, idx) {
+      var x = requests.length === 1 ? pad.left + cw / 2 : pad.left + ((r.timestamp - minTime) / timeRange) * cw;
+      var y = pad.top + ch - (r.durationMs / maxVal) * ch;
+      var color = reqDotColor(r);
 
-    sessions.forEach(function(s, i) {
-      var x = sessions.length === 1 ? pad.left + cw / 2 : pad.left + i * step;
-      var yAvg = pad.top + ch - (s.avgDurationMs / maxVal) * ch;
-      var yP95 = pad.top + ch - (s.p95DurationMs / maxVal) * ch;
+      scatterDots.push({ x: x, y: y, idx: idx, r: r });
 
-      ctx.beginPath(); ctx.arc(x, yP95, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#7c3aed'; ctx.fill();
-      ctx.beginPath(); ctx.arc(x, yAvg, 3, 0, Math.PI * 2); ctx.fillStyle = '#2563eb'; ctx.fill();
-
-      if (sessions.length <= 12 || i === 0 || i === sessions.length - 1) {
-        ctx.font = '10px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#2563eb';
-        ctx.fillText(fmtMs(s.avgDurationMs), x, yAvg - 8);
+      if (r.statusCode >= 400) {
+        drawErrorX(ctx, x, y, 4, color, 2);
+      } else {
+        drawDot(ctx, x, y, 4, color);
       }
     });
 
-    ctx.fillStyle = 'rgba(113,113,122,0.7)';
-    ctx.font = '9px monospace';
+    // X-axis time labels
+    ctx.fillStyle = ${CHART_LABEL_COLOR};
+    ctx.font = ${CHART_FONT_SM};
     ctx.textAlign = 'center';
-    var labelStep = Math.max(1, Math.floor(sessions.length / 6));
-    sessions.forEach(function(s, i) {
-      if (i % labelStep !== 0 && i !== sessions.length - 1) return;
-      var x = sessions.length === 1 ? pad.left + cw / 2 : pad.left + i * step;
-      var d = new Date(s.startedAt);
-      ctx.fillText(d.toLocaleDateString([], {month:'short',day:'numeric'}), x, pad.top + ch + 14);
+    var timePoints = [minTime, minTime + timeRange / 2, maxTime];
+    timePoints.forEach(function(t, i) {
+      var x = pad.left + (i / 2) * cw;
+      var d = new Date(t);
+      ctx.fillText(d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}), x, pad.top + ch + 14);
     });
 
-    ctx.font = '10px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#2563eb'; ctx.fillRect(w - 120, 6, 8, 8);
-    ctx.fillStyle = 'rgba(113,113,122,0.7)'; ctx.fillText('avg', w - 108, 14);
-    ctx.fillStyle = '#7c3aed'; ctx.fillRect(w - 68, 6, 8, 8);
-    ctx.fillStyle = 'rgba(113,113,122,0.7)'; ctx.fillText('p95', w - 56, 14);
+    canvas.style.cursor = 'pointer';
+    canvas.onclick = function(e) {
+      var rect = canvas.getBoundingClientRect();
+      var mx = e.clientX - rect.left;
+      var my = e.clientY - rect.top;
+      var closest = null, closestDist = Infinity;
+      scatterDots.forEach(function(d) {
+        var dist = Math.sqrt((d.x - mx) * (d.x - mx) + (d.y - my) * (d.y - my));
+        if (dist < closestDist) { closestDist = dist; closest = d; }
+      });
+      if (closest && closestDist < 16) {
+        highlightRow(closest.idx);
+      }
+    };
+  }
+
+  function highlightRow(reqIdx) {
+    var prev = document.querySelector('.perf-hist-row-hl');
+    if (prev) prev.classList.remove('perf-hist-row-hl');
+    var row = document.querySelector('[data-req-idx="' + reqIdx + '"]');
+    if (row) {
+      row.classList.add('perf-hist-row-hl');
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function drawInlineScatter(canvas, requests) {
+    var setup = setupCanvas(canvas);
+    if (!setup) return;
+    var ctx = setup.ctx, w = setup.w, h = setup.h;
+    if (requests.length === 0) return;
+
+    var padX = 4, padY = 4;
+    var cw = w - padX * 2;
+    var ch = h - padY * 2;
+
+    var maxVal = 0, minVal = Infinity;
+    var minTime = requests[0].timestamp, maxTime = requests[0].timestamp;
+    requests.forEach(function(r) {
+      if (r.durationMs > maxVal) maxVal = r.durationMs;
+      if (r.durationMs < minVal) minVal = r.durationMs;
+      if (r.timestamp < minTime) minTime = r.timestamp;
+      if (r.timestamp > maxTime) maxTime = r.timestamp;
+    });
+    maxVal = Math.max(maxVal, 10);
+    maxVal = Math.ceil(maxVal * 1.15 / 10) * 10;
+    var timeRange = maxTime - minTime || 1;
+
+    [THRESHOLD_GOOD, THRESHOLD_OK].forEach(function(ms) {
+      if (ms >= maxVal) return;
+      var ty = padY + ch - (ms / maxVal) * ch;
+      ctx.beginPath();
+      ctx.setLineDash([2, 3]);
+      ctx.strokeStyle = 'rgba(113,113,122,0.15)';
+      ctx.lineWidth = 1;
+      ctx.moveTo(padX, ty);
+      ctx.lineTo(padX + cw, ty);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    requests.forEach(function(r) {
+      var x = requests.length === 1 ? padX + cw / 2 : padX + ((r.timestamp - minTime) / timeRange) * cw;
+      var y = padY + ch - (r.durationMs / maxVal) * ch;
+      var color = reqDotColor(r);
+
+      if (r.statusCode >= 400) {
+        drawErrorX(ctx, x, y, 2.5, color, 1.5);
+      } else {
+        drawDot(ctx, x, y, 2.5, color);
+      }
+    });
+
+    ctx.fillStyle = 'rgba(113,113,122,0.5)';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(fmtMs(maxVal), w - 2, padY + 8);
+    ctx.fillText(fmtMs(0), w - 2, h - 2);
   }
   `;
 }

@@ -26,7 +26,7 @@ export function getRequestsView(): string {
   function createReqRow(req) {
     var row = document.createElement('div');
     row.className = 'req-row';
-    var sClass = req.statusCode >= 500 ? 'status-pill-5xx' : req.statusCode >= 400 ? 'status-pill-4xx' : req.statusCode >= 300 ? 'status-pill-3xx' : 'status-pill-2xx';
+    var sClass = statusPillClass(req.statusCode);
     row.innerHTML =
       '<div class="req-summary">' +
         '<span class="method-badge method-badge-' + req.method + '">' + req.method + '</span>' +

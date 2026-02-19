@@ -13,6 +13,7 @@ import {
   DASHBOARD_API_QUERIES,
   DASHBOARD_API_INGEST,
   DASHBOARD_API_METRICS,
+  DASHBOARD_API_METRICS_LIVE,
   DASHBOARD_API_ACTIVITY,
 } from "../constants/index.js";
 import {
@@ -25,6 +26,7 @@ import {
   handleApiQueries,
   handleApiIngest,
   createMetricsHandler,
+  createLiveMetricsHandler,
   handleApiActivity,
 } from "./api/index.js";
 import { handleSSE } from "./sse.js";
@@ -53,6 +55,7 @@ export function createDashboardHandler(
     [DASHBOARD_API_ERRORS]: handleApiErrors,
     [DASHBOARD_API_QUERIES]: handleApiQueries,
     [DASHBOARD_API_METRICS]: createMetricsHandler(deps.metricsStore),
+    [DASHBOARD_API_METRICS_LIVE]: createLiveMetricsHandler(deps.metricsStore),
     [DASHBOARD_API_INGEST]: handleApiIngest,
     [DASHBOARD_API_ACTIVITY]: handleApiActivity,
   };

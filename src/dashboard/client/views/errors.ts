@@ -37,7 +37,7 @@ export function getErrorsView(): string {
       var data = await res.json();
       state.errors = data.entries;
       renderErrors();
-    } catch(e) {}
+    } catch(e) { console.warn('[brakit]', e); }
   }
   `;
 }

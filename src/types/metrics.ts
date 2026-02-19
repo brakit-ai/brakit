@@ -11,9 +11,30 @@ export interface SessionMetric {
 export interface EndpointMetrics {
   endpoint: string;
   sessions: SessionMetric[];
+  dataPoints?: LiveRequestPoint[];
 }
 
 export interface MetricsData {
   version: 1;
   endpoints: EndpointMetrics[];
+}
+
+export interface LiveRequestPoint {
+  timestamp: number;
+  durationMs: number;
+  statusCode: number;
+  queryCount: number;
+}
+
+export interface LiveEndpointSummary {
+  p95Ms: number;
+  errorRate: number;
+  avgQueryCount: number;
+  totalRequests: number;
+}
+
+export interface LiveEndpointData {
+  endpoint: string;
+  requests: LiveRequestPoint[];
+  summary: LiveEndpointSummary;
 }

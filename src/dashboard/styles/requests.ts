@@ -44,5 +44,24 @@ export function getRequestStyles(): string {
 .query-detail-sql{background:var(--bg-muted);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:var(--mono);font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);max-height:200px;overflow-y:auto;margin:0}
 .query-detail-copy{position:absolute;top:8px;right:36px;padding:2px 8px;font-size:9px;font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-muted);cursor:pointer;transition:all .15s}
 .query-detail-copy:hover{background:var(--bg-hover);color:var(--text);border-color:var(--border-light)}
+
+/* Fetch analysis */
+.fetch-analysis{padding:16px 28px 0}
+.fetch-summary{display:flex;gap:24px;padding:14px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;box-shadow:var(--shadow-sm);flex-wrap:wrap}
+.fetch-stat{display:flex;flex-direction:column;gap:2px}
+.fetch-stat-value{font-size:17px;font-weight:700;font-family:var(--mono);color:var(--text)}
+.fetch-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);font-weight:600}
+.fetch-groups-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:10px}
+.fetch-groups{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.fetch-group{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow-sm);transition:all .15s}
+.fetch-group:hover{border-color:var(--border-light);box-shadow:var(--shadow-md)}
+.fetch-group-header{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:13px}
+.fetch-group-url{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--text)}
+.fetch-group-count{font-size:12px;color:var(--text-muted);flex-shrink:0;background:var(--bg-muted);padding:2px 8px;border-radius:10px}
+.fetch-group-meta{display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text-dim);font-family:var(--mono)}
+.fetch-group-meta span{display:flex;align-items:center;gap:4px}
+.fetch-group-callers{margin-top:6px;font-size:11px;color:var(--text-muted)}
+.fetch-group-callers strong{color:var(--text-dim);font-weight:500}
+.fetch-group-err{color:var(--red)}
 `;
 }

@@ -10,3 +10,4 @@ export const DASHBOARD_API_QUERIES = "/__brakit/api/queries";
 export const DASHBOARD_API_INGEST = "/__brakit/api/ingest";
 export const DASHBOARD_API_METRICS = "/__brakit/api/metrics";
 export const DASHBOARD_API_ACTIVITY = "/__brakit/api/activity";
+export const DASHBOARD_API_METRICS_LIVE = "/__brakit/api/metrics/live";

@@ -1,4 +1,4 @@
-import { DASHBOARD_API_METRICS } from "../../../constants/index.js";
+import { DASHBOARD_API_METRICS_LIVE } from "../../../constants/index.js";
 import { GRAPH_COLORS } from "../constants.js";
 import { getGraphHealthUtils } from "./graph/health.js";
 import { getGraphOverview } from "./graph/overview.js";
@@ -23,7 +23,7 @@ export function getGraphView(): string {
     container.innerHTML = '';
 
     if (!graphData || graphData.length === 0) {
-      container.innerHTML = '<div class="empty" style="height:300px"><span class="empty-title">No performance data yet</span><span class="empty-sub">Metrics are collected as you use your app across sessions</span></div>';
+      container.innerHTML = '<div class="empty" style="height:300px"><span class="empty-title">No performance data yet</span><span class="empty-sub">Hit some endpoints and data will appear here</span></div>';
       return;
     }
 
@@ -56,14 +56,14 @@ export function getGraphView(): string {
 
   async function loadMetrics() {
     try {
-      var res = await fetch('${DASHBOARD_API_METRICS}');
+      var res = await fetch('${DASHBOARD_API_METRICS_LIVE}');
       var data = await res.json();
       graphData = data.endpoints || [];
       if (!selectedEndpoint || selectedEndpoint === '__all__') {
         selectedEndpoint = '__all__';
       }
       renderGraph();
-    } catch(e) {}
+    } catch(e) { console.warn('[brakit]', e); }
   }
   `;
 }

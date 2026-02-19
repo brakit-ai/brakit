@@ -35,6 +35,18 @@ export function getApp(): string {
     security: 'Security'
   };
 
+  var VIEW_SUBTITLES = {
+    overview: 'Live summary of your application',
+    actions: 'User actions captured as sequences of HTTP requests',
+    requests: 'All HTTP requests proxied through brakit',
+    fetches: 'Outbound HTTP calls made by your server to external services',
+    queries: 'Database queries executed during request handling',
+    errors: 'Unhandled exceptions and errors thrown by your application',
+    logs: 'Console output from your application',
+    performance: 'Endpoint health and response time trends',
+    security: 'Security findings and recommendations'
+  };
+
   async function init() {
     try {
       var res = await fetch('${DASHBOARD_API_FLOWS}');
@@ -48,7 +60,7 @@ export function getApp(): string {
       var data2 = await res2.json();
       state.requests = data2.requests;
       renderRequests();
-    } catch(e) {}
+    } catch(e) { console.warn('[brakit]', e); }
 
     await Promise.all([loadFetches(), loadErrors(), loadLogs(), loadQueries(), loadMetrics()]);
 
@@ -57,6 +69,7 @@ export function getApp(): string {
 
     var events = new EventSource('${DASHBOARD_API_EVENTS}');
     var reloadTimer = null;
+    var perfReloadTimer = null;
     events.onmessage = function(e) {
       var req = JSON.parse(e.data);
       if (req.path && req.path.startsWith('${DASHBOARD_PREFIX}')) return;
@@ -66,6 +79,10 @@ export function getApp(): string {
       reloadTimer = setTimeout(reloadFlows, ${CLIENT_RELOAD_DEBOUNCE_MS});
       prependRequestRow(req);
       updateStats();
+      if (state.activeView === 'performance') {
+        clearTimeout(perfReloadTimer);
+        perfReloadTimer = setTimeout(loadMetrics, 500);
+      }
     };
 
     events.addEventListener('fetch', function(e) {
@@ -113,7 +130,7 @@ export function getApp(): string {
       renderFlows();
       updateStats();
       renderOverview();
-    } catch(e) {}
+    } catch(e) { console.warn('[brakit]', e); }
   }
 
   function switchView(view) {
@@ -132,6 +149,7 @@ export function getApp(): string {
       item.classList.add('active');
       state.activeView = view;
       document.getElementById('header-title').textContent = VIEW_TITLES[view] || view;
+      document.getElementById('header-sub').textContent = VIEW_SUBTITLES[view] || '';
       document.getElementById('mode-toggle').style.display = view === 'actions' ? 'flex' : 'none';
       if (view === 'overview') renderOverview();
       if (view === 'security') renderSecurity();

@@ -27,6 +27,9 @@ export type {
   SessionMetric,
   EndpointMetrics,
   MetricsData,
+  LiveRequestPoint,
+  LiveEndpointSummary,
+  LiveEndpointData,
 } from "./metrics.js";
 
 export type { FrontendDetector, BackendDetector } from "./detection.js";
