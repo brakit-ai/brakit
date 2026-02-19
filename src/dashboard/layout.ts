@@ -122,8 +122,9 @@ export function getLayoutHtml(config: BrakitConfig): string {
         <div id="error-list"></div>
       </div>
       <div class="view-telemetry" id="log-container" style="display:none">
+        <div id="log-analysis"></div>
         <div class="col-header">
-          <span style="width:60px">Level</span>
+          <span style="width:52px">Level</span>
           <span style="flex:1">Message</span>
           <span style="width:130px;text-align:right">Time</span>
         </div>

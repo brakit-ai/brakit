@@ -1,7 +1,7 @@
 export function getRequestStyles(): string {
   return `
 /* Request rows */
-.req-row{padding:12px 28px;border-bottom:1px solid var(--border-subtle);cursor:pointer;transition:background .1s}
+.req-row{display:flex;align-items:center;gap:16px;padding:12px 28px;border-bottom:1px solid var(--border-subtle);cursor:pointer;transition:background .1s;font-family:var(--mono);font-size:14px}
 .req-row:hover{background:var(--bg-hover)}
 .req-row.expanded{background:var(--bg-muted)}
 .req-summary{display:flex;align-items:center;gap:16px;font-family:var(--mono);font-size:14px}
@@ -25,10 +25,15 @@ export function getRequestStyles(): string {
 .tel-status-err{color:var(--red)}
 .tel-duration{width:70px;text-align:right;color:var(--text-muted)}
 .tel-timestamp{width:130px;text-align:right;color:var(--text-muted)}
-.tel-level{width:60px;font-weight:500;flex-shrink:0}
+.tel-level{width:52px;flex-shrink:0;font-size:10px;font-weight:600;text-align:center;padding:3px 0;border-radius:4px;letter-spacing:.5px}
+.tel-level-error{color:var(--red);background:rgba(220,38,38,0.08)}
+.tel-level-warn{color:var(--amber);background:rgba(217,119,6,0.08)}
+.tel-level-info{color:var(--blue);background:rgba(37,99,235,0.08)}
+.tel-level-debug{color:var(--text-muted);background:var(--bg-muted)}
+.tel-level-log{color:var(--text-dim);background:var(--bg-muted)}
 .tel-error-name{width:120px;color:var(--red);font-weight:500;flex-shrink:0}
-.tel-message{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tel-mono{font-family:monospace;font-size:11px}
+.tel-message{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim)}
+.tel-mono{font-family:var(--mono);font-size:12px}
 .tel-clickable{cursor:pointer}
 .error-stack{padding:8px 16px;font-size:10px;color:var(--text-dim);white-space:pre-wrap;font-family:var(--mono);background:var(--bg-muted);border-bottom:1px solid var(--border)}
 
@@ -46,7 +51,7 @@ export function getRequestStyles(): string {
 .query-detail-copy:hover{background:var(--bg-hover);color:var(--text);border-color:var(--border-light)}
 
 /* Fetch analysis */
-.fetch-analysis{padding:16px 28px 0}
+.fetch-analysis,#log-analysis{padding:16px 28px 0}
 .fetch-summary{display:flex;gap:24px;padding:14px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;box-shadow:var(--shadow-sm);flex-wrap:wrap}
 .fetch-stat{display:flex;flex-direction:column;gap:2px}
 .fetch-stat-value{font-size:17px;font-weight:700;font-family:var(--mono);color:var(--text)}
