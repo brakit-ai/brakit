@@ -1,6 +1,14 @@
 import type { SecurityRule } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
+import type { TracedRequest } from "../../types/index.js";
 import { RULE_HINTS } from "./patterns.js";
+
+function isFrameworkResponse(r: TracedRequest): boolean {
+  if (r.statusCode >= 300 && r.statusCode < 400) return true;
+  if (r.path?.startsWith("/__")) return true;
+  if (r.responseHeaders?.["x-middleware-rewrite"]) return true;
+  return false;
+}
 
 export const insecureCookieRule: SecurityRule = {
   id: "insecure-cookie",
@@ -14,6 +22,7 @@ export const insecureCookieRule: SecurityRule = {
 
     for (const r of ctx.requests) {
       if (!r.responseHeaders) continue;
+      if (isFrameworkResponse(r)) continue;
       const setCookie = r.responseHeaders["set-cookie"];
       if (!setCookie) continue;
       const cookies = setCookie.split(/,(?=\s*[A-Za-z0-9_\-]+=)/);

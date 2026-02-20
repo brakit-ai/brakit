@@ -108,7 +108,7 @@ export function getTimelineView(): string {
              '<span class="tl-event-dur">' + formatDuration(d.durationMs) + '</span>';
     }
     if (evt.type === 'query') {
-      var info = d.sql ? simplifySQL(d.sql) : { op: d.operation || '?', table: d.model || '' };
+      var info = { op: (d.normalizedOp || d.operation || '?').toUpperCase(), table: d.table || d.model || '' };
       var opColor = QUERY_OP_COLORS[info.op] || 'var(--text-dim)';
       return '<span class="tl-event-summary"><span style="color:' + opColor + ';font-weight:600">' + escHtml(info.op) + '</span> ' + escHtml(info.table) + '</span>' +
              '<span class="tl-event-dur">' + queryDuration(d.durationMs) + '</span>';

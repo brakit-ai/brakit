@@ -8,7 +8,7 @@ export function getQueriesView(): string {
     var row = document.createElement('div');
     row.className = 'req-row query-row tel-clickable';
 
-    var info = q.sql ? simplifySQL(q.sql) : { op: q.operation || '?', table: q.model || '' };
+    var info = { op: (q.normalizedOp || q.operation || '?').toUpperCase(), table: q.table || q.model || '' };
     var opColor = QUERY_OP_COLORS[info.op] || 'var(--text-dim)';
     var slowCls = q.durationMs > ${SLOW_QUERY_THRESHOLD_MS} ? ' query-slow' : '';
     var preview = q.sql || (info.op + ' ' + info.table);

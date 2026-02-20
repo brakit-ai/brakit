@@ -94,6 +94,12 @@ export async function startBrakit(opts: StartOptions): Promise<BrakitInstance> {
 
   const proxy = createProxyServer(config, handleDashboard);
 
+  proxy.on("error", (err: NodeJS.ErrnoException) => {
+    devProcess.kill("SIGTERM");
+    console.error(pc.red(`\n  Proxy failed to start: ${err.message}`));
+    process.exit(1);
+  });
+
   proxy.listen(proxyPort, () => {
     printBanner(proxyPort, targetPort);
   });
