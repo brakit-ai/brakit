@@ -96,11 +96,11 @@ The instrumentation layer runs inside your dev server process (injected via `--i
 | Framework   | Status                     |
 | ----------- | -------------------------- |
 | Next.js     | Full support (auto-detect) |
-| Express     | Coming soon                |
-| Fastify     | Coming soon                |
-| Remix       | Coming soon                |
-| SvelteKit   | Coming soon                |
-| Nuxt        | Coming soon                |
+| Remix       | Auto-detect                |
+| Nuxt        | Auto-detect                |
+| Vite        | Auto-detect                |
+| Astro       | Auto-detect                |
+| Any backend | Via `--command` flag        |
 
 ### Supported Databases
 
@@ -118,10 +118,11 @@ The instrumentation layer runs inside your dev server process (injected via `--i
 ## CLI Options
 
 ```bash
-npx brakit dev                # Auto-detect and start
-npx brakit dev --port 3000    # Custom proxy port (default: 3000)
-npx brakit dev --show-static  # Show static asset requests
-npx brakit dev ./my-app       # Specify project directory
+npx brakit dev                              # Auto-detect and start
+npx brakit dev --port 3000                  # Custom proxy port (default: 3000)
+npx brakit dev --show-static                # Show static asset requests
+npx brakit dev ./my-app                     # Specify project directory
+npx brakit dev --command "python manage.py" # Any backend, any language
 ```
 
 ---
@@ -143,18 +144,24 @@ Only 2 production dependencies: `citty` (CLI) and `picocolors` (terminal colors)
 
 ### Architecture
 
+For a full walkthrough of how brakit works — the two-process model, adapter
+system, analysis engine, and SDK protocol — see
+[How Brakit Works](docs/design/architecture.md).
+
 ```
 src/
-  analysis/       Categorization, labeling, flow grouping, duplicate/N+1 detection
+  analysis/       Security scanning, N+1 detection, insights engine
+    rules/        SecurityRule implementations (one file per rule)
   cli/            CLI entry point (citty)
   dashboard/
     api/          REST handlers — requests, flows, telemetry, metrics, ingest
     client/       Browser JS generated as template strings
-      rules/      Security rules split by severity
       views/      Tab renderers (overview, flows, graph, etc.)
     styles/       CSS modules
   detect/         Framework auto-detection
-  instrument/     Runtime hooks (fetch, console, db, errors) + batched transport
+  instrument/     Node.js --import instrumentation
+    adapters/     BrakitAdapter implementations (one file per library)
+    hooks/        Core runtime hooks (fetch, console, errors, context)
   proxy/          HTTP reverse proxy, request capture, WebSocket forwarding
   store/          In-memory telemetry stores + persistent metrics
   types/          TypeScript definitions by domain
@@ -164,14 +171,16 @@ src/
 
 ## Contributing
 
-Brakit is early and moving fast. If you've ever wished a dev tool did something differently, this is your chance to build it.
+Brakit is early and moving fast. The most common contributions — adding a new
+database adapter or a new security rule — each require exactly one file and one
+interface. See [CONTRIBUTING.md](CONTRIBUTING.md) for step-by-step guides.
 
 Some areas where help would be great:
 
-- **Framework support** — Express, Fastify, Remix, SvelteKit, Nuxt
-- **Database drivers** — SQLite, MongoDB, Drizzle ORM
-- **Dashboard** — Request diff, timeline view, HAR export
+- **Database adapters** — Drizzle, Mongoose, SQLite, MongoDB
 - **Security rules** — More patterns, configurable severity
+- **Language SDKs** — Python, Go, Ruby (uses the [ingest protocol](docs/design/architecture.md#supporting-other-languages))
+- **Dashboard** — Request diff, timeline view, HAR export
 
 Please open an issue first for larger changes so we can discuss the approach.
 
