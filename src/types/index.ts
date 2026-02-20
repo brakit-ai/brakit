@@ -5,7 +5,7 @@ export type {
   RequestListener,
 } from "./http.js";
 
-export type { DetectedProject, BrakitConfig } from "./config.js";
+export type { Framework, DetectedProject, BrakitConfig } from "./config.js";
 
 export type {
   RequestCategory,
@@ -14,6 +14,7 @@ export type {
 } from "./analysis.js";
 
 export type {
+  NormalizedOp,
   TelemetryEntry,
   TracedFetch,
   TracedLog,

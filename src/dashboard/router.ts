@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { BrakitConfig } from "../types/index.js";
 import type { MetricsStore } from "../store/index.js";
+import type { AnalysisEngine } from "../analysis/engine.js";
 import {
   DASHBOARD_PREFIX,
   DASHBOARD_API_REQUESTS,
@@ -15,6 +16,8 @@ import {
   DASHBOARD_API_METRICS,
   DASHBOARD_API_METRICS_LIVE,
   DASHBOARD_API_ACTIVITY,
+  DASHBOARD_API_INSIGHTS,
+  DASHBOARD_API_SECURITY,
 } from "../constants/index.js";
 import {
   handleApiRequests,
@@ -29,6 +32,7 @@ import {
   createLiveMetricsHandler,
   handleApiActivity,
 } from "./api/index.js";
+import { createInsightsHandler, createSecurityHandler } from "./api/insights.js";
 import { handleSSE } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
 
@@ -40,6 +44,7 @@ export function isDashboardRequest(url: string): boolean {
 
 export interface DashboardDeps {
   metricsStore: MetricsStore;
+  analysisEngine?: AnalysisEngine;
 }
 
 export function createDashboardHandler(
@@ -59,6 +64,11 @@ export function createDashboardHandler(
     [DASHBOARD_API_INGEST]: handleApiIngest,
     [DASHBOARD_API_ACTIVITY]: handleApiActivity,
   };
+
+  if (deps.analysisEngine) {
+    routes[DASHBOARD_API_INSIGHTS] = createInsightsHandler(deps.analysisEngine);
+    routes[DASHBOARD_API_SECURITY] = createSecurityHandler(deps.analysisEngine);
+  }
 
   return (req, res, config) => {
     const path = (req.url ?? "/").split("?")[0];

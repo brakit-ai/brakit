@@ -1,5 +1,14 @@
+export type Framework =
+  | "nextjs"
+  | "remix"
+  | "nuxt"
+  | "vite"
+  | "astro"
+  | "custom"
+  | "unknown";
+
 export interface DetectedProject {
-  framework: "nextjs" | "unknown";
+  framework: Framework;
   devCommand: string;
   devBin: string;
   defaultPort: number;
@@ -11,4 +20,5 @@ export interface BrakitConfig {
   targetPort: number;
   showStatic: boolean;
   maxBodyCapture: number;
+  customCommand?: string;
 }

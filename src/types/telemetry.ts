@@ -22,6 +22,8 @@ export interface TracedError extends TelemetryEntry {
   stack: string;
 }
 
+export type NormalizedOp = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
+
 export interface TracedQuery extends TelemetryEntry {
   driver: "pg" | "mysql2" | "prisma" | string;
   sql?: string;
@@ -29,6 +31,9 @@ export interface TracedQuery extends TelemetryEntry {
   operation?: string;
   durationMs: number;
   rowCount?: number;
+  normalizedOp?: NormalizedOp;
+  table?: string;
+  source?: string;
 }
 
 export type TelemetryEvent =

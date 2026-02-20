@@ -9,6 +9,7 @@ export function createShutdownHandler(instance: BrakitInstance): () => void {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(pc.dim("\n  Shutting down..."));
+    instance.analysisEngine.stop();
     instance.metricsStore.stop();
     instance.proxy.close();
     instance.devProcess.kill("SIGTERM");

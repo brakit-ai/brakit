@@ -5,11 +5,14 @@ if (process.env.BRAKIT_PORT && process.env.BRAKIT_INSTRUMENT !== "0") {
   const { setupConsoleHook } = await import("./hooks/console.js");
   const { setupErrorHook } = await import("./hooks/errors.js");
   const { setupHttpContextHook } = await import("./hooks/http-context.js");
-  const { setupDbHook } = await import("./hooks/db/index.js");
+  const { createDefaultRegistry } = await import("./adapters/index.js");
+  const { send } = await import("./transport.js");
 
   setupHttpContextHook();
   setupFetchHook();
   setupConsoleHook();
   setupErrorHook();
-  setupDbHook();
+
+  const registry = createDefaultRegistry();
+  registry.patchAll((event) => send(event));
 }

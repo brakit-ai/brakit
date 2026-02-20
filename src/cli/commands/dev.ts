@@ -22,6 +22,11 @@ export default defineCommand({
       description: "Port for brakit proxy",
       default: "3000",
     },
+    command: {
+      type: "string",
+      alias: "c",
+      description: "Custom dev server command (e.g. 'python manage.py runserver')",
+    },
     "show-static": {
       type: "boolean",
       description: "Show static asset requests",
@@ -33,6 +38,7 @@ export default defineCommand({
       rootDir: resolve(args.dir as string),
       proxyPort: parseInt(args.port as string, 10),
       showStatic: args["show-static"] as boolean,
+      customCommand: args.command as string | undefined,
     });
 
     const cleanup = createShutdownHandler(instance);
