@@ -1,7 +1,7 @@
 {
   "name": "brakit",
   "version": "0.1.0",
-  "description": "Understand your every API call like never before.",
+  "description": "See what your API is really doing. Security scanning, N+1 detection, duplicate calls, DB queries — one command, zero config.",
   "type": "module",
   "bin": {
     "brakit": "./dist/bin/brakit.js"
@@ -13,6 +13,9 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist"
@@ -30,11 +33,11 @@
     "type": "git",
     "url": "git+https://github.com/brakit-ai/brakit.git"
   },
-  "homepage": "https://www.brakit.ai",
+  "homepage": "https://brakit.ai",
   "bugs": {
     "url": "https://github.com/brakit-ai/brakit/issues"
   },
-  "author": "dev@brakit.ai",
+  "author": "Brakit <dev@brakit.ai> (https://brakit.ai)",
   "dependencies": {
     "citty": "^0.1.6",
     "picocolors": "^1.1.1"
@@ -51,16 +54,26 @@
   "license": "MIT",
   "keywords": [
     "api-monitoring",
+    "api-security",
     "request-tracing",
     "n-plus-one",
+    "n+1-detection",
     "duplicate-detection",
     "security-scanning",
     "devtools",
+    "developer-tools",
     "nextjs",
+    "prisma",
+    "postgresql",
+    "mysql",
+    "database-queries",
+    "query-analysis",
+    "http-proxy",
+    "reverse-proxy",
     "dashboard",
     "performance",
-    "database-queries",
-    "http-proxy",
-    "zero-config"
+    "runtime-analysis",
+    "zero-config",
+    "observability"
   ]
 }
