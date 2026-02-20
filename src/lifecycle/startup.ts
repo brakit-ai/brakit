@@ -11,6 +11,7 @@ import type { BrakitConfig, DetectedProject } from "../types/index.js";
 import { MetricsStore, FileMetricsPersistence, defaultQueryStore } from "../store/index.js";
 import { createDashboardHandler } from "../dashboard/router.js";
 import { AnalysisEngine } from "../analysis/engine.js";
+import { findFreePortPair } from "../process/port.js";
 
 export interface StartOptions {
   rootDir: string;
@@ -29,7 +30,18 @@ export interface BrakitInstance {
 }
 
 export async function startBrakit(opts: StartOptions): Promise<BrakitInstance> {
-  const { rootDir, proxyPort, showStatic, customCommand } = opts;
+  const { rootDir, showStatic, customCommand } = opts;
+
+  let proxyPort: number;
+  try {
+    proxyPort = await findFreePortPair(opts.proxyPort);
+  } catch {
+    console.error(pc.red(`\n  Could not find a free port starting from ${opts.proxyPort}.`));
+    process.exit(1);
+  }
+  if (proxyPort !== opts.proxyPort) {
+    console.log(pc.yellow(`  Port ${opts.proxyPort} is in use, using ${proxyPort} instead.`));
+  }
   const targetPort = proxyPort + 1;
 
   let project: DetectedProject;
@@ -81,15 +93,6 @@ export async function startBrakit(opts: StartOptions): Promise<BrakitInstance> {
     : spawnDevServer(project.devBin, targetPort, proxyPort, rootDir);
 
   const proxy = createProxyServer(config, handleDashboard);
-
-  proxy.on("error", (err: NodeJS.ErrnoException) => {
-    if (err.code === "EADDRINUSE") {
-      console.error(pc.red(`\n  Port ${proxyPort} is already in use.`));
-      console.error(pc.dim(`  Try: npx brakit --port ${proxyPort + 2}`));
-      devProcess.kill("SIGTERM");
-      process.exit(1);
-    }
-  });
 
   proxy.listen(proxyPort, () => {
     printBanner(proxyPort, targetPort);

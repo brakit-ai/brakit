@@ -2,13 +2,8 @@ import type { SecurityRule } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
 import { EMAIL_RE, INTERNAL_ID_KEYS, INTERNAL_ID_SUFFIX, RULE_HINTS } from "./patterns.js";
 
-/** Methods that carry a request body worth comparing for echo detection */
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH"]);
-
-/** Minimum field count to consider a response a "full record dump" */
 const FULL_RECORD_MIN_FIELDS = 5;
-
-/** Minimum items in an array to trigger list-PII detection */
 const LIST_PII_MIN_ITEMS = 2;
 
 function tryParseJson(body: string | null): unknown {
@@ -16,7 +11,6 @@ function tryParseJson(body: string | null): unknown {
   try { return JSON.parse(body); } catch { return null; }
 }
 
-/** Recursively find all email-valued string fields in an object. */
 function findEmails(obj: unknown): string[] {
   const emails: string[] = [];
   if (!obj || typeof obj !== "object") return emails;
@@ -36,7 +30,6 @@ function findEmails(obj: unknown): string[] {
   return emails;
 }
 
-/** Count top-level keys in an object (or the first item of an array). */
 function topLevelFieldCount(obj: unknown): number {
   if (Array.isArray(obj)) {
     return obj.length > 0 ? topLevelFieldCount(obj[0]) : 0;
@@ -45,7 +38,6 @@ function topLevelFieldCount(obj: unknown): number {
   return 0;
 }
 
-/** Check whether an object contains internal ID fields (userId, _id, etc.) */
 function hasInternalIds(obj: unknown): boolean {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return false;
   for (const key of Object.keys(obj as Record<string, unknown>)) {
@@ -54,19 +46,28 @@ function hasInternalIds(obj: unknown): boolean {
   return false;
 }
 
-/** Get the target object for inspection — unwrap common response wrappers. */
 function unwrapResponse(parsed: unknown): unknown {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parsed;
   const obj = parsed as Record<string, unknown>;
-  // Common wrappers: { data: ... }, { result: ... }, { user: ... }
-  if (Object.keys(obj).length <= 2) {
-    for (const key of ["data", "result", "user", "users", "items", "results"]) {
-      if (key in obj && typeof obj[key] === "object" && obj[key] !== null) {
-        return obj[key];
+  const keys = Object.keys(obj);
+  if (keys.length > 3) return parsed;
+
+  let best: unknown = null;
+  let bestSize = 0;
+  for (const key of keys) {
+    const val = obj[key];
+    if (Array.isArray(val) && val.length > bestSize) {
+      best = val;
+      bestSize = val.length;
+    } else if (val && typeof val === "object" && !Array.isArray(val)) {
+      const size = Object.keys(val as Record<string, unknown>).length;
+      if (size > bestSize) {
+        best = val;
+        bestSize = size;
       }
     }
   }
-  return parsed;
+  return best && bestSize >= 3 ? best : parsed;
 }
 
 type PIIReason = "echo" | "full-record" | "list-pii";
@@ -83,15 +84,12 @@ function detectPII(
 ): PIIDetection | null {
   const target = unwrapResponse(resBody);
 
-  // --- Echo Detection ---
-  // POST/PUT/PATCH that echoes back email from the request body
   if (WRITE_METHODS.has(method) && reqBody && typeof reqBody === "object") {
     const reqEmails = findEmails(reqBody);
     if (reqEmails.length > 0) {
       const resEmails = findEmails(target);
       const echoed = reqEmails.filter((e) => resEmails.includes(e));
       if (echoed.length > 0) {
-        // Only flag if the response also has internal IDs or many fields (full dump)
         const inspectObj = Array.isArray(target) && target.length > 0 ? target[0] : target;
         if (hasInternalIds(inspectObj) || topLevelFieldCount(inspectObj) >= FULL_RECORD_MIN_FIELDS) {
           return { reason: "echo", emailCount: echoed.length };
@@ -100,8 +98,6 @@ function detectPII(
     }
   }
 
-  // --- Full Record Dump Detection ---
-  // Response contains email + internal IDs + many fields
   if (target && typeof target === "object" && !Array.isArray(target)) {
     const fields = topLevelFieldCount(target);
     if (fields >= FULL_RECORD_MIN_FIELDS && hasInternalIds(target)) {
@@ -112,8 +108,6 @@ function detectPII(
     }
   }
 
-  // --- List PII Detection ---
-  // Response array with multiple items containing email fields
   if (Array.isArray(target) && target.length >= LIST_PII_MIN_ITEMS) {
     let itemsWithEmail = 0;
     for (let i = 0; i < Math.min(target.length, 10); i++) {

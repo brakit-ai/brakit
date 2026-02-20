@@ -84,7 +84,6 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     (r) => !r.isStatic && (!r.path || !r.path.startsWith(DASHBOARD_PREFIX)),
   );
 
-  // Group queries by parent request
   const queriesByReq = new Map<string, TracedQuery[]>();
   for (const q of ctx.queries) {
     if (!q.parentRequestId) continue;
@@ -96,7 +95,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
   const reqById = new Map<string, TracedRequest>();
   for (const r of nonStatic) reqById.set(r.id, r);
 
-  // --- N+1: same query shape with different params in a single request ---
+  // --- N+1 ---
   const n1Seen = new Set<string>();
   for (const [reqId, reqQueries] of queriesByReq) {
     const req = reqById.get(reqId);
@@ -129,7 +128,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // --- Cross-endpoint: same query shape across many endpoints ---
+  // --- Cross-endpoint ---
   const ceQueryMap = new Map<string, { endpoints: Set<string>; count: number; first: TracedQuery }>();
   const ceAllEndpoints = new Set<string>();
   for (const [reqId, reqQueries] of queriesByReq) {
@@ -168,7 +167,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // --- Redundant: exact same query (same params) in one request ---
+  // --- Redundant queries ---
   const rqSeen = new Set<string>();
   for (const [reqId, reqQueries] of queriesByReq) {
     const req = reqById.get(reqId);
@@ -199,7 +198,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // --- Unhandled errors ---
+  // --- Errors ---
   if (ctx.errors.length > 0) {
     const errGroups = new Map<string, number>();
     for (const e of ctx.errors) {
@@ -218,7 +217,6 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // --- Endpoint aggregates ---
   const endpointGroups = new Map<string, { total: number; errors: number; totalDuration: number; queryCount: number; totalSize: number }>();
   for (const r of nonStatic) {
     const ep = `${r.method} ${r.path}`;
@@ -247,7 +245,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // --- Duplicate API calls across flows ---
+  // --- Duplicates ---
   const dupCounts = new Map<string, number>();
   const flowCount = new Map<string, number>();
   for (const flow of ctx.flows) {
@@ -278,7 +276,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     });
   }
 
-  // --- Slow endpoints ---
+  // --- Slow ---
   for (const [ep, g] of endpointGroups) {
     if (g.total < MIN_REQUESTS_FOR_INSIGHT) continue;
     const avgMs = Math.round(g.totalDuration / g.total);
@@ -294,7 +292,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // --- Query-heavy endpoints ---
+  // --- Query-heavy ---
   for (const [ep, g] of endpointGroups) {
     if (g.total < MIN_REQUESTS_FOR_INSIGHT) continue;
     const avgQueries = Math.round(g.queryCount / g.total);
@@ -310,7 +308,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // --- Auth overhead ---
+  // --- Auth ---
   for (const flow of ctx.flows) {
     if (!flow.requests || flow.requests.length < 2) continue;
     let authMs = 0;
@@ -359,7 +357,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     });
   }
 
-  // --- High row counts ---
+  // --- High rows ---
   const highRowSeen = new Map<string, { max: number; count: number }>();
   for (const [, reqQueries] of queriesByReq) {
     for (const q of reqQueries) {
@@ -384,7 +382,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     });
   }
 
-  // --- Response overfetch: too many fields, internal IDs, null-heavy ---
+  // --- Response overfetch ---
   const overfetchSeen = new Set<string>();
   for (const r of nonStatic) {
     if (r.statusCode >= 400 || !r.responseBody) continue;
@@ -393,25 +391,30 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     let parsed: unknown;
     try { parsed = JSON.parse(r.responseBody); } catch { continue; }
 
-    // Unwrap common wrappers ({ data: ... }, { result: ... })
     let target = parsed;
     if (target && typeof target === "object" && !Array.isArray(target)) {
-      const keys = Object.keys(target as Record<string, unknown>);
-      if (keys.length <= 2) {
-        for (const wk of ["data", "result", "user", "item"]) {
-          const val = (target as Record<string, unknown>)[wk];
-          if (val && typeof val === "object") { target = val; break; }
+      const topKeys = Object.keys(target as Record<string, unknown>);
+      if (topKeys.length <= 3) {
+        let best: unknown = null;
+        let bestSize = 0;
+        for (const k of topKeys) {
+          const val = (target as Record<string, unknown>)[k];
+          if (Array.isArray(val) && val.length > bestSize) {
+            best = val; bestSize = val.length;
+          } else if (val && typeof val === "object" && !Array.isArray(val)) {
+            const size = Object.keys(val as Record<string, unknown>).length;
+            if (size > bestSize) { best = val; bestSize = size; }
+          }
         }
+        if (best && bestSize >= 3) target = best;
       }
     }
 
-    // For arrays, inspect the first item
     const inspectObj = Array.isArray(target) && target.length > 0 ? target[0] : target;
     if (!inspectObj || typeof inspectObj !== "object" || Array.isArray(inspectObj)) continue;
     const fields = Object.keys(inspectObj as Record<string, unknown>);
     if (fields.length < OVERFETCH_MIN_FIELDS) continue;
 
-    // Count internal ID fields
     let internalIdCount = 0;
     let nullCount = 0;
     for (const key of fields) {
@@ -441,7 +444,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // --- Large responses ---
+  // --- Large ---
   for (const [ep, g] of endpointGroups) {
     if (g.total < OVERFETCH_MIN_REQUESTS) continue;
     const avgSize = Math.round(g.totalSize / g.total);
@@ -457,7 +460,7 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // --- Security findings ---
+  // --- Security ---
   if (ctx.securityFindings) {
     for (const f of ctx.securityFindings) {
       insights.push({
@@ -471,7 +474,6 @@ export function computeInsights(ctx: InsightContext): Insight[] {
     }
   }
 
-  // Sort by severity
   const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
   insights.sort((a, b) => (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2));
 
