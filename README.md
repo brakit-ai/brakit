@@ -1,12 +1,17 @@
-# Brakit — See What Your App Is Really Doing
+# Brakit
+
+**Your API is leaking data. Your queries are slow. Brakit shows you.**
+
+AI writes your API. Nobody checks what it does — missing auth, leaked data, N+1 queries, slow endpoints. Brakit watches your app run and shows you everything. One command. Zero setup.
+
+Open source · Local only · Zero config · 2 dependencies
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node >= 18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/built%20with-TypeScript-3178c6.svg)](https://typescriptlang.org)
 
-Brakit is a runtime devtool that sits between your browser and your dev server. It captures every HTTP request, groups them by user action, detects duplicates and N+1 queries, runs security checks, and gives you a live dashboard — all without touching your code.
-
-[Quick Start](#quick-start) · [What You Get](#what-you-get) · [Features](#features) · [How It Works](#how-it-works) · [CLI Options](#cli-options) · [Contributing](#contributing)
+<!-- TODO: Add demo gif showing: npx brakit dev → use app → dashboard shows issues -->
+<!-- ![Brakit Demo](assets/demo.gif) -->
 
 ---
 
@@ -16,7 +21,7 @@ Brakit is a runtime devtool that sits between your browser and your dev server. 
 npx brakit dev
 ```
 
-That's it. Brakit auto-detects your framework, starts your dev server behind a transparent proxy, and serves a dashboard at `http://localhost:3000/__brakit`.
+That's it. Brakit auto-detects your framework, starts your dev server behind a transparent proxy, and serves a live dashboard at `/__brakit`.
 
 ```bash
 npx brakit dev --port 8080    # Custom proxy port
@@ -26,105 +31,87 @@ npx brakit dev ./my-app       # Specify project directory
 
 > **Requirements:** Node.js >= 18 and a project with `package.json`.
 
+[Documentation](https://brakit.ai/docs) · [Website](https://brakit.ai)
+
 ---
 
 ## What You Get
 
-- **Action-level visibility** — see "Sign Up" and "Load Dashboard", not raw HTTP requests
-- **Duplicate & N+1 detection** — automatically flags redundant API calls and repeated query patterns
-- **Live dashboard** at `/__brakit` — 9 tabs updating in real-time via SSE
+- **7 security rules** scanned against live traffic — leaked secrets, missing auth, N+1 queries flagged automatically
+- **Action-level visibility** — see "Sign Up" and "Load Dashboard", not 47 raw HTTP requests
+- **Duplicate detection** — same API called twice? Flagged with redundancy percentage
+- **N+1 query detection** — same query pattern repeated 5+ times in a single request? That's an N+1
 - **Full server tracing** — fetch calls, DB queries, console logs, errors — zero code changes
-- **7 security rules** scanned against actual traffic, not static analysis
+- **Live dashboard** at `/__brakit` — 9 tabs updating in real-time
 - **Performance tracking** — health grades and p95 trends across dev sessions
 
 ---
 
-## Features
+## You Don't Know What Your API Is Doing
 
-### Actions, Not HTTP Noise
+You ship a signup flow. It works. But behind the scenes — 3 duplicate fetches, an N+1 query hitting the DB 12 times, and your user's email sitting in the response body unmasked. You'd never know without digging through network tabs and server logs for an hour.
 
-Brakit groups raw requests into human-readable actions. You see what happened, not which endpoints were hit:
+Brakit watches every action your app takes — not raw HTTP noise, but what actually happened: "Sign Up" took 847ms, fired 4 queries (one is an N+1), called Clerk twice (one failed), and leaked a secret in the response. One glance. No `console.log`. No guessing.
 
-```
-History Page                         1.6s   40% redundant
+---
 
-   Loaded user data ............. 657ms  OK
-   Loaded user data ............. 185ms  duplicate
-   Loaded video list ........... 1117ms  OK
-   Loaded video list ............ 273ms  duplicate
-   Loaded page .................. 128ms  OK
-
-   2 requests duplicated — same data loaded twice
-```
-
-### Live Dashboard
-
-Open `/__brakit` in your browser. 9 tabs — actions, requests, server fetches, database queries, errors, logs, security, and performance — all updating in real-time via SSE.
-
-### Zero-Config Instrumentation
-
-Brakit hooks into your Node.js process via `--import` — no code changes, no SDK, no config file:
-
-- **`fetch()` calls** — every outbound request your server makes
-- **Database queries** — pg, mysql2, Prisma with SQL, timing, and row counts
-- **Console output** — `log`, `warn`, `error` linked to the originating request
-- **Unhandled errors** — exceptions with full stack traces
-
-### Smart Analysis
-
-Brakit doesn't just capture — it understands what it sees:
-
-- **Duplicate detection** — Same endpoint called twice in one action? Flagged with redundancy %.
-- **N+1 queries** — Same query pattern repeated 5+ times in a single request? That's an N+1.
-- **Polling collapse** — 22 calls to `/api/status`? Collapsed into one "Polling status (22x, 40.1s)" entry.
-- **Smart grouping** — Requests grouped by origin page via `referer`. Navigate to a new page, new action group.
-
-### Security Scanner
+## Security Scanner
 
 7 high-confidence rules that scan your live traffic and flag real issues — not theoretical ones:
 
-|              | Rule               | What it catches                                                                  |
-| ------------ | ------------------ | -------------------------------------------------------------------------------- |
-| **Critical** | Exposed Secret     | Response contains `password`, `api_key`, `client_secret` fields with real values |
-| **Critical** | Token in URL       | Auth tokens in query parameters instead of headers                               |
-| **Critical** | Stack Trace Leak   | Internal stack traces sent to the client                                         |
-| **Critical** | Error Info Leak    | DB connection strings, SQL queries, or secret values in error responses          |
-| Warning      | Insecure Cookie    | Missing `HttpOnly` or `SameSite` flags                                           |
-| Warning      | Sensitive Logs     | Passwords, secrets, or token values in console output                            |
-| Warning      | CORS + Credentials | `credentials: true` with wildcard origin                                         |
+|              | Rule             | What it catches                                                                 |
+| ------------ | ---------------- | ------------------------------------------------------------------------------- |
+| **Critical** | Exposed Secret   | Response contains `password`, `api_key`, `client_secret` fields with real values |
+| **Critical** | Token in URL     | Auth tokens in query parameters instead of headers                              |
+| **Critical** | Stack Trace Leak | Internal stack traces sent to the client                                        |
+| **Critical** | Error Info Leak  | DB connection strings, SQL queries, or secret values in error responses          |
+| Warning      | Insecure Cookie  | Missing `HttpOnly` or `SameSite` flags                                          |
+| Warning      | Sensitive Logs   | Passwords, secrets, or token values in console output                           |
+| Warning      | CORS + Credentials | `credentials: true` with wildcard origin                                      |
 
-### Performance Tracking
+---
 
-Metrics persist across dev sessions in `.brakit/metrics.json`:
+## Who Is This For
 
-- **Health grades** — Fast / Good / OK / Slow / Critical per endpoint
-- **p95 response times** with trend arrows
-- **Session comparison** — see if that refactor actually helped
+Developers using AI tools (Cursor, Copilot, Claude Code) to generate API code they don't fully review. Developers who debug with `console.log` and wish they could just see every action their API is executing. Anyone building Node.js APIs who wants to catch security and performance issues before production.
 
 ---
 
 ## How It Works
 
 ```
-Browser  -->  Brakit (:3000)  -->  Your dev server (:3001)
+Browser  -->  Brakit (proxy)  -->  Your dev server
                   |
                   +-- Dashboard UI    (/__brakit)
                   +-- Live SSE stream (real-time updates)
                   +-- Telemetry       (from instrumented process)
 ```
 
-Brakit is a transparent HTTP reverse proxy. Every request passes through unchanged — your app works exactly the same. Brakit captures request/response pairs, groups them into flows, and streams everything to the dashboard.
+Brakit is a transparent HTTP reverse proxy. Every request passes through unchanged — your app works exactly the same. Brakit captures request/response pairs, groups them into actions, and streams everything to the dashboard.
 
 The instrumentation layer runs inside your dev server process (injected via `--import`) and sends telemetry back to Brakit over a local HTTP connection. That's how fetch calls, queries, and console output get captured without any code changes.
 
 ### Supported Frameworks
 
-| Framework       | Detection                                  | Status          |
-| --------------- | ------------------------------------------ | --------------- |
-| **Next.js**     | Auto-detected via `next` in `package.json` | Supported       |
-| Any HTTP server | Specify port manually                      | Works via proxy |
+| Framework   | Status                     |
+| ----------- | -------------------------- |
+| Next.js     | Full support (auto-detect) |
+| Express     | Coming soon                |
+| Fastify     | Coming soon                |
+| Remix       | Coming soon                |
+| SvelteKit   | Coming soon                |
+| Nuxt        | Coming soon                |
 
-More frameworks coming — Express, Fastify, Remix, SvelteKit, Nuxt. PRs welcome.
+### Supported Databases
+
+| Driver  | Status    |
+| ------- | --------- |
+| pg      | Supported |
+| mysql2  | Supported |
+| Prisma  | Supported |
+| SQLite  | Planned   |
+| MongoDB | Planned   |
+| Drizzle | Planned   |
 
 ---
 
@@ -177,7 +164,9 @@ src/
 
 ## Contributing
 
-Contributions welcome. Some areas where help would be great:
+Brakit is early and moving fast. If you've ever wished a dev tool did something differently, this is your chance to build it.
+
+Some areas where help would be great:
 
 - **Framework support** — Express, Fastify, Remix, SvelteKit, Nuxt
 - **Database drivers** — SQLite, MongoDB, Drizzle ORM
