@@ -5,7 +5,7 @@ export function getSecurityView(): string {
     if (!container) return;
     container.innerHTML = '';
 
-    var findings = computeSecurityFindings();
+    var findings = state.findings || [];
 
     if (findings.length === 0) {
       var hasData = state.requests.length > 0 || state.logs.length > 0 || state.queries.length > 0;

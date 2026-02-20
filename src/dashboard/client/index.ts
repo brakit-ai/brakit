@@ -15,7 +15,6 @@ import { getQueriesView } from "./views/queries.js";
 import { getTimelineView } from "./views/timeline.js";
 import { getGraphView } from "./views/graph.js";
 import { getOverviewView } from "./views/overview/index.js";
-import { getSecurityRules } from "./rules/index.js";
 import { getSecurityView } from "./views/security.js";
 import { getApp } from "./app.js";
 
@@ -23,7 +22,7 @@ export function getClientScript(config: BrakitConfig): string {
   return `
 (function(){
   var PORT = ${config.proxyPort};
-  var state = { flows: [], requests: [], fetches: [], errors: [], logs: [], queries: [], viewMode: 'simple', activeView: 'overview' };
+  var state = { flows: [], requests: [], fetches: [], errors: [], logs: [], queries: [], insights: [], findings: [], viewMode: 'simple', activeView: 'overview' };
 
   var appEl = document.getElementById('app');
   var flowListEl = document.getElementById('flow-list');
@@ -42,7 +41,6 @@ export function getClientScript(config: BrakitConfig): string {
   ${getQueriesView()}
   ${getTimelineView()}
   ${getGraphView()}
-  ${getSecurityRules()}
   ${getOverviewView()}
   ${getSecurityView()}
   ${getApp()}

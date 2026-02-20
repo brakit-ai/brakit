@@ -35,7 +35,7 @@ export function getOverviewRender(): string {
       '<div class="ov-stat"><span class="ov-stat-value">' + state.fetches.length + '</span><span class="ov-stat-label">Fetches</span></div>';
     container.appendChild(summary);
 
-    var insights = computeInsights();
+    var insights = state.insights || [];
 
     if (insights.length === 0) {
       var clear = document.createElement('div');

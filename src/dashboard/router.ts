@@ -33,7 +33,7 @@ import {
   handleApiActivity,
 } from "./api/index.js";
 import { createInsightsHandler, createSecurityHandler } from "./api/insights.js";
-import { handleSSE } from "./sse.js";
+import { createSSEHandler } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
 
 type RouteHandler = (req: IncomingMessage, res: ServerResponse) => void;
@@ -52,7 +52,7 @@ export function createDashboardHandler(
 ): (req: IncomingMessage, res: ServerResponse, config: BrakitConfig) => void {
   const routes: Record<string, RouteHandler> = {
     [DASHBOARD_API_REQUESTS]: handleApiRequests,
-    [DASHBOARD_API_EVENTS]: handleSSE,
+    [DASHBOARD_API_EVENTS]: createSSEHandler(deps.analysisEngine),
     [DASHBOARD_API_FLOWS]: handleApiFlows,
     [DASHBOARD_API_CLEAR]: createClearHandler(deps.metricsStore),
     [DASHBOARD_API_LOGS]: handleApiLogs,

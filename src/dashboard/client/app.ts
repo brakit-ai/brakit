@@ -4,6 +4,8 @@ import {
   DASHBOARD_API_REQUESTS,
   DASHBOARD_API_EVENTS,
   DASHBOARD_API_CLEAR,
+  DASHBOARD_API_INSIGHTS,
+  DASHBOARD_API_SECURITY,
   MAX_TELEMETRY_ENTRIES,
 } from "../../constants/index.js";
 import {
@@ -39,6 +41,18 @@ export function getApp(): string {
     } catch(e) { console.warn('[brakit]', e); }
 
     await Promise.all([loadFetches(), loadErrors(), loadLogs(), loadQueries(), loadMetrics()]);
+
+    try {
+      var res3 = await fetch('${DASHBOARD_API_INSIGHTS}');
+      var data3 = await res3.json();
+      state.insights = data3.insights || [];
+    } catch(e) { console.warn('[brakit]', e); }
+
+    try {
+      var res4 = await fetch('${DASHBOARD_API_SECURITY}');
+      var data4 = await res4.json();
+      state.findings = data4.findings || [];
+    } catch(e) { console.warn('[brakit]', e); }
 
     updateStats();
     renderOverview();
@@ -96,6 +110,18 @@ export function getApp(): string {
       updateStats();
       if (q.parentRequestId) { invalidateTimelineCache(q.parentRequestId); refreshVisibleTimeline(q.parentRequestId); }
     });
+
+    events.addEventListener('insights', function(e) {
+      state.insights = JSON.parse(e.data);
+      if (state.activeView === 'overview') renderOverview();
+      updateStats();
+    });
+
+    events.addEventListener('security', function(e) {
+      state.findings = JSON.parse(e.data);
+      if (state.activeView === 'security') renderSecurity();
+      updateStats();
+    });
   }
 
   async function reloadFlows() {
@@ -105,7 +131,6 @@ export function getApp(): string {
       state.flows = data.flows;
       renderFlows();
       updateStats();
-      renderOverview();
     } catch(e) { console.warn('[brakit]', e); }
   }
 
@@ -169,9 +194,9 @@ export function getApp(): string {
     if (queryCount) queryCount.textContent = state.queries.length;
     var secCount = document.getElementById('sidebar-count-security');
     if (secCount) {
-      var secFindings = computeSecurityFindings();
-      secCount.textContent = secFindings.length;
-      secCount.style.display = secFindings.length > 0 ? '' : 'none';
+      var numFindings = (state.findings || []).length;
+      secCount.textContent = numFindings;
+      secCount.style.display = numFindings > 0 ? '' : 'none';
     }
   }
 
@@ -189,6 +214,7 @@ export function getApp(): string {
     if (!confirm('This will clear all data including performance metrics history. Continue?')) return;
     await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
     state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = []; state.queries = [];
+    state.insights = []; state.findings = [];
     graphData = []; selectedEndpoint = ${ALL_ENDPOINTS_SELECTOR}; timelineCache = {};
     renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); renderOverview(); renderSecurity(); updateStats();
     showToast('Cleared');
