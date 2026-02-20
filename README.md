@@ -37,7 +37,7 @@ npx brakit dev ./my-app       # Specify project directory
 
 ## What You Get
 
-- **7 security rules** scanned against live traffic — leaked secrets, missing auth, N+1 queries flagged automatically
+- **8 security rules** scanned against live traffic — leaked secrets, PII in responses, missing auth, N+1 queries flagged automatically
 - **Action-level visibility** — see "Sign Up" and "Load Dashboard", not 47 raw HTTP requests
 - **Duplicate detection** — same API called twice? Flagged with redundancy percentage
 - **N+1 query detection** — same query pattern repeated 5+ times in a single request? That's an N+1
@@ -57,7 +57,7 @@ Brakit watches every action your app takes — not raw HTTP noise, but what actu
 
 ## Security Scanner
 
-7 high-confidence rules that scan your live traffic and flag real issues — not theoretical ones:
+8 high-confidence rules that scan your live traffic and flag real issues — not theoretical ones:
 
 |              | Rule             | What it catches                                                                 |
 | ------------ | ---------------- | ------------------------------------------------------------------------------- |
@@ -65,6 +65,7 @@ Brakit watches every action your app takes — not raw HTTP noise, but what actu
 | **Critical** | Token in URL     | Auth tokens in query parameters instead of headers                              |
 | **Critical** | Stack Trace Leak | Internal stack traces sent to the client                                        |
 | **Critical** | Error Info Leak  | DB connection strings, SQL queries, or secret values in error responses          |
+| Warning      | PII in Response  | API echoes back emails, returns full user records with internal IDs              |
 | Warning      | Insecure Cookie  | Missing `HttpOnly` or `SameSite` flags                                          |
 | Warning      | Sensitive Logs   | Passwords, secrets, or token values in console output                           |
 | Warning      | CORS + Credentials | `credentials: true` with wildcard origin                                      |

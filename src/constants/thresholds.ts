@@ -18,3 +18,6 @@ export const REDUNDANT_QUERY_MIN_COUNT = 2;
 export const LARGE_RESPONSE_BYTES = 51_200;
 export const HIGH_ROW_COUNT = 100;
 export const OVERFETCH_MIN_REQUESTS = 2;
+export const OVERFETCH_MIN_FIELDS = 8;
+export const OVERFETCH_MIN_INTERNAL_IDS = 2;
+export const OVERFETCH_NULL_RATIO = 0.3;

@@ -7,6 +7,7 @@ import { errorInfoLeakRule } from "./error-info-leak.js";
 import { insecureCookieRule } from "./insecure-cookie.js";
 import { sensitiveLogsRule } from "./sensitive-logs.js";
 import { corsCredentialsRule } from "./cors-credentials.js";
+import { responsePiiLeakRule } from "./response-pii-leak.js";
 
 export class SecurityScanner {
   private rules: SecurityRule[] = [];
@@ -41,5 +42,6 @@ export function createDefaultScanner(): SecurityScanner {
   scanner.register(insecureCookieRule);
   scanner.register(sensitiveLogsRule);
   scanner.register(corsCredentialsRule);
+  scanner.register(responsePiiLeakRule);
   return scanner;
 }

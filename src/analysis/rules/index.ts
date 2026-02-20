@@ -7,3 +7,4 @@ export { errorInfoLeakRule } from "./error-info-leak.js";
 export { insecureCookieRule } from "./insecure-cookie.js";
 export { sensitiveLogsRule } from "./sensitive-logs.js";
 export { corsCredentialsRule } from "./cors-credentials.js";
+export { responsePiiLeakRule } from "./response-pii-leak.js";

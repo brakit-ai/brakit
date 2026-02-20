@@ -16,6 +16,12 @@ export const LOG_SECRET_RE = /(password|secret|token|api_key|apiKey)\s*[:=]\s*["
 
 export const MASKED_RE = /^\*+$|\[REDACTED\]|\[FILTERED\]|CHANGE_ME|^x{3,}$/i;
 
+export const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+
+export const INTERNAL_ID_KEYS = /^(id|_id|userId|user_id|createdBy|updatedBy|organizationId|org_id|tenantId|tenant_id)$/;
+
+export const INTERNAL_ID_SUFFIX = /Id$|_id$/;
+
 export const RULE_HINTS: Record<string, string> = {
   "exposed-secret": "Never include secret fields in API responses. Strip sensitive fields before returning.",
   "token-in-url": "Pass tokens in the Authorization header, not URL query parameters.",
@@ -24,4 +30,5 @@ export const RULE_HINTS: Record<string, string> = {
   "sensitive-logs": "Redact PII before logging. Never log passwords or tokens.",
   "cors-credentials": "Cannot use credentials:true with origin:*. Specify explicit origins.",
   "insecure-cookie": "Set HttpOnly and SameSite flags on all cookies.",
+  "response-pii-leak": "API responses should return minimal data. Don't echo back full user records — select only the fields the client needs.",
 };

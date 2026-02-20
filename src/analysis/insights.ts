@@ -20,14 +20,18 @@ import {
   CROSS_ENDPOINT_PCT,
   CROSS_ENDPOINT_MIN_OCCURRENCES,
   REDUNDANT_QUERY_MIN_COUNT,
+  OVERFETCH_MIN_FIELDS,
+  OVERFETCH_MIN_INTERNAL_IDS,
+  OVERFETCH_NULL_RATIO,
 } from "../constants/thresholds.js";
 import { normalizeQueryParams, normalizeSQL } from "../instrument/adapters/normalize.js";
+import { INTERNAL_ID_SUFFIX } from "./rules/patterns.js";
 
 export type InsightSeverity = "critical" | "warning" | "info";
 export type InsightType =
   | "n1" | "cross-endpoint" | "redundant-query" | "error" | "error-hotspot"
   | "duplicate" | "slow" | "query-heavy" | "auth-overhead"
-  | "select-star" | "high-rows" | "large-response" | "security";
+  | "select-star" | "high-rows" | "large-response" | "response-overfetch" | "security";
 
 export interface Insight {
   severity: InsightSeverity;
@@ -378,6 +382,63 @@ export function computeInsights(ctx: InsightContext): Insight[] {
       hint: "Fetching many rows slows responses and wastes memory. Add a LIMIT clause, implement pagination, or filter with a WHERE condition.",
       nav: "queries",
     });
+  }
+
+  // --- Response overfetch: too many fields, internal IDs, null-heavy ---
+  const overfetchSeen = new Set<string>();
+  for (const r of nonStatic) {
+    if (r.statusCode >= 400 || !r.responseBody) continue;
+    const ep = `${r.method} ${r.path}`;
+    if (overfetchSeen.has(ep)) continue;
+    let parsed: unknown;
+    try { parsed = JSON.parse(r.responseBody); } catch { continue; }
+
+    // Unwrap common wrappers ({ data: ... }, { result: ... })
+    let target = parsed;
+    if (target && typeof target === "object" && !Array.isArray(target)) {
+      const keys = Object.keys(target as Record<string, unknown>);
+      if (keys.length <= 2) {
+        for (const wk of ["data", "result", "user", "item"]) {
+          const val = (target as Record<string, unknown>)[wk];
+          if (val && typeof val === "object") { target = val; break; }
+        }
+      }
+    }
+
+    // For arrays, inspect the first item
+    const inspectObj = Array.isArray(target) && target.length > 0 ? target[0] : target;
+    if (!inspectObj || typeof inspectObj !== "object" || Array.isArray(inspectObj)) continue;
+    const fields = Object.keys(inspectObj as Record<string, unknown>);
+    if (fields.length < OVERFETCH_MIN_FIELDS) continue;
+
+    // Count internal ID fields
+    let internalIdCount = 0;
+    let nullCount = 0;
+    for (const key of fields) {
+      if (INTERNAL_ID_SUFFIX.test(key) || key === "id" || key === "_id") internalIdCount++;
+      const val = (inspectObj as Record<string, unknown>)[key];
+      if (val === null || val === undefined) nullCount++;
+    }
+
+    const nullRatio = nullCount / fields.length;
+    const reasons: string[] = [];
+    if (internalIdCount >= OVERFETCH_MIN_INTERNAL_IDS) reasons.push(`${internalIdCount} internal ID fields`);
+    if (nullRatio >= OVERFETCH_NULL_RATIO) reasons.push(`${Math.round(nullRatio * 100)}% null fields`);
+    if (fields.length >= OVERFETCH_MIN_FIELDS && reasons.length === 0 && fields.length >= 12) {
+      reasons.push(`${fields.length} fields returned`);
+    }
+
+    if (reasons.length > 0) {
+      overfetchSeen.add(ep);
+      insights.push({
+        severity: "info",
+        type: "response-overfetch",
+        title: "Response Overfetch",
+        desc: `${ep} — ${reasons.join(", ")}`,
+        hint: "This response returns more data than the client likely needs. Use a DTO or select only required fields to reduce payload size and avoid leaking internal structure.",
+        nav: "requests",
+      });
+    }
   }
 
   // --- Large responses ---
