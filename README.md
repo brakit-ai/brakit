@@ -77,6 +77,19 @@ Developers using AI tools (Cursor, Copilot, Claude Code) to generate API code th
 
 ---
 
+## Principles — ZEAL
+
+Everything we build is anchored around four pillars:
+
+| | Pillar | What it means |
+|---|---|---|
+| **Z** | **Zero Config** | One command to start, zero config by default. Optional middleware for deeper integration — but the default path is always zero-touch. |
+| **E** | **Extensible** | Open source. One file, one interface. Add a database adapter, security rule, or language SDK without touching brakit's core. |
+| **A** | **AI-Native** | Built for the era where AI writes code humans don't fully review. A safety net for AI-generated APIs. |
+| **L** | **Language Agnostic** | HTTP proxy works with any backend. SDK protocol accepts events from any language. Not locked to Node.js. |
+
+---
+
 ## How It Works
 
 ```
