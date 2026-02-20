@@ -1,12 +1,20 @@
 import { DASHBOARD_API_ACTIVITY } from "../../../constants/index.js";
+import {
+  LOG_LEVEL_COLORS,
+  TL_TYPE_COLORS,
+  TL_TYPE_LABELS,
+  TIMELINE_CACHE_MAX,
+  TIMELINE_ROOT_MARGIN,
+} from "../constants/index.js";
 
 export function getTimelineView(): string {
   return `
-  var TL_TYPE_COLORS = { fetch: 'var(--blue)', log: 'var(--text-muted)', error: 'var(--red)', query: 'var(--accent)' };
-  var TL_TYPE_LABELS = { fetch: 'FETCH', log: 'LOG', error: 'ERROR', query: 'QUERY' };
+  var TL_TYPE_COLORS = ${TL_TYPE_COLORS};
+  var TL_TYPE_LABELS = ${TL_TYPE_LABELS};
+  var LOG_LEVEL_COLORS = ${LOG_LEVEL_COLORS};
 
   var timelineCache = {};
-  var TIMELINE_CACHE_MAX = 50;
+  var TIMELINE_CACHE_MAX = ${TIMELINE_CACHE_MAX};
 
   async function loadTimeline(requestId, container, requestStartedAt) {
     if (timelineCache[requestId]) {
@@ -141,7 +149,7 @@ export function getTimelineView(): string {
           timelineObserver.unobserve(el);
         }
       });
-    }, { rootMargin: '200px' });
+    }, { rootMargin: ${TIMELINE_ROOT_MARGIN} });
   }
 
   function observeTimeline(el) {

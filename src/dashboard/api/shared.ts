@@ -10,7 +10,7 @@ export const JSON_RESPONSE_HEADERS = {
 export function sendJson(
   res: ServerResponse,
   status: number,
-  data: unknown,
+  data: Record<string, unknown>,
 ): void {
   res.writeHead(status, JSON_RESPONSE_HEADERS);
   res.end(JSON.stringify(data));

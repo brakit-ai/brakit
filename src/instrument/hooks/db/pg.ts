@@ -1,4 +1,4 @@
-import { tryRequire, sendQuery } from "./shared.js";
+import { tryRequire, sendQuery, captureRequestId } from "./shared.js";
 
 export function patchPg(): void {
   const pg = tryRequire("pg") as Record<string, unknown> | null;
@@ -18,6 +18,7 @@ export function patchPg(): void {
           ? (first as { text: string }).text
           : undefined;
     const start = performance.now();
+    const requestId = captureRequestId();
 
     // Callback-based query: wrap the callback to measure round-trip time.
     const lastIdx = args.length - 1;
@@ -29,7 +30,7 @@ export function patchPg(): void {
           sql,
           durationMs: performance.now() - start,
           rowCount: res?.rowCount ?? undefined,
-        });
+        }, requestId);
         return origCb.call(this, err, res);
       };
       return origQuery.apply(this, args);
@@ -45,7 +46,7 @@ export function patchPg(): void {
           sql,
           durationMs: performance.now() - start,
           rowCount: res?.rowCount ?? undefined,
-        });
+        }, requestId);
         return res;
       });
     }
@@ -60,7 +61,7 @@ export function patchPg(): void {
             sql,
             durationMs: performance.now() - start,
             rowCount: res?.rowCount ?? undefined,
-          });
+          }, requestId);
         },
       );
       return result;

@@ -3,16 +3,17 @@ import {
   AUTH_OVERHEAD_PCT,
   AUTH_SLOW_MS,
   LARGE_RESPONSE_BYTES,
-} from "../../constants.js";
+  AUTH_SKIP_CATEGORIES,
+} from "../../constants/index.js";
 
 export function getFlowInsights(): string {
   return `
+  var skipCats = ${AUTH_SKIP_CATEGORIES};
+
   function createFlowInsights(flow) {
     var container = document.createElement('div');
     var traffic = document.createElement('div');
     traffic.className = 'flow-traffic';
-
-    var skipCats = { 'auth-handshake': 1, 'auth-check': 1, 'middleware': 1 };
 
     for (var i = 0; i < flow.requests.length; i++) {
       var req = flow.requests[i];
@@ -59,6 +60,14 @@ export function getFlowInsights(): string {
       }
 
       card.appendChild(header);
+
+      if (req.isStrictModeDupe) {
+        card.classList.add('strict-mode-dupe');
+        var smBanner = document.createElement('div');
+        smBanner.className = 'strict-mode-banner';
+        smBanner.textContent = 'React Strict Mode duplicate \\u2014 does not happen in production';
+        card.appendChild(smBanner);
+      }
 
       var hasDetails = false;
       if (!req.isDuplicate && req.category !== 'static' && req.category !== 'polling') {
@@ -139,7 +148,7 @@ export function getFlowInsights(): string {
       var dur = req.pollingDurationMs || req.durationMs;
       totalMs += dur;
 
-      if (req.category === 'auth-handshake' || req.category === 'auth-check' || req.category === 'middleware') {
+      if (skipCats[req.category]) {
         authMs += dur;
         if (dur > ${AUTH_SLOW_MS}) {
           warnings.push('Slow auth: ' + label + ' took ' + formatDuration(dur));

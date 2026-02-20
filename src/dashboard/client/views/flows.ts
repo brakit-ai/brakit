@@ -70,8 +70,7 @@ export function getFlowsView(): string {
 
     row.addEventListener('click', function() {
       var wasOpen = row.classList.contains('expanded');
-      document.querySelectorAll('.flow-row.expanded').forEach(function(r){ r.classList.remove('expanded'); });
-      document.querySelectorAll('.flow-expand.open').forEach(function(d){ d.classList.remove('open'); });
+      collapseAll('.flow-row', '.flow-expand');
       if (!wasOpen) {
         row.classList.add('expanded');
         expand.classList.add('open');

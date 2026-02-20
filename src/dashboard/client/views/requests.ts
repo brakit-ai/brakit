@@ -39,8 +39,7 @@ export function getRequestsView(): string {
     detail.className = 'req-detail';
     row.addEventListener('click', function() {
       var wasOpen = row.classList.contains('expanded');
-      document.querySelectorAll('.req-row.expanded').forEach(function(r) { r.classList.remove('expanded'); });
-      document.querySelectorAll('.req-detail.open').forEach(function(d) { d.classList.remove('open'); });
+      collapseAll('.req-row', '.req-detail');
       if (!wasOpen) {
         row.classList.add('expanded');
         detail.classList.add('open');

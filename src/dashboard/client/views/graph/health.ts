@@ -3,7 +3,7 @@ import {
   HEALTH_OK_MS,
   DOT_COLORS,
   HEALTH_GRADES,
-} from "../../constants.js";
+} from "../../constants/index.js";
 
 export function getGraphHealthUtils(): string {
   return `

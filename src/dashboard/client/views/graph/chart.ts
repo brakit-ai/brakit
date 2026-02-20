@@ -5,8 +5,9 @@ import {
   CHART_LABEL_COLOR,
   CHART_FONT,
   CHART_FONT_SM,
+  CHART_FONT_XS,
   CHART_PAD,
-} from "../../constants.js";
+} from "../../constants/index.js";
 
 export function getGraphChart(): string {
   return `
@@ -84,7 +85,6 @@ export function getGraphChart(): string {
     maxVal = Math.ceil(maxVal * 1.15 / 10) * 10;
     var timeRange = maxTime - minTime || 1;
 
-    // Grid
     ctx.strokeStyle = ${CHART_GRID_COLOR};
     ctx.lineWidth = 1;
     var gridLines = 4;
@@ -100,7 +100,6 @@ export function getGraphChart(): string {
       ctx.fillText(fmtMs(Math.round((gi / gridLines) * maxVal)), pad.left - 8, gy + 3);
     }
 
-    // Thresholds
     var thresholds = [
       { ms: THRESHOLD_GOOD, label: fmtMs(THRESHOLD_GOOD) },
       { ms: THRESHOLD_OK, label: fmtMs(THRESHOLD_OK) }
@@ -122,7 +121,6 @@ export function getGraphChart(): string {
       ctx.fillText(t.label, pad.left + cw + 2, ty + 3);
     });
 
-    // Dots
     requests.forEach(function(r, idx) {
       var x = requests.length === 1 ? pad.left + cw / 2 : pad.left + ((r.timestamp - minTime) / timeRange) * cw;
       var y = pad.top + ch - (r.durationMs / maxVal) * ch;
@@ -137,7 +135,6 @@ export function getGraphChart(): string {
       }
     });
 
-    // X-axis time labels
     ctx.fillStyle = ${CHART_LABEL_COLOR};
     ctx.font = ${CHART_FONT_SM};
     ctx.textAlign = 'center';
@@ -222,7 +219,7 @@ export function getGraphChart(): string {
     });
 
     ctx.fillStyle = 'rgba(113,113,122,0.5)';
-    ctx.font = '8px monospace';
+    ctx.font = ${CHART_FONT_XS};
     ctx.textAlign = 'right';
     ctx.fillText(fmtMs(maxVal), w - 2, padY + 8);
     ctx.fillText(fmtMs(0), w - 2, h - 2);

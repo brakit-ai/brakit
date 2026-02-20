@@ -107,7 +107,7 @@ export function getLayoutHtml(config: BrakitConfig): string {
       <div class="view-telemetry" id="query-container" style="display:none">
         <div class="col-header">
           <span style="width:70px;border-right:1px solid var(--border);padding-right:16px">Operation</span>
-          <span style="width:120px;border-right:1px solid var(--border);padding-right:16px">Table</span>
+          <span style="width:170px;border-right:1px solid var(--border);padding-right:16px">Table</span>
           <span style="flex:1;border-right:1px solid var(--border);padding-right:16px">Query</span>
           <span style="width:60px;text-align:right">Time</span>
         </div>
@@ -115,7 +115,7 @@ export function getLayoutHtml(config: BrakitConfig): string {
       </div>
       <div class="view-telemetry" id="error-container" style="display:none">
         <div class="col-header">
-          <span style="width:120px">Type</span>
+          <span style="width:180px">Type</span>
           <span style="flex:1">Message</span>
           <span style="width:130px;text-align:right">Time</span>
         </div>

@@ -18,6 +18,7 @@ export interface LabeledRequest extends TracedRequest {
   category: RequestCategory;
   sourcePage?: string;
   isDuplicate?: boolean;
+  isStrictModeDupe?: boolean;
   pollingCount?: number;
   pollingDurationMs?: number;
 }

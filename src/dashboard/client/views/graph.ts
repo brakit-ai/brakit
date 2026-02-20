@@ -1,5 +1,5 @@
 import { DASHBOARD_API_METRICS_LIVE } from "../../../constants/index.js";
-import { GRAPH_COLORS } from "../constants.js";
+import { GRAPH_COLORS, ALL_ENDPOINTS_SELECTOR } from "../constants/index.js";
 import { getGraphHealthUtils } from "./graph/health.js";
 import { getGraphOverview } from "./graph/overview.js";
 import { getGraphDetail } from "./graph/detail.js";
@@ -8,7 +8,7 @@ import { getGraphChart } from "./graph/chart.js";
 export function getGraphView(): string {
   return `
   var graphData = null;
-  var selectedEndpoint = '__all__';
+  var selectedEndpoint = ${ALL_ENDPOINTS_SELECTOR};
 
   var GRAPH_COLORS = ${GRAPH_COLORS};
 
@@ -31,9 +31,9 @@ export function getGraphView(): string {
     selector.className = 'perf-selector';
 
     var allBtn = document.createElement('button');
-    allBtn.className = 'perf-selector-btn' + (selectedEndpoint === '__all__' ? ' active' : '');
+    allBtn.className = 'perf-selector-btn' + (selectedEndpoint === ${ALL_ENDPOINTS_SELECTOR} ? ' active' : '');
     allBtn.textContent = 'Overview';
-    allBtn.addEventListener('click', function() { selectedEndpoint = '__all__'; renderGraph(); });
+    allBtn.addEventListener('click', function() { selectedEndpoint = ${ALL_ENDPOINTS_SELECTOR}; renderGraph(); });
     selector.appendChild(allBtn);
 
     graphData.forEach(function(ep, idx) {
@@ -47,7 +47,7 @@ export function getGraphView(): string {
 
     container.appendChild(selector);
 
-    if (selectedEndpoint === '__all__') {
+    if (selectedEndpoint === ${ALL_ENDPOINTS_SELECTOR}) {
       renderPerfOverview(container);
     } else {
       renderEndpointDetail(container);
@@ -59,8 +59,8 @@ export function getGraphView(): string {
       var res = await fetch('${DASHBOARD_API_METRICS_LIVE}');
       var data = await res.json();
       graphData = data.endpoints || [];
-      if (!selectedEndpoint || selectedEndpoint === '__all__') {
-        selectedEndpoint = '__all__';
+      if (!selectedEndpoint || selectedEndpoint === ${ALL_ENDPOINTS_SELECTOR}) {
+        selectedEndpoint = ${ALL_ENDPOINTS_SELECTOR};
       }
       renderGraph();
     } catch(e) { console.warn('[brakit]', e); }

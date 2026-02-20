@@ -7,7 +7,7 @@ export function getErrorsView(): string {
     row.className = 'req-row tel-clickable';
     var ts = new Date(e.timestamp).toLocaleTimeString();
     row.innerHTML =
-      '<span class="tel-error-name">' + escHtml(e.name) + '</span>' +
+      '<span class="tel-error-name" title="' + escHtml(e.name) + '">' + escHtml(e.name) + '</span>' +
       '<span class="tel-message" title="' + escHtml(e.message) + '">' + escHtml(e.message) + '</span>' +
       '<span class="tel-timestamp">' + ts + '</span>';
     row.addEventListener('click', function() {

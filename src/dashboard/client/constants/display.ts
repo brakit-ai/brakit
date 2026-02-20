@@ -1,5 +1,12 @@
-// Client-side display constants — embedded into browser JS via template strings.
-// Values here are JS source fragments (strings/numbers) interpolated at build time.
+// Display constants — color maps, fonts, chart config, and UI label maps.
+// Values are JS source fragments (template strings) interpolated into browser code at build time.
+
+import {
+  HEALTH_FAST_MS,
+  HEALTH_GOOD_MS,
+  HEALTH_OK_MS,
+  HEALTH_SLOW_MS,
+} from "./thresholds.js";
 
 // Color maps for telemetry displays
 export const QUERY_OP_COLORS = `{ SELECT: 'var(--blue)', INSERT: 'var(--green)', UPDATE: 'var(--amber)', DELETE: 'var(--red)', COUNT: 'var(--text-muted)' }`;
@@ -7,39 +14,6 @@ export const QUERY_OP_COLORS = `{ SELECT: 'var(--blue)', INSERT: 'var(--green)',
 export const LOG_LEVEL_COLORS = `{ error: 'var(--red)', warn: 'var(--amber)', info: 'var(--blue)', debug: 'var(--text-muted)', log: 'var(--text-dim)' }`;
 
 export const GRAPH_COLORS = `['#2563eb','#7c3aed','#16a34a','#d97706','#dc2626','#0891b2','#ea580c','#c026d3','#059669','#db2777']`;
-
-// Health grade thresholds (ms)
-export const HEALTH_FAST_MS = 100;
-export const HEALTH_GOOD_MS = 300;
-export const HEALTH_OK_MS = 800;
-export const HEALTH_SLOW_MS = 2000;
-
-// Query display thresholds
-export const SLOW_QUERY_THRESHOLD_MS = 100;
-export const HIGH_QUERY_COUNT_PER_REQ = 5;
-
-// Overview insight thresholds
-export const N1_QUERY_THRESHOLD = 5;
-export const ERROR_RATE_THRESHOLD_PCT = 20;
-export const SLOW_ENDPOINT_THRESHOLD_MS = 1000;
-export const MIN_REQUESTS_FOR_INSIGHT = 2;
-
-// Auth overhead detection
-export const AUTH_OVERHEAD_PCT = 30;
-export const AUTH_SLOW_MS = 500;
-
-// Cross-endpoint query detection
-export const CROSS_ENDPOINT_MIN_ENDPOINTS = 3;
-export const CROSS_ENDPOINT_PCT = 50;
-export const CROSS_ENDPOINT_MIN_OCCURRENCES = 5;
-
-// Redundant same-query detection (exact duplicate within one request)
-export const REDUNDANT_QUERY_MIN_COUNT = 2;
-
-// Over-fetching detection
-export const LARGE_RESPONSE_BYTES = 51_200; // 50KB
-export const HIGH_ROW_COUNT = 100;
-export const OVERFETCH_MIN_REQUESTS = 2;
 
 // Canvas dot colors (CSS vars don't work on canvas — hex required)
 export const DOT_COLORS = `{ green: '#4ade80', amber: '#fbbf24', red: '#f87171' }`;
@@ -58,4 +32,20 @@ export const CHART_GRID_COLOR = "'rgba(228,228,231,0.8)'";
 export const CHART_LABEL_COLOR = "'rgba(113,113,122,0.7)'";
 export const CHART_FONT = "'10px monospace'";
 export const CHART_FONT_SM = "'9px monospace'";
+export const CHART_FONT_XS = "'8px monospace'";
 export const CHART_PAD = `{ top: 16, right: 16, bottom: 28, left: 52 }`;
+
+// Timeline display config
+export const TL_TYPE_COLORS = `{ fetch: 'var(--blue)', log: 'var(--text-muted)', error: 'var(--red)', query: 'var(--accent)' }`;
+export const TL_TYPE_LABELS = `{ fetch: 'FETCH', log: 'LOG', error: 'ERROR', query: 'QUERY' }`;
+
+// Sensitive header names for client-side masking
+export const SENSITIVE_HEADERS = `['cookie','set-cookie','authorization','proxy-authorization','x-api-key','x-auth-token']`;
+
+// HTTP status code display map
+export const HTTP_STATUS_MAP = `{400:'Bad Request',401:'Unauthorized',403:'Forbidden',404:'Not Found',405:'Method Not Allowed',408:'Timeout',409:'Conflict',422:'Unprocessable',429:'Too Many Requests',500:'Internal Server Error',502:'Bad Gateway',503:'Service Unavailable',504:'Gateway Timeout'}`;
+
+// Navigation and header labels
+export const NAV_LABELS = `{ queries: 'Queries', requests: 'Requests', actions: 'Actions', errors: 'Errors', security: 'Security', fetches: 'Fetches', logs: 'Logs', performance: 'Performance' }`;
+
+export const CURL_SKIP_HEADERS = `['host', 'connection', 'accept-encoding']`;

@@ -103,5 +103,9 @@ export function getFlowStyles(): string {
 .sa-level{width:50px;font-weight:600;flex-shrink:0;font-size:10px}
 .sa-msg{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim);font-size:11px}
 .sa-err-name{width:100px;color:var(--red);font-weight:600;flex-shrink:0}
+
+/* Strict Mode duplicate banner */
+.strict-mode-dupe{opacity:0.55}
+.strict-mode-banner{font-size:11px;color:var(--text-muted);padding:6px 0 0;font-family:var(--mono)}
 `;
 }

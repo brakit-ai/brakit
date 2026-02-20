@@ -17,7 +17,6 @@ export function getSecurityView(): string {
       return;
     }
 
-    // Summary bar
     var critCount = 0, warnCount = 0, infoCount = 0;
     for (var ci = 0; ci < findings.length; ci++) {
       if (findings[ci].severity === 'critical') critCount++;
@@ -38,7 +37,6 @@ export function getSecurityView(): string {
       '</div>';
     container.appendChild(summaryEl);
 
-    // Group findings by rule
     var groups = {};
     var groupOrder = [];
     for (var gi = 0; gi < findings.length; gi++) {
@@ -50,7 +48,6 @@ export function getSecurityView(): string {
       groups[f.rule].items.push(f);
     }
 
-    // Sort groups: critical first, then warning, then info
     groupOrder.sort(function(a, b) {
       var sa = groups[a].severity === 'critical' ? 0 : groups[a].severity === 'warning' ? 1 : 2;
       var sb = groups[b].severity === 'critical' ? 0 : groups[b].severity === 'warning' ? 1 : 2;
@@ -58,7 +55,6 @@ export function getSecurityView(): string {
       return groups[b].items.length - groups[a].items.length;
     });
 
-    // Render groups
     for (var oi = 0; oi < groupOrder.length; oi++) {
       var group = groups[groupOrder[oi]];
       var section = document.createElement('div');

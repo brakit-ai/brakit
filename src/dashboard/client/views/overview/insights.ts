@@ -12,7 +12,8 @@ import {
   CROSS_ENDPOINT_PCT,
   CROSS_ENDPOINT_MIN_OCCURRENCES,
   REDUNDANT_QUERY_MIN_COUNT,
-} from "../../constants.js";
+  AUTH_SKIP_CATEGORIES,
+} from "../../constants/index.js";
 import { DASHBOARD_PREFIX } from "../../../../constants/index.js";
 
 export function getOverviewInsights(): string {
@@ -36,14 +37,6 @@ export function getOverviewInsights(): string {
     var reqById = {};
     for (var ri = 0; ri < nonStatic.length; ri++) {
       reqById[nonStatic[ri].id] = nonStatic[ri];
-    }
-
-    function normalizeQueryParams(sql) {
-      if (!sql) return null;
-      var n = sql.replace(/'[^']*'/g, '?');
-      n = n.replace(/\\b\\d+(\\.\\d+)?\\b/g, '?');
-      n = n.replace(/\\$\\d+/g, '?');
-      return n;
     }
 
     var n1Seen = {};
@@ -171,7 +164,6 @@ export function getOverviewInsights(): string {
       }
     }
 
-    // Unhandled Errors
     if (state.errors.length > 0) {
       var errGroups = {};
       for (var ei = 0; ei < state.errors.length; ei++) {
@@ -191,7 +183,6 @@ export function getOverviewInsights(): string {
       }
     }
 
-    // Error Hotspots
     var endpointGroups = {};
     for (var gi = 0; gi < nonStatic.length; gi++) {
       var r = nonStatic[gi];
@@ -219,7 +210,6 @@ export function getOverviewInsights(): string {
       }
     }
 
-    // Duplicate API Calls
     var dupCounts = {};
     var flowCount = {};
     for (var fi = 0; fi < state.flows.length; fi++) {
@@ -253,7 +243,6 @@ export function getOverviewInsights(): string {
       });
     }
 
-    // Slow Endpoints
     for (var sepKey in endpointGroups) {
       var sg = endpointGroups[sepKey];
       if (sg.total < ${MIN_REQUESTS_FOR_INSIGHT}) continue;
@@ -270,7 +259,6 @@ export function getOverviewInsights(): string {
       }
     }
 
-    // Query-Heavy Endpoints
     for (var qhKey in endpointGroups) {
       var qg = endpointGroups[qhKey];
       if (qg.total < ${MIN_REQUESTS_FOR_INSIGHT}) continue;
@@ -287,8 +275,7 @@ export function getOverviewInsights(): string {
       }
     }
 
-    // Auth Overhead
-    var authCats = { 'auth-handshake': 1, 'auth-check': 1, 'middleware': 1 };
+    var authCats = ${AUTH_SKIP_CATEGORIES};
     for (var afi = 0; afi < state.flows.length; afi++) {
       var af = state.flows[afi];
       if (!af.requests || af.requests.length < 2) continue;
@@ -315,7 +302,6 @@ export function getOverviewInsights(): string {
       }
     }
 
-    // Over-fetching: SELECT * queries
     var selectStarSeen = {};
     for (var sqReqId in queriesByReq) {
       var sqQueries = queriesByReq[sqReqId];
@@ -323,6 +309,7 @@ export function getOverviewInsights(): string {
         var sq = sqQueries[sqi];
         if (!sq.sql) continue;
         var sqlUp = sq.sql.trim();
+        // Matches both "SELECT * FROM ..." and ORM-style "table.* FROM ..." patterns
         var isSelectStar = /^SELECT\\s+\\*/i.test(sqlUp) || /\\.\\*\\s+FROM/i.test(sqlUp);
         if (isSelectStar) {
           var sqInfo = simplifySQL(sq.sql);
@@ -347,7 +334,6 @@ export function getOverviewInsights(): string {
       }
     }
 
-    // Over-fetching: High row counts
     var highRowSeen = {};
     for (var hrReqId in queriesByReq) {
       var hrQueries = queriesByReq[hrReqId];
@@ -376,7 +362,6 @@ export function getOverviewInsights(): string {
       }
     }
 
-    // Over-fetching: Large API responses
     for (var lrKey in endpointGroups) {
       var lr = endpointGroups[lrKey];
       if (lr.total < ${OVERFETCH_MIN_REQUESTS}) continue;
@@ -398,7 +383,6 @@ export function getOverviewInsights(): string {
       }
     }
 
-    // Security Rules
     var secFindings = computeSecurityFindings();
     for (var si = 0; si < secFindings.length; si++) {
       insights.push(secFindings[si]);

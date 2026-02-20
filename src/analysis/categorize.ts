@@ -1,3 +1,7 @@
+/**
+ * Request categorization. Classifies each captured request into a category
+ * (page, api, static, auth, polling, etc.) by URL patterns and response headers.
+ */
 import type { TracedRequest, RequestCategory } from "../types/index.js";
 
 export function detectCategory(req: TracedRequest): RequestCategory {

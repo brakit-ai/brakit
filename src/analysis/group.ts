@@ -1,3 +1,7 @@
+/**
+ * Flow grouping algorithm. Segments captured requests into user "actions"
+ * based on referer chains, time gaps, and request category signals.
+ */
 import { randomUUID } from "node:crypto";
 import type { TracedRequest, LabeledRequest, RequestFlow } from "../types/index.js";
 import { FLOW_GAP_MS, DASHBOARD_PREFIX } from "../constants/index.js";

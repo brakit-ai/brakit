@@ -24,14 +24,25 @@ export interface QueryData {
   rowCount?: number;
 }
 
-export function sendQuery(data: QueryData): void {
-  const ctx = getRequestContext();
+/**
+ * Capture the current request ID. Call this BEFORE starting an async DB
+ * operation — driver internals (connection pools, native engines) can break
+ * AsyncLocalStorage propagation, so we must grab the context eagerly.
+ */
+export function captureRequestId(): string | null {
+  return getRequestContext()?.requestId ?? null;
+}
+
+export function sendQuery(
+  data: QueryData,
+  parentRequestId: string | null,
+): void {
   send({
     type: "query",
     data: {
       ...data,
       durationMs: Math.round(data.durationMs),
-      parentRequestId: ctx?.requestId ?? null,
+      parentRequestId,
       timestamp: Date.now(),
     },
   });

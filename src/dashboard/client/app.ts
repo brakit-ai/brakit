@@ -1,6 +1,4 @@
 import {
-  CLIENT_MAX_REQUESTS,
-  CLIENT_RELOAD_DEBOUNCE_MS,
   DASHBOARD_PREFIX,
   DASHBOARD_API_FLOWS,
   DASHBOARD_API_REQUESTS,
@@ -8,44 +6,22 @@ import {
   DASHBOARD_API_CLEAR,
   MAX_TELEMETRY_ENTRIES,
 } from "../../constants/index.js";
+import {
+  CLIENT_MAX_REQUESTS,
+  CLIENT_RELOAD_DEBOUNCE_MS,
+  VIEW_CONTAINERS,
+  VIEW_TITLES,
+  VIEW_SUBTITLES,
+  ALL_ENDPOINTS_SELECTOR,
+  PERF_RELOAD_DEBOUNCE_MS,
+  CURL_SKIP_HEADERS,
+} from "./constants/index.js";
 
 export function getApp(): string {
   return `
-  var VIEW_CONTAINERS = {
-    overview: 'overview-container',
-    actions: 'flow-container',
-    requests: 'request-container',
-    fetches: 'fetch-container',
-    queries: 'query-container',
-    errors: 'error-container',
-    logs: 'log-container',
-    performance: 'performance-container',
-    security: 'security-container'
-  };
-
-  var VIEW_TITLES = {
-    overview: 'Overview',
-    actions: 'Actions',
-    requests: 'Requests',
-    fetches: 'Server Fetches',
-    queries: 'Queries',
-    errors: 'Errors',
-    logs: 'Logs',
-    performance: 'Performance',
-    security: 'Security'
-  };
-
-  var VIEW_SUBTITLES = {
-    overview: 'Live summary of your application',
-    actions: 'User actions captured as sequences of HTTP requests',
-    requests: 'All HTTP requests proxied through brakit',
-    fetches: 'Outbound HTTP calls made by your server to external services',
-    queries: 'Database queries executed during request handling',
-    errors: 'Unhandled exceptions and errors thrown by your application',
-    logs: 'Console output from your application',
-    performance: 'Endpoint health and response time trends',
-    security: 'Security findings and recommendations'
-  };
+  var VIEW_CONTAINERS = ${VIEW_CONTAINERS};
+  var VIEW_TITLES = ${VIEW_TITLES};
+  var VIEW_SUBTITLES = ${VIEW_SUBTITLES};
 
   async function init() {
     try {
@@ -81,7 +57,7 @@ export function getApp(): string {
       updateStats();
       if (state.activeView === 'performance') {
         clearTimeout(perfReloadTimer);
-        perfReloadTimer = setTimeout(loadMetrics, 500);
+        perfReloadTimer = setTimeout(loadMetrics, ${PERF_RELOAD_DEBOUNCE_MS});
       }
     };
 
@@ -162,15 +138,13 @@ export function getApp(): string {
     state.viewMode = 'simple';
     document.getElementById('mode-simple').classList.add('active');
     document.getElementById('mode-detailed').classList.remove('active');
-    document.querySelectorAll('.flow-row.expanded').forEach(function(r){ r.classList.remove('expanded'); });
-    document.querySelectorAll('.flow-expand.open').forEach(function(d){ d.classList.remove('open'); });
+    collapseAll('.flow-row', '.flow-expand');
   });
   document.getElementById('mode-detailed').addEventListener('click', function() {
     state.viewMode = 'detailed';
     document.getElementById('mode-detailed').classList.add('active');
     document.getElementById('mode-simple').classList.remove('active');
-    document.querySelectorAll('.flow-row.expanded').forEach(function(r){ r.classList.remove('expanded'); });
-    document.querySelectorAll('.flow-expand.open').forEach(function(d){ d.classList.remove('open'); });
+    collapseAll('.flow-row', '.flow-expand');
   });
 
   function updateStats() {
@@ -203,7 +177,7 @@ export function getApp(): string {
 
   function copyAsCurl(req) {
     var headers = Object.entries(req.headers || {})
-      .filter(function(e) { return e[0] !== 'host' && e[0] !== 'connection' && e[0] !== 'accept-encoding'; })
+      .filter(function(e) { return ${CURL_SKIP_HEADERS}.indexOf(e[0]) === -1; })
       .map(function(e) { return "-H '" + e[0] + ": " + e[1] + "'"; })
       .join(' ');
     var body = req.requestBody ? " -d '" + req.requestBody.replace(/'/g, "'\\\\''") + "'" : '';
@@ -215,7 +189,7 @@ export function getApp(): string {
     if (!confirm('This will clear all data including performance metrics history. Continue?')) return;
     await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
     state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = []; state.queries = [];
-    graphData = []; selectedEndpoint = '__all__'; timelineCache = {};
+    graphData = []; selectedEndpoint = ${ALL_ENDPOINTS_SELECTOR}; timelineCache = {};
     renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); renderOverview(); renderSecurity(); updateStats();
     showToast('Cleared');
   });

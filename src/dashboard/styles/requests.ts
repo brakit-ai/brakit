@@ -31,7 +31,7 @@ export function getRequestStyles(): string {
 .tel-level-info{color:var(--blue);background:rgba(37,99,235,0.08)}
 .tel-level-debug{color:var(--text-muted);background:var(--bg-muted)}
 .tel-level-log{color:var(--text-dim);background:var(--bg-muted)}
-.tel-error-name{width:120px;color:var(--red);font-weight:500;flex-shrink:0}
+.tel-error-name{width:180px;color:var(--red);font-weight:500;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tel-message{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim)}
 .tel-mono{font-family:var(--mono);font-size:12px}
 .tel-clickable{cursor:pointer}
@@ -39,8 +39,8 @@ export function getRequestStyles(): string {
 
 /* Query rows */
 .query-row{display:flex;align-items:center;gap:16px;font-family:var(--mono);font-size:12px}
-.query-op{width:70px;flex-shrink:0;font-weight:600;border-right:1px solid var(--border-subtle);padding-right:16px}
-.query-table{width:120px;flex-shrink:0;font-weight:500;color:var(--text);border-right:1px solid var(--border-subtle);padding-right:16px}
+.query-op{width:70px;flex-shrink:0;font-weight:600;border-right:1px solid var(--border-subtle);padding-right:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.query-table{width:170px;flex-shrink:0;font-weight:500;color:var(--text);border-right:1px solid var(--border-subtle);padding-right:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .query-preview{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:10px;border-right:1px solid var(--border-subtle);padding-right:16px}
 .query-dur{width:60px;flex-shrink:0;text-align:right}
 .query-slow{color:var(--red);font-weight:500}

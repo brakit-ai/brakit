@@ -1,7 +1,9 @@
 import {
   CLIENT_SENSITIVE_MASK_THRESHOLD,
   CLIENT_TOAST_DURATION_MS,
-} from "../../constants/index.js";
+  SENSITIVE_HEADERS,
+  HTTP_STATUS_MAP,
+} from "./constants/index.js";
 
 export function getHelpers(): string {
   return `
@@ -34,11 +36,11 @@ export function getHelpers(): string {
   }
 
   function httpStatus(code) {
-    var map = {400:'Bad Request',401:'Unauthorized',403:'Forbidden',404:'Not Found',405:'Method Not Allowed',408:'Timeout',409:'Conflict',422:'Unprocessable',429:'Too Many Requests',500:'Internal Server Error',502:'Bad Gateway',503:'Service Unavailable',504:'Gateway Timeout'};
+    var map = ${HTTP_STATUS_MAP};
     return map[code] || (code >= 500 ? 'Server Error' : code >= 400 ? 'Client Error' : 'OK');
   }
 
-  var SENSITIVE = new Set(['cookie','set-cookie','authorization','proxy-authorization','x-api-key','x-auth-token']);
+  var SENSITIVE = new Set(${SENSITIVE_HEADERS});
   function maskValue(k, v) {
     if (SENSITIVE.has(k.toLowerCase())) {
       var s = String(v);
@@ -94,6 +96,11 @@ export function getHelpers(): string {
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     setTimeout(function() { toastEl.classList.remove('show'); }, ${CLIENT_TOAST_DURATION_MS});
+  }
+
+  function collapseAll(rowSelector, detailSelector) {
+    document.querySelectorAll(rowSelector + '.expanded').forEach(function(r) { r.classList.remove('expanded'); });
+    document.querySelectorAll(detailSelector + '.open').forEach(function(d) { d.classList.remove('open'); });
   }
   `;
 }

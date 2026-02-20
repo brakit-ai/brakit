@@ -1,3 +1,7 @@
+/**
+ * Transparent HTTP proxy that forwards requests to the target dev server
+ * and captures request/response pairs for the dashboard telemetry store.
+ */
 import {
   request as httpRequest,
   type IncomingMessage,

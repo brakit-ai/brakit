@@ -32,6 +32,4 @@ export type {
   LiveEndpointData,
 } from "./metrics.js";
 
-export type { FrontendDetector, BackendDetector } from "./detection.js";
-
 export type { SecuritySeverity, SecurityFinding } from "./security.js";

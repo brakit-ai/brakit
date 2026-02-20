@@ -1,4 +1,5 @@
 import { DASHBOARD_PREFIX } from "../../../../constants/index.js";
+import { NAV_LABELS } from "../../constants/index.js";
 
 export function getOverviewRender(): string {
   return `
@@ -52,7 +53,7 @@ export function getOverviewRender(): string {
     var cards = document.createElement('div');
     cards.className = 'ov-cards';
 
-    var NAV_LABELS = { queries: 'Queries', requests: 'Requests', actions: 'Actions', errors: 'Errors', security: 'Security', fetches: 'Fetches', logs: 'Logs', performance: 'Performance' };
+    var NAV_LABELS = ${NAV_LABELS};
 
     for (var i = 0; i < insights.length; i++) {
       (function(insight) {

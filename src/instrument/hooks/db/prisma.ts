@@ -1,4 +1,4 @@
-import { tryRequire, sendQuery } from "./shared.js";
+import { tryRequire, sendQuery, captureRequestId } from "./shared.js";
 
 export function patchPrisma(): void {
   const prismaModule = tryRequire("@prisma/client") as Record<string, unknown> | null;
@@ -28,6 +28,7 @@ export function patchPrisma(): void {
               args: unknown;
               query: (args: unknown) => Promise<unknown>;
             }) {
+              const requestId = captureRequestId();
               const start = performance.now();
               const result = await query(opArgs);
               sendQuery({
@@ -35,7 +36,7 @@ export function patchPrisma(): void {
                 model,
                 operation,
                 durationMs: performance.now() - start,
-              });
+              }, requestId);
               return result;
             },
           },

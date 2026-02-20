@@ -1,37 +1,8 @@
 import { DASHBOARD_API_QUERIES } from "../../../constants/index.js";
-import { QUERY_OP_COLORS, SLOW_QUERY_THRESHOLD_MS } from "../constants.js";
+import { SLOW_QUERY_THRESHOLD_MS } from "../constants/index.js";
 
 export function getQueriesView(): string {
   return `
-  var QUERY_OP_COLORS = ${QUERY_OP_COLORS};
-
-  // Extracts operation (SELECT/INSERT/UPDATE/DELETE/COUNT) and table name from raw SQL via regex
-  function simplifySQL(sql) {
-    if (!sql) return { op: '?', table: '' };
-    var trimmed = sql.trim();
-    var op = trimmed.split(/\\s+/)[0].toUpperCase();
-
-    if (/SELECT\\s+COUNT/i.test(trimmed)) {
-      var countTable = trimmed.match(/FROM\\s+"?\\w+"?\\."?(\\w+)"?/i);
-      return { op: 'COUNT', table: countTable ? countTable[1] : '' };
-    }
-
-    var tableMatch = trimmed.match(/(?:FROM|INTO|UPDATE)\\s+"?\\w+"?\\."?(\\w+)"?/i);
-    return { op: op, table: tableMatch ? tableMatch[1] : '' };
-  }
-
-  function truncateSQL(sql, max) {
-    if (!sql) return '';
-    var clean = sql.replace(/"public"\\./g, '').replace(/"/g, '');
-    if (clean.length <= max) return clean;
-    return clean.substring(0, max) + '...';
-  }
-
-  function queryDuration(ms) {
-    if (ms === 0) return '<1ms';
-    return formatDuration(ms);
-  }
-
   function buildQueryRow(q) {
     var wrapper = document.createElement('div');
     var row = document.createElement('div');
@@ -40,12 +11,12 @@ export function getQueriesView(): string {
     var info = q.sql ? simplifySQL(q.sql) : { op: q.operation || '?', table: q.model || '' };
     var opColor = QUERY_OP_COLORS[info.op] || 'var(--text-dim)';
     var slowCls = q.durationMs > ${SLOW_QUERY_THRESHOLD_MS} ? ' query-slow' : '';
-    var preview = q.sql ? truncateSQL(q.sql, 60) : info.op + ' ' + info.table;
+    var preview = q.sql || (info.op + ' ' + info.table);
 
     row.innerHTML =
-      '<span class="query-op" style="color:' + opColor + '">' + escHtml(info.op) + '</span>' +
-      '<span class="query-table">' + escHtml(info.table) + '</span>' +
-      '<span class="query-preview">' + escHtml(preview) + '</span>' +
+      '<span class="query-op" title="' + escHtml(info.op) + '" style="color:' + opColor + '">' + escHtml(info.op) + '</span>' +
+      '<span class="query-table" title="' + escHtml(info.table) + '">' + escHtml(info.table) + '</span>' +
+      '<span class="query-preview" title="' + escHtml(preview) + '">' + escHtml(preview) + '</span>' +
       '<span class="query-dur' + slowCls + '">' + queryDuration(q.durationMs) + '</span>';
 
     var sqlText = q.sql || (info.op + ' ' + info.table);

@@ -1,6 +1,11 @@
+/**
+ * Client script assembly. Concatenates template-string view functions
+ * into a single browser IIFE served by the dashboard server.
+ */
 import type { BrakitConfig } from "../../types/index.js";
 import { getHelpers } from "./helpers.js";
 import { getTelemetryViewHelpers } from "./view-helpers.js";
+import { getSqlUtils } from "./views/shared/sql-utils.js";
 import { getFlowsView } from "./views/flows.js";
 import { getRequestsView } from "./views/requests.js";
 import { getFetchesView } from "./views/fetches.js";
@@ -28,6 +33,7 @@ export function getClientScript(config: BrakitConfig): string {
 
   ${getHelpers()}
   ${getTelemetryViewHelpers()}
+  ${getSqlUtils()}
   ${getFlowsView()}
   ${getRequestsView()}
   ${getFetchesView()}

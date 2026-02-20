@@ -17,8 +17,9 @@ export function markDuplicates(requests: LabeledRequest[]): void {
   }
 
   // React Strict Mode doubles ALL effects — every endpoint appears exactly 2x.
-  // If this pattern holds, it's Strict Mode, not real duplicates.
-  if (counts.size > 0 && [...counts.values()].every((c) => c === 2)) return;
+  // Mark the second occurrences as Strict Mode dupes instead of real duplicates.
+  const isStrictMode =
+    counts.size > 0 && [...counts.values()].every((c) => c === 2);
 
   const seen = new Set<string>();
   for (const req of requests) {
@@ -26,7 +27,11 @@ export function markDuplicates(requests: LabeledRequest[]): void {
       continue;
     const key = `${req.method} ${getEffectivePath(req).split("?")[0]}`;
     if (seen.has(key)) {
-      req.isDuplicate = true;
+      if (isStrictMode) {
+        req.isStrictModeDupe = true;
+      } else {
+        req.isDuplicate = true;
+      }
     } else {
       seen.add(key);
     }

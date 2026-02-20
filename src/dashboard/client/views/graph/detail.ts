@@ -1,4 +1,4 @@
-import { HIGH_QUERY_COUNT_PER_REQ } from "../../constants.js";
+import { HIGH_QUERY_COUNT_PER_REQ } from "../../constants/index.js";
 
 export function getGraphDetail(): string {
   return `

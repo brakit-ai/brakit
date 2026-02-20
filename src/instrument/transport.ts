@@ -1,3 +1,7 @@
+/**
+ * Batched telemetry transport. Buffers events from instrumentation hooks
+ * and flushes them to the dashboard ingest API on a fixed interval.
+ */
 import { request } from "node:http";
 import type { TelemetryEvent, TelemetryBatch } from "../types/index.js";
 import {
