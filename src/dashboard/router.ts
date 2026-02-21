@@ -18,6 +18,7 @@ import {
   DASHBOARD_API_ACTIVITY,
   DASHBOARD_API_INSIGHTS,
   DASHBOARD_API_SECURITY,
+  DASHBOARD_API_TAB,
 } from "../constants/index.js";
 import {
   handleApiRequests,
@@ -35,6 +36,7 @@ import {
 import { createInsightsHandler, createSecurityHandler } from "./api/insights.js";
 import { createSSEHandler } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
+import { recordTabViewed, recordDashboardOpened, isTelemetryEnabled } from "../telemetry/index.js";
 
 type RouteHandler = (req: IncomingMessage, res: ServerResponse) => void;
 
@@ -70,6 +72,13 @@ export function createDashboardHandler(
     routes[DASHBOARD_API_SECURITY] = createSecurityHandler(deps.analysisEngine);
   }
 
+  routes[DASHBOARD_API_TAB] = (req, res) => {
+    const tab = (req.url ?? "").split("tab=")[1];
+    if (tab && isTelemetryEnabled()) recordTabViewed(decodeURIComponent(tab));
+    res.writeHead(204);
+    res.end();
+  };
+
   return (req, res, config) => {
     const path = (req.url ?? "/").split("?")[0];
     const handler = routes[path];
@@ -79,6 +88,7 @@ export function createDashboardHandler(
       return;
     }
 
+    if (isTelemetryEnabled()) recordDashboardOpened();
     res.writeHead(200, {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-cache",

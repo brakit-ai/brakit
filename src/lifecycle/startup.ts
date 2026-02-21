@@ -4,7 +4,14 @@ import pc from "picocolors";
 import { detectProject } from "../detect/project.js";
 import { createProxyServer } from "../proxy/server.js";
 import { onRequest } from "../proxy/request-log.js";
-import { printBanner } from "../output/terminal.js";
+import { printBanner, createConsoleInsightListener } from "../output/terminal.js";
+import {
+  isTelemetryEnabled,
+  initSession,
+  recordRequestCount,
+  recordInsightTypes,
+  recordRulesTriggered,
+} from "../telemetry/index.js";
 import { spawnDevServer, spawnCustomCommand } from "../process/spawn.js";
 import { DEFAULT_MAX_BODY_CAPTURE } from "../constants/index.js";
 import type { BrakitConfig, DetectedProject } from "../types/index.js";
@@ -83,6 +90,15 @@ export async function startBrakit(opts: StartOptions): Promise<BrakitInstance> {
 
   const analysisEngine = new AnalysisEngine();
   analysisEngine.start();
+  analysisEngine.onUpdate(createConsoleInsightListener(proxyPort, metricsStore));
+
+  if (isTelemetryEnabled()) {
+    initSession(project.framework, project.packageManager, !!customCommand, []);
+    analysisEngine.onUpdate((insights, findings) => {
+      recordInsightTypes(insights.map((i) => i.type));
+      recordRulesTriggered(findings.map((f) => f.rule));
+    });
+  }
 
   const handleDashboard = createDashboardHandler({ metricsStore, analysisEngine });
 
@@ -104,9 +120,12 @@ export async function startBrakit(opts: StartOptions): Promise<BrakitInstance> {
     printBanner(proxyPort, targetPort);
   });
 
+  let reqCount = 0;
   onRequest((req) => {
     const queryCount = defaultQueryStore.getByRequest(req.id).length;
     metricsStore.recordRequest(req, queryCount);
+    reqCount++;
+    recordRequestCount(reqCount);
   });
 
   return { proxy, devProcess, metricsStore, analysisEngine, config, project };

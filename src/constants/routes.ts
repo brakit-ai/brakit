@@ -13,3 +13,4 @@ export const DASHBOARD_API_ACTIVITY = "/__brakit/api/activity";
 export const DASHBOARD_API_METRICS_LIVE = "/__brakit/api/metrics/live";
 export const DASHBOARD_API_INSIGHTS = "/__brakit/api/insights";
 export const DASHBOARD_API_SECURITY = "/__brakit/api/security";
+export const DASHBOARD_API_TAB = "/__brakit/api/tab";

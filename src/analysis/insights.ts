@@ -12,7 +12,6 @@ import {
   SLOW_ENDPOINT_THRESHOLD_MS,
   MIN_REQUESTS_FOR_INSIGHT,
   HIGH_QUERY_COUNT_PER_REQ,
-  AUTH_OVERHEAD_PCT,
   LARGE_RESPONSE_BYTES,
   HIGH_ROW_COUNT,
   OVERFETCH_MIN_REQUESTS,
@@ -30,7 +29,7 @@ import { INTERNAL_ID_SUFFIX } from "./rules/patterns.js";
 export type InsightSeverity = "critical" | "warning" | "info";
 export type InsightType =
   | "n1" | "cross-endpoint" | "redundant-query" | "error" | "error-hotspot"
-  | "duplicate" | "slow" | "query-heavy" | "auth-overhead"
+  | "duplicate" | "slow" | "query-heavy"
   | "select-star" | "high-rows" | "large-response" | "response-overfetch" | "security";
 
 export interface Insight {
@@ -50,8 +49,6 @@ export interface InsightContext {
   flows: readonly RequestFlow[];
   securityFindings?: readonly SecurityFinding[];
 }
-
-const AUTH_CATEGORIES = new Set(["auth-handshake", "auth-check", "middleware"]);
 
 function getQueryShape(q: TracedQuery): string {
   if (q.sql) return normalizeQueryParams(q.sql) ?? "";
@@ -305,31 +302,6 @@ export function computeInsights(ctx: InsightContext): Insight[] {
         hint: "Too many queries per request increases latency. Combine queries with JOINs, use batch operations, or reduce the number of data fetches.",
         nav: "queries",
       });
-    }
-  }
-
-  // --- Auth ---
-  for (const flow of ctx.flows) {
-    if (!flow.requests || flow.requests.length < 2) continue;
-    let authMs = 0;
-    let totalMs = 0;
-    for (const r of flow.requests) {
-      const dur = (r as { pollingDurationMs?: number }).pollingDurationMs ?? r.durationMs;
-      totalMs += dur;
-      if (AUTH_CATEGORIES.has((r as { category?: string }).category ?? "")) authMs += dur;
-    }
-    if (totalMs > 0 && authMs > 0) {
-      const pct = Math.round((authMs / totalMs) * 100);
-      if (pct >= AUTH_OVERHEAD_PCT) {
-        insights.push({
-          severity: "warning",
-          type: "auth-overhead",
-          title: "Auth Overhead",
-          desc: `${flow.label} — ${pct}% of time (${formatDuration(authMs)}) spent in auth/middleware`,
-          hint: "Auth checks consume a significant portion of this action. If using a third-party auth provider, check if session caching can reduce roundtrips.",
-          nav: "actions",
-        });
-      }
     }
   }
 

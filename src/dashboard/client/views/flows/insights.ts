@@ -1,7 +1,5 @@
 import { SLOW_REQUEST_THRESHOLD_MS } from "../../../../constants/index.js";
 import {
-  AUTH_OVERHEAD_PCT,
-  AUTH_SLOW_MS,
   LARGE_RESPONSE_BYTES,
   AUTH_SKIP_CATEGORIES,
 } from "../../constants/index.js";
@@ -140,7 +138,6 @@ export function getFlowInsights(): string {
     var warnings = [];
     var duplicates = [];
     var seen = new Map();
-    var authMs = 0;
     var totalMs = 0;
     for (var i = 0; i < reqs.length; i++) {
       var req = reqs[i];
@@ -149,10 +146,6 @@ export function getFlowInsights(): string {
       totalMs += dur;
 
       if (skipCats[req.category]) {
-        authMs += dur;
-        if (dur > ${AUTH_SLOW_MS}) {
-          warnings.push('Slow auth: ' + label + ' took ' + formatDuration(dur));
-        }
         continue;
       }
 
@@ -172,13 +165,6 @@ export function getFlowInsights(): string {
       }
 
       successes.push(label);
-    }
-
-    if (totalMs > 0 && authMs > 0) {
-      var authPct = Math.round((authMs / totalMs) * 100);
-      if (authPct >= ${AUTH_OVERHEAD_PCT}) {
-        warnings.unshift('Auth overhead: ' + authPct + '% of this action (' + formatDuration(authMs) + ') is spent in auth/middleware');
-      }
     }
 
     for (var d of seen.values()) duplicates.push(d);

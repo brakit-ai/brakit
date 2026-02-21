@@ -6,6 +6,7 @@ import {
   DASHBOARD_API_CLEAR,
   DASHBOARD_API_INSIGHTS,
   DASHBOARD_API_SECURITY,
+  DASHBOARD_API_TAB,
   MAX_TELEMETRY_ENTRIES,
 } from "../../constants/index.js";
 import {
@@ -149,6 +150,7 @@ export function getApp(): string {
       sidebarItems.forEach(function(i) { i.classList.remove('active'); });
       item.classList.add('active');
       state.activeView = view;
+      fetch('${DASHBOARD_API_TAB}?tab=' + encodeURIComponent(view)).catch(function(){});
       document.getElementById('header-title').textContent = VIEW_TITLES[view] || view;
       document.getElementById('header-sub').textContent = VIEW_SUBTITLES[view] || '';
       document.getElementById('mode-toggle').style.display = view === 'actions' ? 'flex' : 'none';

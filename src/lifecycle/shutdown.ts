@@ -1,6 +1,7 @@
 import pc from "picocolors";
 import { SHUTDOWN_TIMEOUT_MS } from "../constants/index.js";
 import type { BrakitInstance } from "./startup.js";
+import { trackSession } from "../telemetry/index.js";
 
 export function createShutdownHandler(instance: BrakitInstance): () => void {
   let shuttingDown = false;
@@ -9,6 +10,7 @@ export function createShutdownHandler(instance: BrakitInstance): () => void {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(pc.dim("\n  Shutting down..."));
+    trackSession(instance.metricsStore, instance.analysisEngine);
     instance.analysisEngine.stop();
     instance.metricsStore.stop();
     instance.proxy.close();
