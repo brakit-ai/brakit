@@ -33,6 +33,30 @@ export function getPerformanceStyles(): string {
 .perf-metric-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);font-family:var(--sans);font-weight:600}
 .perf-metric-value{font-size:21px;font-weight:700;font-family:var(--mono)}
 
+/* Time breakdown */
+.perf-breakdown{padding:16px 28px;border-bottom:1px solid var(--border-subtle)}
+.perf-breakdown-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--bg-muted);border:1px solid var(--border)}
+.perf-breakdown-bar-sm{height:6px;border-radius:3px;flex:1}
+.perf-breakdown-seg{min-width:2px;transition:width .3s}
+.perf-breakdown-db{background:var(--breakdown-db)}
+.perf-breakdown-fetch{background:var(--breakdown-fetch)}
+.perf-breakdown-app{background:var(--breakdown-app)}
+.perf-breakdown-legend{display:flex;gap:16px;margin-top:8px;font-size:11px;font-family:var(--mono);color:var(--text-muted)}
+.perf-breakdown-item{display:flex;align-items:center;gap:5px}
+.perf-breakdown-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+span.perf-breakdown-dot.perf-breakdown-db{background:var(--breakdown-db)}
+span.perf-breakdown-dot.perf-breakdown-fetch{background:var(--breakdown-fetch)}
+span.perf-breakdown-dot.perf-breakdown-app{background:var(--breakdown-app)}
+.perf-breakdown-inline{margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.perf-breakdown-labels{display:flex;gap:8px;font-size:10px;font-family:var(--mono);color:var(--text-muted);flex-shrink:0}
+.perf-breakdown-lbl{display:flex;align-items:center;gap:3px}
+.perf-col-breakdown{flex:1;min-width:140px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.perf-bd-tag{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--mono);font-weight:500;white-space:nowrap}
+.perf-bd-tag-db{color:#818cf8;background:rgba(99,102,241,0.1)}
+.perf-bd-tag-fetch{color:#fbbf24;background:rgba(245,158,11,0.1)}
+.perf-bd-tag-app{color:var(--breakdown-app);background:rgba(148,163,184,0.1)}
+.perf-col-muted{color:var(--text-dim)}
+
 /* Chart */
 .perf-chart-wrap{padding:16px 28px}
 .perf-canvas{border-radius:var(--radius);background:var(--bg-muted);border:1px solid var(--border)}

@@ -6,6 +6,8 @@ export interface SessionMetric {
   requestCount: number;
   errorCount: number;
   avgQueryCount: number;
+  avgQueryTimeMs: number;
+  avgFetchTimeMs: number;
 }
 
 export interface EndpointMetrics {
@@ -24,6 +26,8 @@ export interface LiveRequestPoint {
   durationMs: number;
   statusCode: number;
   queryCount: number;
+  queryTimeMs: number;
+  fetchTimeMs: number;
 }
 
 export interface LiveEndpointSummary {
@@ -31,10 +35,19 @@ export interface LiveEndpointSummary {
   errorRate: number;
   avgQueryCount: number;
   totalRequests: number;
+  avgQueryTimeMs: number;
+  avgFetchTimeMs: number;
+  avgAppTimeMs: number;
 }
 
 export interface LiveEndpointData {
   endpoint: string;
   requests: LiveRequestPoint[];
   summary: LiveEndpointSummary;
+}
+
+export interface RequestMetrics {
+  queryCount: number;
+  queryTimeMs: number;
+  fetchTimeMs: number;
 }

@@ -17,6 +17,7 @@ export function getBaseStyles(): string {
   --shadow-sm:0 1px 2px rgba(0,0,0,0.05);
   --shadow-md:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
   --shadow-lg:0 4px 12px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.04);
+  --breakdown-db:#6366f1;--breakdown-fetch:#f59e0b;--breakdown-app:#94a3b8;
   --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
   --sans:Inter,system-ui,-apple-system,sans-serif;
 }

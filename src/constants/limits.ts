@@ -2,3 +2,4 @@ export const MAX_REQUEST_ENTRIES = 1_000;
 export const DEFAULT_MAX_BODY_CAPTURE = 10_240;
 export const DEFAULT_API_LIMIT = 500;
 export const MAX_TELEMETRY_ENTRIES = 1_000;
+export const MAX_TAB_NAME_LENGTH = 32;

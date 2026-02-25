@@ -3,11 +3,13 @@ import type {
   TracedQuery,
   TracedError,
   TracedLog,
+  TracedFetch,
   SecurityFinding,
   RequestListener,
 } from "../types/index.js";
 import type { RequestFlow } from "../types/index.js";
 import type { TelemetryListener } from "../store/index.js";
+import type { MetricsStore } from "../store/index.js";
 import { getRequests } from "../store/request-log.js";
 import {
   defaultQueryStore,
@@ -33,7 +35,10 @@ export class AnalysisEngine {
   private boundErrorListener: TelemetryListener<TracedError>;
   private boundLogListener: TelemetryListener<TracedLog>;
 
-  constructor(private debounceMs = 300) {
+  constructor(
+    private metricsStore: MetricsStore,
+    private debounceMs = 300,
+  ) {
     this.scanner = createDefaultScanner();
 
     this.boundRequestListener = () => this.scheduleRecompute();
@@ -90,6 +95,7 @@ export class AnalysisEngine {
     const queries = defaultQueryStore.getAll() as readonly TracedQuery[];
     const errors = defaultErrorStore.getAll() as readonly TracedError[];
     const logs = defaultLogStore.getAll() as readonly TracedLog[];
+    const fetches = defaultFetchStore.getAll() as readonly TracedFetch[];
     const flows = groupRequestsIntoFlows(requests);
 
     this.cachedFindings = this.scanner.scan({ requests, logs });
@@ -99,6 +105,8 @@ export class AnalysisEngine {
       queries,
       errors,
       flows,
+      fetches,
+      previousMetrics: this.metricsStore.getAll(),
       securityFindings: this.cachedFindings,
     });
 

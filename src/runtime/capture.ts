@@ -26,10 +26,15 @@ function decompress(body: Buffer<ArrayBuffer>, encoding: string): Buffer<ArrayBu
     if (encoding === "gzip") return gunzipSync(body);
     if (encoding === "br") return brotliDecompressSync(body);
     if (encoding === "deflate") return inflateSync(body);
-  } catch {
-    // Decompression failed — return as-is
-  }
+  } catch {}
   return body;
+}
+
+function toBuffer(chunk: unknown): Buffer | null {
+  if (Buffer.isBuffer(chunk)) return chunk;
+  if (chunk instanceof Uint8Array) return Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+  if (typeof chunk === "string") return Buffer.from(chunk);
+  return null;
 }
 
 export function captureInProcess(
@@ -49,13 +54,13 @@ export function captureInProcess(
     try {
       const chunk = args[0];
       if (chunk != null && typeof chunk !== "function" && resSize < DEFAULT_MAX_BODY_CAPTURE) {
-        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
-        resChunks.push(buf);
-        resSize += buf.length;
+        const buf = toBuffer(chunk);
+        if (buf) {
+          resChunks.push(buf);
+          resSize += buf.length;
+        }
       }
-    } catch {
-      // Never interfere with the response
-    }
+    } catch {}
     return (originalWrite as Function).apply(this, args);
   } as typeof res.write;
 
@@ -63,14 +68,15 @@ export function captureInProcess(
     try {
       const chunk = typeof args[0] !== "function" ? args[0] : undefined;
       if (chunk != null && resSize < DEFAULT_MAX_BODY_CAPTURE) {
-        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
-        resChunks.push(buf);
+        const buf = toBuffer(chunk);
+        if (buf) {
+          resChunks.push(buf);
+        }
       }
-    } catch {
-      // Never interfere with the response
-    }
+    } catch {}
 
     const result = (originalEnd as Function).apply(this, args);
+    const endTime = performance.now();
 
     try {
       const encoding = String(res.getHeader("content-encoding") ?? "").toLowerCase();
@@ -90,11 +96,10 @@ export function captureInProcess(
         responseBody: body,
         responseContentType: String(res.getHeader("content-type") ?? ""),
         startTime,
+        endTime,
         config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
       });
-    } catch {
-      // Capture failure should never affect the app
-    }
+    } catch {}
 
     return result;
   } as typeof res.end;

@@ -13,7 +13,6 @@ export function getGraphDetail(): string {
     var g = healthGrade(s.p95Ms);
     var errors = Math.round(s.errorRate * s.totalRequests);
 
-    // header
     var header = document.createElement('div');
     header.className = 'perf-detail-header';
     header.innerHTML =
@@ -23,7 +22,6 @@ export function getGraphDetail(): string {
       '</div>';
     container.appendChild(header);
 
-    // metric cards
     var metrics = document.createElement('div');
     metrics.className = 'perf-metric-row';
     metrics.innerHTML =
@@ -32,7 +30,38 @@ export function getGraphDetail(): string {
       buildMetricCard('Queries/req', String(s.avgQueryCount), s.avgQueryCount > ${HIGH_QUERY_COUNT_PER_REQ} ? 'var(--amber)' : 'var(--text)');
     container.appendChild(metrics);
 
-    // scatter chart
+    var totalAvg = (s.avgQueryTimeMs || 0) + (s.avgFetchTimeMs || 0) + (s.avgAppTimeMs || 0);
+    if (totalAvg > 0) {
+      var dbPct = Math.round((s.avgQueryTimeMs || 0) / totalAvg * 100);
+      var fetchPct = Math.round((s.avgFetchTimeMs || 0) / totalAvg * 100);
+      var appPct = Math.max(0, 100 - dbPct - fetchPct);
+
+      var breakdown = document.createElement('div');
+      breakdown.className = 'perf-breakdown';
+
+      var breakdownLabel = document.createElement('div');
+      breakdownLabel.className = 'perf-section-title';
+      breakdownLabel.textContent = 'Time Breakdown';
+      breakdown.appendChild(breakdownLabel);
+
+      var bar = document.createElement('div');
+      bar.className = 'perf-breakdown-bar';
+      if (dbPct > 0) bar.innerHTML += '<div class="perf-breakdown-seg perf-breakdown-db" style="width:' + dbPct + '%"></div>';
+      if (fetchPct > 0) bar.innerHTML += '<div class="perf-breakdown-seg perf-breakdown-fetch" style="width:' + fetchPct + '%"></div>';
+      if (appPct > 0) bar.innerHTML += '<div class="perf-breakdown-seg perf-breakdown-app" style="width:' + appPct + '%"></div>';
+      breakdown.appendChild(bar);
+
+      var legend = document.createElement('div');
+      legend.className = 'perf-breakdown-legend';
+      legend.innerHTML =
+        '<span class="perf-breakdown-item"><span class="perf-breakdown-dot perf-breakdown-db"></span>DB ' + fmtMs(s.avgQueryTimeMs || 0) + ' (' + dbPct + '%)</span>' +
+        '<span class="perf-breakdown-item"><span class="perf-breakdown-dot perf-breakdown-fetch"></span>Fetch ' + fmtMs(s.avgFetchTimeMs || 0) + ' (' + fetchPct + '%)</span>' +
+        '<span class="perf-breakdown-item"><span class="perf-breakdown-dot perf-breakdown-app"></span>App ' + fmtMs(s.avgAppTimeMs || 0) + ' (' + appPct + '%)</span>';
+      breakdown.appendChild(legend);
+
+      container.appendChild(breakdown);
+    }
+
     var chartWrap = document.createElement('div');
     chartWrap.className = 'perf-chart-wrap';
     var chartLabel = document.createElement('div');
@@ -50,7 +79,6 @@ export function getGraphDetail(): string {
 
     drawScatterChart(canvas, ep.requests);
 
-    // recent requests table
     if (ep.requests.length > 0) {
       var tableWrap = document.createElement('div');
       tableWrap.className = 'perf-history-wrap';
@@ -61,6 +89,7 @@ export function getGraphDetail(): string {
         '<span class="perf-col perf-col-date">Time</span>' +
         '<span class="perf-col perf-col-health">Health</span>' +
         '<span class="perf-col perf-col-avg">Duration</span>' +
+        '<span class="perf-col perf-col-breakdown">Breakdown</span>' +
         '<span class="perf-col perf-col-status">Status</span>' +
         '<span class="perf-col perf-col-qpr">Queries</span>';
       tableWrap.appendChild(colHeader);
@@ -79,10 +108,20 @@ export function getGraphDetail(): string {
         var row = document.createElement('div');
         row.className = 'perf-hist-row' + (isError ? ' perf-hist-row-err' : '');
         row.setAttribute('data-req-idx', item.origIdx);
+        var rDbMs = r.queryTimeMs || 0;
+        var rFetchMs = r.fetchTimeMs || 0;
+        var rAppMs = Math.max(0, r.durationMs - rDbMs - rFetchMs);
+        var breakdownParts = [];
+        if (rDbMs > 0) breakdownParts.push('<span class="perf-bd-tag perf-bd-tag-db">DB ' + fmtMs(rDbMs) + '</span>');
+        if (rFetchMs > 0) breakdownParts.push('<span class="perf-bd-tag perf-bd-tag-fetch">Fetch ' + fmtMs(rFetchMs) + '</span>');
+        breakdownParts.push('<span class="perf-bd-tag perf-bd-tag-app">App ' + fmtMs(rAppMs) + '</span>');
+        var breakdownHtml = breakdownParts.join('');
+
         row.innerHTML =
           '<span class="perf-col perf-col-date">' + timeStr + '</span>' +
           '<span class="perf-col perf-col-health"><span class="perf-badge perf-badge-sm" style="color:' + rg.color + ';background:' + rg.bg + ';border-color:' + rg.border + '">' + rg.label + '</span></span>' +
           '<span class="perf-col perf-col-avg">' + fmtMs(r.durationMs) + '</span>' +
+          '<span class="perf-col perf-col-breakdown">' + breakdownHtml + '</span>' +
           '<span class="perf-col perf-col-status" style="color:' + (isError ? 'var(--red)' : 'var(--text-muted)') + '">' + r.statusCode + '</span>' +
           '<span class="perf-col perf-col-qpr">' + r.queryCount + '</span>';
         tableWrap.appendChild(row);

@@ -22,6 +22,9 @@ export const INTERNAL_ID_KEYS = /^(id|_id|userId|user_id|createdBy|updatedBy|org
 
 export const INTERNAL_ID_SUFFIX = /Id$|_id$/;
 
+export const SELECT_STAR_RE = /^SELECT\s+\*/i;
+export const SELECT_DOT_STAR_RE = /\.\*\s+FROM/i;
+
 export const RULE_HINTS: Record<string, string> = {
   "exposed-secret": "Never include secret fields in API responses. Strip sensitive fields before returning.",
   "token-in-url": "Pass tokens in the Authorization header, not URL query parameters.",

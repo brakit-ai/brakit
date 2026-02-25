@@ -31,6 +31,7 @@ export type {
   LiveRequestPoint,
   LiveEndpointSummary,
   LiveEndpointData,
+  RequestMetrics,
 } from "./metrics.js";
 
 export type { SecuritySeverity, SecurityFinding } from "./security.js";

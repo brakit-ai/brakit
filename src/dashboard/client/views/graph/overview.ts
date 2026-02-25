@@ -24,6 +24,27 @@ export function getGraphOverview(): string {
         (s.avgQueryCount > 0 ? '<span class="perf-ep-stat' + (s.avgQueryCount > HIGH_QUERY_THRESHOLD ? ' perf-ep-stat-warn' : '') + '">' + s.avgQueryCount + ' q/req</span>' : '') +
         '<span class="perf-ep-stat perf-ep-stat-muted">' + s.totalRequests + ' req' + (s.totalRequests !== 1 ? 's' : '') + '</span>';
 
+      var ovTotal = (s.avgQueryTimeMs || 0) + (s.avgFetchTimeMs || 0) + (s.avgAppTimeMs || 0);
+      var ovBarHtml = '';
+      if (ovTotal > 0) {
+        var ovDbPct = Math.round((s.avgQueryTimeMs || 0) / ovTotal * 100);
+        var ovFetchPct = Math.round((s.avgFetchTimeMs || 0) / ovTotal * 100);
+        var ovAppPct = Math.max(0, 100 - ovDbPct - ovFetchPct);
+        ovBarHtml =
+          '<div class="perf-breakdown-inline">' +
+            '<div class="perf-breakdown-bar perf-breakdown-bar-sm">' +
+              (ovDbPct > 0 ? '<div class="perf-breakdown-seg perf-breakdown-db" style="width:' + ovDbPct + '%"></div>' : '') +
+              (ovFetchPct > 0 ? '<div class="perf-breakdown-seg perf-breakdown-fetch" style="width:' + ovFetchPct + '%"></div>' : '') +
+              (ovAppPct > 0 ? '<div class="perf-breakdown-seg perf-breakdown-app" style="width:' + ovAppPct + '%"></div>' : '') +
+            '</div>' +
+            '<span class="perf-breakdown-labels">' +
+              (ovDbPct > 0 ? '<span class="perf-breakdown-lbl"><span class="perf-breakdown-dot perf-breakdown-db"></span>' + fmtMs(s.avgQueryTimeMs || 0) + '</span>' : '') +
+              (ovFetchPct > 0 ? '<span class="perf-breakdown-lbl"><span class="perf-breakdown-dot perf-breakdown-fetch"></span>' + fmtMs(s.avgFetchTimeMs || 0) + '</span>' : '') +
+              '<span class="perf-breakdown-lbl"><span class="perf-breakdown-dot perf-breakdown-app"></span>' + fmtMs(s.avgAppTimeMs || 0) + '</span>' +
+            '</span>' +
+          '</div>';
+      }
+
       var chartId = 'inline-scatter-' + idx;
 
       card.innerHTML =
@@ -31,6 +52,7 @@ export function getGraphOverview(): string {
           '<span class="perf-ep-name">' + escHtml(ep.endpoint) + '</span>' +
           '<span class="perf-ep-stats">' + statsHtml + '</span>' +
         '</div>' +
+        ovBarHtml +
         '<canvas id="' + chartId + '" class="perf-inline-canvas"></canvas>';
 
       list.appendChild(card);

@@ -19,6 +19,7 @@ import {
   DASHBOARD_API_INSIGHTS,
   DASHBOARD_API_SECURITY,
   DASHBOARD_API_TAB,
+  MAX_TAB_NAME_LENGTH,
 } from "../constants/index.js";
 import {
   handleApiRequests,
@@ -86,7 +87,7 @@ export function createDashboardHandler(
   routes[DASHBOARD_API_TAB] = (req, res) => {
     const raw = (req.url ?? "").split("tab=")[1];
     if (raw) {
-      const tab = decodeURIComponent(raw).slice(0, 32);
+      const tab = decodeURIComponent(raw).slice(0, MAX_TAB_NAME_LENGTH);
       if (VALID_TABS.has(tab) && isTelemetryEnabled()) recordTabViewed(tab);
     }
     res.writeHead(204);

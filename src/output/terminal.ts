@@ -5,20 +5,24 @@ import type { Insight } from "../analysis/insights.js";
 import type { AnalysisListener } from "../analysis/engine.js";
 import type { MetricsStore } from "../store/index.js";
 
+function print(line: string): void {
+  process.stdout.write(line + "\n");
+}
+
 export function printBanner(proxyPort: number, targetPort: number): void {
-  console.log();
-  console.log(`  ${pc.bold(pc.magenta("brakit"))} ${pc.dim(`v${VERSION}`)}`);
-  console.log();
-  console.log(
+  print("");
+  print(`  ${pc.bold(pc.magenta("brakit"))} ${pc.dim(`v${VERSION}`)}`);
+  print("");
+  print(
     `  ${pc.dim("proxy")}      ${pc.bold(`http://localhost:${proxyPort}`)}`,
   );
-  console.log(
+  print(
     `  ${pc.dim("target")}     ${pc.dim(`http://localhost:${targetPort}`)}`,
   );
-  console.log(
+  print(
     `  ${pc.dim("dashboard")}  ${pc.bold(pc.magenta(`http://localhost:${proxyPort}${DASHBOARD_PREFIX}`))}`,
   );
-  console.log();
+  print("");
 }
 
 function severityIcon(severity: string): string {
@@ -42,7 +46,11 @@ function formatConsoleLine(insight: Insight, dashboardUrl: string, suffix?: stri
   const title = colorTitle(insight.severity, insight.title);
   const desc = pc.dim(truncate(insight.desc) + (suffix ?? ""));
   const link = pc.dim(`\u2192  ${dashboardUrl}`);
-  return `  ${icon} ${title} \u2014 ${desc}  ${link}`;
+  let line = `  ${icon} ${title} \u2014 ${desc}  ${link}`;
+  if (insight.detail) {
+    line += `\n    ${pc.dim("\u2514 " + insight.detail)}`;
+  }
+  return line;
 }
 
 export function createConsoleInsightListener(
@@ -64,7 +72,7 @@ export function createConsoleInsightListener(
 
       let suffix: string | undefined;
       if (insight.type === "slow") {
-        const ep = metricsStore.getAll().find((e) => e.endpoint === endpoint);
+        const ep = metricsStore.getEndpoint(endpoint);
         if (ep && ep.sessions.length > 1) {
           const prev = ep.sessions[ep.sessions.length - 2];
           suffix = ` (\u2191 from ${prev.p95DurationMs < 1000 ? prev.p95DurationMs + "ms" : (prev.p95DurationMs / 1000).toFixed(1) + "s"})`;
@@ -75,8 +83,8 @@ export function createConsoleInsightListener(
     }
 
     if (lines.length > 0) {
-      console.log();
-      for (const line of lines) console.log(line);
+      print("");
+      for (const line of lines) print(line);
     }
   };
 }

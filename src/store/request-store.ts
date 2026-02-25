@@ -28,6 +28,7 @@ export interface CaptureInput {
   responseBody: Buffer | null;
   responseContentType: string;
   startTime: number;
+  endTime?: number;
   config: Pick<BrakitConfig, "maxBodyCapture">;
 }
 
@@ -69,7 +70,7 @@ export class RequestStore {
       responseHeaders: flattenHeaders(input.responseHeaders),
       responseBody: responseBodyStr,
       startedAt: input.startTime,
-      durationMs: Math.round(performance.now() - input.startTime),
+      durationMs: Math.round((input.endTime ?? performance.now()) - input.startTime),
       responseSize: input.responseBody?.length ?? 0,
       isStatic: isStaticPath(path),
     };
