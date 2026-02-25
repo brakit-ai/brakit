@@ -5,9 +5,9 @@ const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
 
 export default defineConfig({
   entry: {
-    index: "src/index.ts",
+    api: "src/index.ts",
     "bin/brakit": "bin/brakit.ts",
-    "instrument/preload": "src/instrument/preload.ts",
+    "runtime/index": "src/runtime/index.ts",
   },
   format: ["esm"],
   dts: true,

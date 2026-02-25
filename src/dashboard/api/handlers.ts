@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { getRequests, clearRequests } from "../../proxy/request-log.js";
+import { getRequests, clearRequests } from "../../store/request-log.js";
 import { groupRequestsIntoFlows } from "../../analysis/group.js";
 import {
   defaultFetchStore,

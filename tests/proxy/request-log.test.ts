@@ -8,7 +8,7 @@ import {
   isStaticPath,
   flattenHeaders,
   type CaptureInput,
-} from "../../src/proxy/request-log.js";
+} from "../../src/store/request-log.js";
 
 function makeCaptureInput(overrides: Partial<CaptureInput> = {}): CaptureInput {
   return {

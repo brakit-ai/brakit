@@ -1,13 +1,14 @@
 import { runMain } from "citty";
-import devCommand from "../src/cli/commands/dev.js";
-import telemetryCommand from "../src/cli/commands/telemetry.js";
+import installCommand from "../src/cli/commands/install.js";
+import uninstallCommand from "../src/cli/commands/uninstall.js";
 
-if (process.argv[2] === "telemetry") {
+const sub = process.argv[2];
+
+if (sub === "uninstall") {
   process.argv.splice(2, 1);
-  runMain(telemetryCommand);
+  runMain(uninstallCommand);
 } else {
-  if (process.argv[2] === "dev") {
-    process.argv.splice(2, 1);
-  }
-  runMain(devCommand);
+  // `npx brakit` and `npx brakit install` both run install
+  if (sub === "install") process.argv.splice(2, 1);
+  runMain(installCommand);
 }

@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ReadonlyTelemetryStore } from "../../store/index.js";
+import { LOCALHOST_HOSTNAMES } from "../../constants/index.js";
 
 const SENSITIVE_HEADER_NAMES = new Set([
   "authorization",
@@ -29,11 +30,7 @@ function getCorsOrigin(req: IncomingMessage): string {
   const origin = req.headers.origin ?? "";
   try {
     const url = new URL(origin);
-    if (
-      url.hostname === "localhost" ||
-      url.hostname === "127.0.0.1" ||
-      url.hostname === "::1"
-    ) {
+    if (LOCALHOST_HOSTNAMES.has(url.hostname)) {
       return origin;
     }
   } catch {

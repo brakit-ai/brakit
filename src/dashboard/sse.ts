@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { onRequest, offRequest } from "../proxy/request-log.js";
+import { onRequest, offRequest } from "../store/request-log.js";
 import {
   defaultFetchStore,
   defaultLogStore,

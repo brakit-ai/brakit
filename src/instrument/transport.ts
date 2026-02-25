@@ -1,70 +1,13 @@
-/**
- * Batched telemetry transport. Buffers events from instrumentation hooks
- * and flushes them to the dashboard ingest API on a fixed interval.
- */
-import { request } from "node:http";
-import type { TelemetryEvent, TelemetryBatch } from "../types/index.js";
-import {
-  DASHBOARD_API_INGEST,
-  TRANSPORT_FLUSH_INTERVAL_MS,
-  TRANSPORT_FLUSH_BATCH_SIZE,
-} from "../constants/index.js";
+import type { TelemetryEvent } from "../types/index.js";
 
-const brakitPort = parseInt(process.env.BRAKIT_PORT ?? "0", 10);
+type EventEmitter = (event: TelemetryEvent) => void;
 
-let buffer: TelemetryEvent[] = [];
-let timer: ReturnType<typeof setTimeout> | null = null;
+let emitter: EventEmitter | null = null;
 
-function flush(): void {
-  if (buffer.length === 0 || !brakitPort) return;
-  const batch: TelemetryBatch = { _brakit: true, events: buffer };
-  buffer = [];
-  const body = JSON.stringify(batch);
-
-  try {
-    const req = request(
-      {
-        hostname: "127.0.0.1",
-        port: brakitPort,
-        path: DASHBOARD_API_INGEST,
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "content-length": Buffer.byteLength(body),
-        },
-      },
-      // Discard response — fire and forget
-      (res) => res.resume(),
-    );
-    req.on("error", () => {
-      // Brakit server not ready yet or shutting down — silently drop
-    });
-    req.end(body);
-  } catch {
-    // Ignore transport failures
-  }
-}
-
-function scheduleFlush(): void {
-  if (timer !== null) return;
-  timer = setTimeout(() => {
-    timer = null;
-    flush();
-  }, TRANSPORT_FLUSH_INTERVAL_MS);
-  if (timer && typeof timer === "object" && "unref" in timer) {
-    timer.unref();
-  }
+export function setEmitter(fn: EventEmitter): void {
+  emitter = fn;
 }
 
 export function send(event: TelemetryEvent): void {
-  buffer.push(event);
-  if (buffer.length >= TRANSPORT_FLUSH_BATCH_SIZE) {
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
-    flush();
-  } else {
-    scheduleFlush();
-  }
+  emitter?.(event);
 }

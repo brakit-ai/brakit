@@ -8,14 +8,14 @@ import type {
 } from "../types/index.js";
 import type { RequestFlow } from "../types/index.js";
 import type { TelemetryListener } from "../store/index.js";
-import { getRequests } from "../proxy/request-log.js";
+import { getRequests } from "../store/request-log.js";
 import {
   defaultQueryStore,
   defaultErrorStore,
   defaultLogStore,
   defaultFetchStore,
 } from "../store/index.js";
-import { onRequest, offRequest } from "../proxy/request-log.js";
+import { onRequest, offRequest } from "../store/request-log.js";
 import { groupRequestsIntoFlows } from "./group.js";
 import { createDefaultScanner, type SecurityScanner } from "./rules/index.js";
 import { computeInsights, type Insight } from "./insights.js";

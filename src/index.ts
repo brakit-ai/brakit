@@ -16,7 +16,6 @@ export type {
 export type { BrakitAdapter } from "./instrument/adapter.js";
 export type { SecurityRule, SecurityContext } from "./analysis/rules/index.js";
 export type { Insight, InsightContext } from "./analysis/insights.js";
-export { createProxyServer } from "./proxy/server.js";
 export { detectProject } from "./detect/project.js";
 export { AdapterRegistry } from "./instrument/adapter-registry.js";
 export { SecurityScanner, createDefaultScanner } from "./analysis/rules/index.js";

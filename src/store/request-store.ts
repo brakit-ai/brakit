@@ -6,7 +6,7 @@ import type {
   RequestListener,
 } from "../types/index.js";
 import { MAX_REQUEST_ENTRIES } from "../constants/index.js";
-import { isStaticPath } from "../proxy/static-patterns.js";
+import { isStaticPath } from "../utils/static-patterns.js";
 
 export function flattenHeaders(headers: IncomingHttpHeaders): FlatHeaders {
   const flat: FlatHeaders = {};

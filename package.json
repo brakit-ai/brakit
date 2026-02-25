@@ -1,22 +1,23 @@
 {
   "name": "brakit",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "See what your API is really doing. Security scanning, N+1 detection, duplicate calls, DB queries — one command, zero config.",
   "type": "module",
   "bin": {
     "brakit": "./dist/bin/brakit.js"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/runtime/index.js",
+  "types": "./dist/api.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./dist/runtime/index.js",
+      "types": "./dist/api.d.ts"
     }
   },
   "publishConfig": {
     "access": "public"
   },
+  "sideEffects": true,
   "files": [
     "dist"
   ],
@@ -68,8 +69,8 @@
     "mysql",
     "database-queries",
     "query-analysis",
-    "http-proxy",
-    "reverse-proxy",
+    "instrumentation",
+    "in-process",
     "dashboard",
     "performance",
     "runtime-analysis",
