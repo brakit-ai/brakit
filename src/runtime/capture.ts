@@ -4,6 +4,7 @@ import type {
   OutgoingHttpHeaders,
 } from "node:http";
 import type { IncomingHttpHeaders } from "node:http";
+import { gunzipSync, brotliDecompressSync, inflateSync } from "node:zlib";
 import { defaultStore } from "../store/request-log.js";
 import { DEFAULT_MAX_BODY_CAPTURE } from "../constants/index.js";
 
@@ -18,6 +19,17 @@ function outgoingToIncoming(headers: OutgoingHttpHeaders): IncomingHttpHeaders {
     }
   }
   return result;
+}
+
+function decompress(body: Buffer<ArrayBuffer>, encoding: string): Buffer<ArrayBuffer> {
+  try {
+    if (encoding === "gzip") return gunzipSync(body);
+    if (encoding === "br") return brotliDecompressSync(body);
+    if (encoding === "deflate") return inflateSync(body);
+  } catch {
+    // Decompression failed — return as-is
+  }
+  return body;
 }
 
 export function captureInProcess(
@@ -61,6 +73,12 @@ export function captureInProcess(
     const result = (originalEnd as Function).apply(this, args);
 
     try {
+      const encoding = String(res.getHeader("content-encoding") ?? "").toLowerCase();
+      let body = resChunks.length > 0 ? Buffer.concat(resChunks) : null;
+      if (body && encoding) {
+        body = decompress(body, encoding);
+      }
+
       defaultStore.capture({
         requestId,
         method,
@@ -69,7 +87,7 @@ export function captureInProcess(
         requestBody: null,
         statusCode: res.statusCode,
         responseHeaders: outgoingToIncoming(res.getHeaders()),
-        responseBody: resChunks.length > 0 ? Buffer.concat(resChunks) : null,
+        responseBody: body,
         responseContentType: String(res.getHeader("content-type") ?? ""),
         startTime,
         config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
