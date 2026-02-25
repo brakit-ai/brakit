@@ -129,13 +129,24 @@ export function handleApiIngest(
   res: ServerResponse,
 ): void {
   if (req.method !== "POST") {
-    sendJson(res, 405, { error: "Method not allowed" });
+    sendJson(req, res, 405, { error: "Method not allowed" });
     return;
   }
 
+  const MAX_INGEST_BYTES = 10 * 1024 * 1024; // 10 MB
   const chunks: Buffer[] = [];
-  req.on("data", (chunk: Buffer) => chunks.push(chunk));
+  let totalSize = 0;
+  req.on("data", (chunk: Buffer) => {
+    totalSize += chunk.length;
+    if (totalSize > MAX_INGEST_BYTES) {
+      sendJson(req, res, 413, { error: "Payload too large" });
+      req.destroy();
+      return;
+    }
+    chunks.push(chunk);
+  });
   req.on("end", () => {
+    if (totalSize > MAX_INGEST_BYTES) return;
     try {
       const body = JSON.parse(Buffer.concat(chunks).toString());
 
@@ -159,9 +170,9 @@ export function handleApiIngest(
         return;
       }
 
-      sendJson(res, 400, { error: "Invalid batch" });
+      sendJson(req, res, 400, { error: "Invalid batch" });
     } catch {
-      sendJson(res, 400, { error: "Invalid JSON" });
+      sendJson(req, res, 400, { error: "Invalid JSON" });
     }
   });
 }

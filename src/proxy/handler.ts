@@ -68,13 +68,13 @@ export function proxyRequest(
       clientRes.end(
         `<html><body style="font-family:system-ui;padding:40px;text-align:center">` +
           `<h2>brakit</h2>` +
-          `<p>Waiting for dev server on port ${config.targetPort}...</p>` +
+          `<p>Waiting for dev server to start...</p>` +
           `<script>setTimeout(()=>location.reload(),2000)</script>` +
           `</body></html>`,
       );
     } else {
       clientRes.writeHead(502, { "content-type": "text/plain" });
-      clientRes.end(`brakit proxy error: ${err.message}\n`);
+      clientRes.end("brakit proxy error: could not connect to dev server\n");
     }
   });
 

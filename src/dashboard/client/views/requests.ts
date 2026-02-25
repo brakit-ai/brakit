@@ -27,9 +27,10 @@ export function getRequestsView(): string {
     var row = document.createElement('div');
     row.className = 'req-row';
     var sClass = statusPillClass(req.statusCode);
+    var safeMethod = escHtml(req.method);
     row.innerHTML =
       '<div class="req-summary">' +
-        '<span class="method-badge method-badge-' + req.method + '">' + req.method + '</span>' +
+        '<span class="method-badge method-badge-' + safeMethod + '">' + safeMethod + '</span>' +
         '<span class="req-url">' + escHtml(req.url) + '</span>' +
         '<span class="status-pill ' + sClass + '">' + req.statusCode + '</span>' +
         '<span class="req-duration">' + req.durationMs + 'ms</span>' +

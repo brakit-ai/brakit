@@ -40,6 +40,17 @@ import { recordTabViewed, recordDashboardOpened, isTelemetryEnabled } from "../t
 
 type RouteHandler = (req: IncomingMessage, res: ServerResponse) => void;
 
+const VALID_TABS = new Set([
+  "overview", "actions", "requests", "fetches",
+  "queries", "errors", "logs", "performance", "security",
+]);
+
+const SECURITY_HEADERS = {
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "no-referrer",
+} as const;
+
 export function isDashboardRequest(url: string): boolean {
   return url === DASHBOARD_PREFIX || url.startsWith(DASHBOARD_PREFIX + "/");
 }
@@ -73,8 +84,11 @@ export function createDashboardHandler(
   }
 
   routes[DASHBOARD_API_TAB] = (req, res) => {
-    const tab = (req.url ?? "").split("tab=")[1];
-    if (tab && isTelemetryEnabled()) recordTabViewed(decodeURIComponent(tab));
+    const raw = (req.url ?? "").split("tab=")[1];
+    if (raw) {
+      const tab = decodeURIComponent(raw).slice(0, 32);
+      if (VALID_TABS.has(tab) && isTelemetryEnabled()) recordTabViewed(tab);
+    }
     res.writeHead(204);
     res.end();
   };
@@ -92,6 +106,7 @@ export function createDashboardHandler(
     res.writeHead(200, {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-cache",
+      ...SECURITY_HEADERS,
     });
     res.end(getDashboardHtml(config));
   };

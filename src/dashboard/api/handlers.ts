@@ -9,7 +9,8 @@ import {
 } from "../../store/index.js";
 import { DEFAULT_API_LIMIT } from "../../constants/index.js";
 import type { MetricsStore } from "../../store/index.js";
-import { sendJson, requireGet, handleTelemetryGet } from "./shared.js";
+import { sendJson, requireGet, handleTelemetryGet, maskSensitiveHeaders } from "./shared.js";
+import type { TracedRequest } from "../../types/index.js";
 
 export function handleApiRequests(
   req: IncomingMessage,
@@ -58,7 +59,16 @@ export function handleApiRequests(
   const total = results.length;
   results = results.slice(offset, offset + limit);
 
-  sendJson(res, 200, { total, requests: results });
+  const sanitized = results.map(sanitizeRequest);
+  sendJson(req, res, 200, { total, requests: sanitized });
+}
+
+function sanitizeRequest(r: TracedRequest): TracedRequest {
+  return {
+    ...r,
+    headers: maskSensitiveHeaders(r.headers),
+    responseHeaders: maskSensitiveHeaders(r.responseHeaders),
+  };
 }
 
 export function handleApiFlows(
@@ -66,8 +76,11 @@ export function handleApiFlows(
   res: ServerResponse,
 ): void {
   if (!requireGet(req, res)) return;
-  const flows = groupRequestsIntoFlows(getRequests()).reverse();
-  sendJson(res, 200, { total: flows.length, flows });
+  const flows = groupRequestsIntoFlows(getRequests()).reverse().map((flow) => ({
+    ...flow,
+    requests: flow.requests.map(sanitizeRequest),
+  }));
+  sendJson(req, res, 200, { total: flows.length, flows });
 }
 
 export function createClearHandler(
@@ -75,7 +88,7 @@ export function createClearHandler(
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (req.method !== "POST") {
-      sendJson(res, 405, { error: "Method not allowed" });
+      sendJson(req, res, 405, { error: "Method not allowed" });
       return;
     }
     clearRequests();
@@ -84,7 +97,7 @@ export function createClearHandler(
     defaultErrorStore.clear();
     defaultQueryStore.clear();
     metricsStore.reset();
-    sendJson(res, 200, { cleared: true });
+    sendJson(req, res, 200, { cleared: true });
   };
 }
 

@@ -52,7 +52,6 @@ export function spawnCustomCommand(
   return spawn(cmd, args, {
     cwd,
     stdio: ["ignore", "inherit", "inherit"],
-    shell: true,
     env: {
       ...process.env,
       PORT: String(targetPort),

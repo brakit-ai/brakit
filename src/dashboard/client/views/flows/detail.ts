@@ -8,8 +8,9 @@ export function getFlowDetail(): string {
       var sClass = statusPillClass(req.statusCode);
       var subRow = document.createElement('div');
       subRow.className = 'flow-subreq';
+      var safeMethod = escHtml(req.method);
       var methodEl = document.createElement('span');
-      methodEl.className = 'method-badge method-badge-' + req.method;
+      methodEl.className = 'method-badge method-badge-' + safeMethod;
       methodEl.textContent = req.method;
       var labelEl = document.createElement('span');
       labelEl.className = 'subreq-label' + (isDup ? ' is-dup' : '');
@@ -56,8 +57,9 @@ export function getFlowDetail(): string {
 
   function renderDetail(req) {
     var sClass = statusPillClass(req.statusCode);
+    var sm = escHtml(req.method);
     var h = '<div class="detail-meta">';
-    h += '<span><span class="method-badge method-badge-' + req.method + '">' + req.method + '</span> ' + escHtml(req.url) + '</span>';
+    h += '<span><span class="method-badge method-badge-' + sm + '">' + sm + '</span> ' + escHtml(req.url) + '</span>';
     h += '<span><span class="status-pill ' + sClass + '">' + req.statusCode + '</span></span>';
     h += '<span>' + req.durationMs + 'ms</span>';
     if (req.responseSize) h += '<span>' + formatSize(req.responseSize) + '</span>';

@@ -25,7 +25,7 @@ export function getFlowInsights(): string {
       header.className = 'traffic-card-header';
 
       var mEl = document.createElement('span');
-      mEl.className = 'method-badge method-badge-' + req.method;
+      mEl.className = 'method-badge method-badge-' + escHtml(req.method);
       mEl.textContent = req.method;
 
       var pEl = document.createElement('span');

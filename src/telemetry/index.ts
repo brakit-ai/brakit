@@ -12,7 +12,7 @@ import { readConfig, getOrCreateConfig, isTelemetryEnabled } from "./config.js";
 export { isTelemetryEnabled, setTelemetryEnabled } from "./config.js";
 
 const POSTHOG_HOST = "https://app.posthog.com";
-const POSTHOG_KEY = "phc_gH8aQFZ2Fn8db9LEdgomOvymLiP6mm6FPTYXffQceR8";
+const POSTHOG_KEY: string = process.env.POSTHOG_API_KEY ?? "";
 
 let startTime = 0;
 let sessionFramework = "";

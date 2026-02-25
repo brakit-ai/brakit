@@ -24,7 +24,7 @@ export function handleApiActivity(
     const requestId = url.searchParams.get("requestId");
 
     if (!requestId) {
-      sendJson(res, 400, { error: "requestId parameter required" });
+      sendJson(req, res, 400, { error: "requestId parameter required" });
       return;
     }
 
@@ -46,7 +46,7 @@ export function handleApiActivity(
 
     timeline.sort((a, b) => a.timestamp - b.timestamp);
 
-    sendJson(res, 200, {
+    sendJson(req, res, 200, {
       requestId,
       total: timeline.length,
       timeline,
@@ -60,7 +60,7 @@ export function handleApiActivity(
   } catch (err) {
     console.error("[brakit] activity handler error:", err);
     if (!res.headersSent) {
-      sendJson(res, 500, { error: "Internal error" });
+      sendJson(req, res, 500, { error: "Internal error" });
     }
   }
 }

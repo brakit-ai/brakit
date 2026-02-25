@@ -17,6 +17,9 @@ export default defineConfig({
   external: ["pg", "mysql2", "@prisma/client"],
   define: {
     "process.env.BRAKIT_VERSION": JSON.stringify(pkg.version),
+    "process.env.POSTHOG_API_KEY": JSON.stringify(
+      process.env.POSTHOG_API_KEY ?? "",
+    ),
   },
   banner: {
     js: "",

@@ -1,18 +1,66 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ReadonlyTelemetryStore } from "../../store/index.js";
 
-export const JSON_RESPONSE_HEADERS = {
-  "content-type": "application/json",
-  "access-control-allow-origin": "*",
-  "cache-control": "no-cache",
-} as const;
+const SENSITIVE_HEADER_NAMES = new Set([
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "proxy-authorization",
+  "x-api-key",
+  "x-auth-token",
+]);
+
+export function maskSensitiveHeaders(
+  headers: Record<string, string>,
+): Record<string, string> {
+  const masked: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    if (SENSITIVE_HEADER_NAMES.has(key.toLowerCase())) {
+      const s = String(value);
+      masked[key] = s.length <= 8 ? "****" : s.slice(0, 4) + "..." + s.slice(-4);
+    } else {
+      masked[key] = value;
+    }
+  }
+  return masked;
+}
+
+function getCorsOrigin(req: IncomingMessage): string {
+  const origin = req.headers.origin ?? "";
+  try {
+    const url = new URL(origin);
+    if (
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "::1"
+    ) {
+      return origin;
+    }
+  } catch {
+    // invalid origin — same-origin requests have no Origin header
+  }
+  return "";
+}
+
+function getJsonHeaders(req: IncomingMessage): Record<string, string> {
+  const corsOrigin = getCorsOrigin(req);
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    "cache-control": "no-cache",
+  };
+  if (corsOrigin) {
+    headers["access-control-allow-origin"] = corsOrigin;
+  }
+  return headers;
+}
 
 export function sendJson(
+  req: IncomingMessage,
   res: ServerResponse,
   status: number,
   data: Record<string, unknown>,
 ): void {
-  res.writeHead(status, JSON_RESPONSE_HEADERS);
+  res.writeHead(status, getJsonHeaders(req));
   res.end(JSON.stringify(data));
 }
 
@@ -21,7 +69,7 @@ export function requireGet(
   res: ServerResponse,
 ): boolean {
   if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Method not allowed" });
+    sendJson(req, res, 405, { error: "Method not allowed" });
     return false;
   }
   return true;
@@ -38,5 +86,5 @@ export function handleTelemetryGet(
   const entries = requestId
     ? store.getByRequest(requestId)
     : [...store.getAll()];
-  sendJson(res, 200, { total: entries.length, entries: entries.reverse() });
+  sendJson(req, res, 200, { total: entries.length, entries: entries.reverse() });
 }

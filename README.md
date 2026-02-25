@@ -1,8 +1,8 @@
 # Brakit
 
-**Your API is leaking data. Your queries are slow. Brakit shows you.**
+**See what your app is actually doing.**
 
-AI writes your API. Nobody checks what it does — missing auth, leaked data, N+1 queries, slow endpoints. Brakit watches your app run and shows you everything. One command. Zero setup.
+One command. Every request, query, and security issue — before you ship.
 
 Open source · Local only · Zero config · 2 dependencies
 

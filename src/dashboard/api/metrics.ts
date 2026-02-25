@@ -11,9 +11,9 @@ export function createMetricsHandler(
     const endpoint = url.searchParams.get("endpoint");
     if (endpoint) {
       const ep = metricsStore.getEndpoint(endpoint);
-      sendJson(res, 200, { endpoints: ep ? [ep] : [] });
+      sendJson(req, res, 200, { endpoints: ep ? [ep] : [] });
       return;
     }
-    sendJson(res, 200, { endpoints: metricsStore.getAll() });
+    sendJson(req, res, 200, { endpoints: metricsStore.getAll() });
   };
 }

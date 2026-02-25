@@ -7,6 +7,6 @@ export function createLiveMetricsHandler(
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;
-    sendJson(res, 200, { endpoints: metricsStore.getLiveEndpoints() });
+    sendJson(req, res, 200, { endpoints: metricsStore.getLiveEndpoints() });
   };
 }
