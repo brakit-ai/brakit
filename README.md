@@ -2,7 +2,7 @@
 
 **See what your app is actually doing.**
 
-One command. Every request, query, and security issue — before you ship.
+Every request, query, and security issue — before you ship.
 
 Open source · Local only · Zero config · 2 dependencies
 
@@ -10,24 +10,21 @@ Open source · Local only · Zero config · 2 dependencies
 [![Node >= 18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/built%20with-TypeScript-3178c6.svg)](https://typescriptlang.org)
 
-<!-- TODO: Add demo gif showing: npx brakit dev → use app → dashboard shows issues -->
-<!-- ![Brakit Demo](assets/demo.gif) -->
-
 ---
 
 ## Quick Start
 
 ```bash
-npx brakit dev
+npx brakit install
 ```
 
-That's it. Brakit auto-detects your framework, starts your dev server behind a transparent proxy, and serves a live dashboard at `/__brakit`.
+That's it. Brakit detects your framework, adds itself as a devDependency, and creates the instrumentation file. Start your app normally:
 
 ```bash
-npx brakit dev --port 8080    # Custom proxy port
-npx brakit dev --show-static  # Include static assets in output
-npx brakit dev ./my-app       # Specify project directory
+npm run dev
 ```
+
+Dashboard at `http://localhost:<port>/__brakit`. Insights in the terminal.
 
 > **Requirements:** Node.js >= 18 and a project with `package.json`.
 
@@ -78,32 +75,33 @@ Developers using AI tools (Cursor, Copilot, Claude Code) to generate API code th
 
 ---
 
-## Principles — ZEAL
-
-Everything we build is anchored around four pillars:
-
-| | Pillar | What it means |
-|---|---|---|
-| **Z** | **Zero Config** | One command to start, zero config by default. Optional middleware for deeper integration — but the default path is always zero-touch. |
-| **E** | **Extensible** | Open source. One file, one interface. Add a database adapter, security rule, or language SDK without touching brakit's core. |
-| **A** | **AI-Native** | Built for the era where AI writes code humans don't fully review. A safety net for AI-generated APIs. |
-| **L** | **Language Agnostic** | HTTP proxy works with any backend. SDK protocol accepts events from any language. Not locked to Node.js. |
-
----
-
 ## How It Works
 
 ```
-Browser  -->  Brakit (proxy)  -->  Your dev server
-                  |
-                  +-- Dashboard UI    (/__brakit)
-                  +-- Live SSE stream (real-time updates)
-                  +-- Telemetry       (from instrumented process)
+import 'brakit'  →  hooks into http.Server  →  captures everything
+                          |
+                          +-- Dashboard UI    (/__brakit)
+                          +-- Live SSE stream (real-time updates)
+                          +-- Terminal output  (insights as you develop)
 ```
 
-Brakit is a transparent HTTP reverse proxy. Every request passes through unchanged — your app works exactly the same. Brakit captures request/response pairs, groups them into actions, and streams everything to the dashboard.
+`import 'brakit'` runs inside your process. It patches `http.Server.prototype.emit` to intercept all requests — capturing request/response pairs, grouping them into actions, and streaming everything to the dashboard at `/__brakit` on your existing port. No proxy, no second process, no different port.
 
-The instrumentation layer runs inside your dev server process (injected via `--import`) and sends telemetry back to Brakit over a local HTTP connection. That's how fetch calls, queries, and console output get captured without any code changes.
+Instrumentation hooks capture fetch calls, DB queries, console output, and errors automatically — zero code changes.
+
+### Production Safety
+
+Brakit never runs in production. 7 independent layers ensure it:
+
+| # | Layer | How it blocks |
+|---|---|---|
+| 1 | `shouldActivate()` | Checks `NODE_ENV` + 15 cloud/CI env vars |
+| 2 | `instrumentation.ts` guard | Its own `NODE_ENV !== 'production'` check |
+| 3 | devDependency | Pruned in production builds |
+| 4 | `try/catch` on import | Missing module = silent no-op |
+| 5 | Localhost-only dashboard | Non-local IPs get 404 on `/__brakit` |
+| 6 | `safeWrap` + circuit breaker | 10 errors = brakit self-disables |
+| 7 | `BRAKIT_DISABLE=true` | Manual kill switch |
 
 ### Supported Frameworks
 
@@ -114,7 +112,8 @@ The instrumentation layer runs inside your dev server process (injected via `--i
 | Nuxt        | Auto-detect                |
 | Vite        | Auto-detect                |
 | Astro       | Auto-detect                |
-| Any backend | Via `--command` flag        |
+| Express     | Auto-detect                |
+| Fastify     | Auto-detect                |
 
 ### Supported Databases
 
@@ -129,15 +128,13 @@ The instrumentation layer runs inside your dev server process (injected via `--i
 
 ---
 
-## CLI Options
+## Uninstall
 
 ```bash
-npx brakit dev                              # Auto-detect and start
-npx brakit dev --port 3000                  # Custom proxy port (default: 3000)
-npx brakit dev --show-static                # Show static asset requests
-npx brakit dev ./my-app                     # Specify project directory
-npx brakit dev --command "python manage.py" # Any backend, any language
+npx brakit uninstall
 ```
+
+Removes the instrumentation file and devDependency. Your app is unchanged.
 
 ---
 
@@ -158,25 +155,21 @@ Only 2 production dependencies: `citty` (CLI) and `picocolors` (terminal colors)
 
 ### Architecture
 
-For a full walkthrough of how brakit works — the two-process model, adapter
-system, analysis engine, and SDK protocol — see
-[How Brakit Works](docs/design/architecture.md).
-
 ```
 src/
+  runtime/        In-process entry point, server hooks, capture, safety
   analysis/       Security scanning, N+1 detection, insights engine
     rules/        SecurityRule implementations (one file per rule)
-  cli/            CLI entry point (citty)
+  cli/            CLI commands (install, uninstall)
   dashboard/
-    api/          REST handlers — requests, flows, telemetry, metrics, ingest
+    api/          REST handlers — requests, flows, telemetry, metrics
     client/       Browser JS generated as template strings
       views/      Tab renderers (overview, flows, graph, etc.)
     styles/       CSS modules
   detect/         Framework auto-detection
-  instrument/     Node.js --import instrumentation
+  instrument/     Runtime hooks and database adapters
     adapters/     BrakitAdapter implementations (one file per library)
-    hooks/        Core runtime hooks (fetch, console, errors, context)
-  proxy/          HTTP reverse proxy, request capture, WebSocket forwarding
+    hooks/        Core hooks (fetch, console, errors, context)
   store/          In-memory telemetry stores + persistent metrics
   types/          TypeScript definitions by domain
 ```
@@ -193,7 +186,6 @@ Some areas where help would be great:
 
 - **Database adapters** — Drizzle, Mongoose, SQLite, MongoDB
 - **Security rules** — More patterns, configurable severity
-- **Language SDKs** — Python, Go, Ruby (uses the [ingest protocol](docs/design/architecture.md#supporting-other-languages))
 - **Dashboard** — Request diff, timeline view, HAR export
 
 Please open an issue first for larger changes so we can discuss the approach.
