@@ -27,62 +27,56 @@ export function captureInProcess(
 ): void {
   const startTime = performance.now();
   const method = req.method ?? "GET";
-  const shouldCaptureBody = method !== "GET" && method !== "HEAD";
-
-  const reqChunks: Buffer[] = [];
-  let reqSize = 0;
-
-  if (shouldCaptureBody) {
-    req.on("data", (chunk: Buffer) => {
-      if (reqSize < DEFAULT_MAX_BODY_CAPTURE) {
-        reqChunks.push(chunk);
-        reqSize += chunk.length;
-      }
-    });
-  }
 
   const resChunks: Buffer[] = [];
   let resSize = 0;
   const originalWrite = res.write;
   const originalEnd = res.end;
 
-  res.write = function (
-    this: ServerResponse,
-    chunk: unknown,
-    ...args: unknown[]
-  ): boolean {
-    if (chunk && resSize < DEFAULT_MAX_BODY_CAPTURE) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
-      resChunks.push(buf);
-      resSize += buf.length;
+  res.write = function (this: ServerResponse, ...args: unknown[]): boolean {
+    try {
+      const chunk = args[0];
+      if (chunk != null && typeof chunk !== "function" && resSize < DEFAULT_MAX_BODY_CAPTURE) {
+        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+        resChunks.push(buf);
+        resSize += buf.length;
+      }
+    } catch {
+      // Never interfere with the response
     }
-    return (originalWrite as Function).apply(this, [chunk, ...args]);
+    return (originalWrite as Function).apply(this, args);
   } as typeof res.write;
 
-  res.end = function (
-    this: ServerResponse,
-    ...args: unknown[]
-  ): ServerResponse {
-    const chunk = typeof args[0] !== "function" ? args[0] : undefined;
-    if (chunk && resSize < DEFAULT_MAX_BODY_CAPTURE) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
-      resChunks.push(buf);
+  res.end = function (this: ServerResponse, ...args: unknown[]): ServerResponse {
+    try {
+      const chunk = typeof args[0] !== "function" ? args[0] : undefined;
+      if (chunk != null && resSize < DEFAULT_MAX_BODY_CAPTURE) {
+        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+        resChunks.push(buf);
+      }
+    } catch {
+      // Never interfere with the response
     }
+
     const result = (originalEnd as Function).apply(this, args);
 
-    defaultStore.capture({
-      requestId,
-      method,
-      url: req.url ?? "/",
-      requestHeaders: req.headers,
-      requestBody: reqChunks.length > 0 ? Buffer.concat(reqChunks) : null,
-      statusCode: res.statusCode,
-      responseHeaders: outgoingToIncoming(res.getHeaders()),
-      responseBody: resChunks.length > 0 ? Buffer.concat(resChunks) : null,
-      responseContentType: String(res.getHeader("content-type") ?? ""),
-      startTime,
-      config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
-    });
+    try {
+      defaultStore.capture({
+        requestId,
+        method,
+        url: req.url ?? "/",
+        requestHeaders: req.headers,
+        requestBody: null,
+        statusCode: res.statusCode,
+        responseHeaders: outgoingToIncoming(res.getHeaders()),
+        responseBody: resChunks.length > 0 ? Buffer.concat(resChunks) : null,
+        responseContentType: String(res.getHeader("content-type") ?? ""),
+        startTime,
+        config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
+      });
+    } catch {
+      // Capture failure should never affect the app
+    }
 
     return result;
   } as typeof res.end;
