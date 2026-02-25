@@ -1,4 +1,8 @@
-import type { IncomingMessage, ServerResponse, OutgoingHttpHeaders } from "node:http";
+import type {
+  IncomingMessage,
+  ServerResponse,
+  OutgoingHttpHeaders,
+} from "node:http";
 import type { IncomingHttpHeaders } from "node:http";
 import { defaultStore } from "../store/request-log.js";
 import { DEFAULT_MAX_BODY_CAPTURE } from "../constants/index.js";
@@ -57,14 +61,14 @@ export function captureInProcess(
 
   res.end = function (
     this: ServerResponse,
-    chunk?: unknown,
     ...args: unknown[]
   ): ServerResponse {
+    const chunk = typeof args[0] !== "function" ? args[0] : undefined;
     if (chunk && resSize < DEFAULT_MAX_BODY_CAPTURE) {
       const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
       resChunks.push(buf);
     }
-    const result = (originalEnd as Function).apply(this, [chunk, ...args]);
+    const result = (originalEnd as Function).apply(this, args);
 
     defaultStore.capture({
       requestId,
