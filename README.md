@@ -1,16 +1,37 @@
-# Brakit
+<h1 align="center"><img src="docs/images/icon.png" height="24" alt="" />&nbsp;&nbsp;Brakit</h1>
 
-**See what your app is actually doing.**
+<p align="center">
+  <b>See what your app is actually doing.</b> <br />
+  Every request, query, and security issue — before you ship. <br />
+  <b>Open source · Local only · Zero config · 2 dependencies</b>
+</p>
 
-Every request, query, and security issue — before you ship.
+<h3 align="center">
+  <a href="docs/design/architecture.md">Architecture</a> &bull;
+  <a href="https://brakit.ai">Website</a> &bull;
+  <a href="CONTRIBUTING.md">Contributing</a>
+</h3>
 
-Open source · Local only · Zero config · 2 dependencies
-
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node >= 18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/built%20with-TypeScript-3178c6.svg)](https://typescriptlang.org)
+<h4 align="center">
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" />
+  </a>
+  <a href="https://nodejs.org">
+    <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg" alt="Node >= 18" />
+  </a>
+  <a href="https://typescriptlang.org">
+    <img src="https://img.shields.io/badge/built%20with-TypeScript-3178c6.svg" alt="TypeScript" />
+  </a>
+  <a href="CONTRIBUTING.md">
+    <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
+  </a>
+</h4>
 
 ---
+
+<p align="center">
+  <img width="700" src="docs/images/dashboard.png" alt="Brakit Dashboard" />
+</p>
 
 ## Quick Start
 
@@ -28,27 +49,11 @@ Dashboard at `http://localhost:<port>/__brakit`. Insights in the terminal.
 
 > **Requirements:** Node.js >= 18 and a project with `package.json`.
 
-[Documentation](https://brakit.ai/docs) · [Website](https://brakit.ai)
-
----
-
-## Dashboard
-
-![Brakit Dashboard](docs/images/dashboard.png)
-
-Live at `/__brakit` on your existing port. No separate server. Updates in real-time via SSE.
-
-- **Performance overview** — health grades, p95 latency, error rates per endpoint
-- **Time breakdown** — see exactly where time goes: DB queries, outbound fetches, or app code
-- **Request history** — every request with status, duration, breakdown, and query count
-- **Scatter chart** — response time distribution with outlier detection
-- **Security tab** — live findings from 8 rules scanning your traffic
-- **Insights tab** — N+1s, duplicates, regressions, and 12 other patterns
-
 ---
 
 ## What You Get
 
+- **Live dashboard** at `/__brakit` — performance overview, request history, scatter charts, real-time via SSE
 - **8 security rules** scanned against live traffic — leaked secrets, PII in responses, missing auth flags
 - **Time breakdown** — every endpoint shows where time goes: DB, Fetch, or App code
 - **N+1 query detection** — same query pattern repeated 5+ times in a single request
@@ -57,7 +62,6 @@ Live at `/__brakit` on your existing port. No separate server. Updates in real-t
 - **Duplicate detection** — same API called twice? Flagged with redundancy percentage
 - **Full server tracing** — fetch calls, DB queries, console logs, errors — zero code changes
 - **Response overfetch** — large JSON responses with many fields your client doesn't use
-- **Live dashboard** at `/__brakit` — real-time updates, no polling
 - **Performance tracking** — health grades and p95 trends across dev sessions
 
 ---
@@ -74,16 +78,16 @@ Brakit watches every action your app takes — not raw HTTP noise, but what actu
 
 8 high-confidence rules that scan your live traffic and flag real issues — not theoretical ones:
 
-|              | Rule             | What it catches                                                                 |
-| ------------ | ---------------- | ------------------------------------------------------------------------------- |
-| **Critical** | Exposed Secret   | Response contains `password`, `api_key`, `client_secret` fields with real values |
-| **Critical** | Token in URL     | Auth tokens in query parameters instead of headers                              |
-| **Critical** | Stack Trace Leak | Internal stack traces sent to the client                                        |
-| **Critical** | Error Info Leak  | DB connection strings, SQL queries, or secret values in error responses          |
-| Warning      | PII in Response  | API echoes back emails, returns full user records with internal IDs              |
-| Warning      | Insecure Cookie  | Missing `HttpOnly` or `SameSite` flags                                          |
-| Warning      | Sensitive Logs   | Passwords, secrets, or token values in console output                           |
-| Warning      | CORS + Credentials | `credentials: true` with wildcard origin                                      |
+|              | Rule               | What it catches                                                                  |
+| ------------ | ------------------ | -------------------------------------------------------------------------------- |
+| **Critical** | Exposed Secret     | Response contains `password`, `api_key`, `client_secret` fields with real values |
+| **Critical** | Token in URL       | Auth tokens in query parameters instead of headers                               |
+| **Critical** | Stack Trace Leak   | Internal stack traces sent to the client                                         |
+| **Critical** | Error Info Leak    | DB connection strings, SQL queries, or secret values in error responses          |
+| Warning      | PII in Response    | API echoes back emails, returns full user records with internal IDs              |
+| Warning      | Insecure Cookie    | Missing `HttpOnly` or `SameSite` flags                                           |
+| Warning      | Sensitive Logs     | Passwords, secrets, or token values in console output                            |
+| Warning      | CORS + Credentials | `credentials: true` with wildcard origin                                         |
 
 ---
 
@@ -111,27 +115,27 @@ Instrumentation hooks capture fetch calls, DB queries, console output, and error
 
 Brakit never runs in production. 7 independent layers ensure it:
 
-| # | Layer | How it blocks |
-|---|---|---|
-| 1 | `shouldActivate()` | Checks `NODE_ENV` + 15 cloud/CI env vars |
-| 2 | `instrumentation.ts` guard | Its own `NODE_ENV !== 'production'` check |
-| 3 | devDependency | Pruned in production builds |
-| 4 | `try/catch` on import | Missing module = silent no-op |
-| 5 | Localhost-only dashboard | Non-local IPs get 404 on `/__brakit` |
-| 6 | `safeWrap` + circuit breaker | 10 errors = brakit self-disables |
-| 7 | `BRAKIT_DISABLE=true` | Manual kill switch |
+| #   | Layer                        | How it blocks                             |
+| --- | ---------------------------- | ----------------------------------------- |
+| 1   | `shouldActivate()`           | Checks `NODE_ENV` + 15 cloud/CI env vars  |
+| 2   | `instrumentation.ts` guard   | Its own `NODE_ENV !== 'production'` check |
+| 3   | devDependency                | Pruned in production builds               |
+| 4   | `try/catch` on import        | Missing module = silent no-op             |
+| 5   | Localhost-only dashboard     | Non-local IPs get 404 on `/__brakit`      |
+| 6   | `safeWrap` + circuit breaker | 10 errors = brakit self-disables          |
+| 7   | `BRAKIT_DISABLE=true`        | Manual kill switch                        |
 
 ### Supported Frameworks
 
-| Framework   | Status                     |
-| ----------- | -------------------------- |
-| Next.js     | Full support (auto-detect) |
-| Remix       | Auto-detect                |
-| Nuxt        | Auto-detect                |
-| Vite        | Auto-detect                |
-| Astro       | Auto-detect                |
-| Express     | Auto-detect                |
-| Fastify     | Auto-detect                |
+| Framework | Status                     |
+| --------- | -------------------------- |
+| Next.js   | Full support (auto-detect) |
+| Remix     | Auto-detect                |
+| Nuxt      | Auto-detect                |
+| Vite      | Auto-detect                |
+| Astro     | Auto-detect                |
+| Express   | Auto-detect                |
+| Fastify   | Auto-detect                |
 
 ### Supported Databases
 
