@@ -28,7 +28,7 @@ Dashboard at `http://localhost:<port>/__brakit`. Insights in the terminal.
 
 > **Requirements:** Node.js >= 18 and a project with `package.json`.
 
-[Documentation](https://brakit.ai/docs) · [Website](https://brakit.ai)
+[Architecture](docs/design/architecture.md) · [Website](https://brakit.ai)
 
 ---
 
