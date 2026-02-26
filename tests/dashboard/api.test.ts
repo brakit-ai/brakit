@@ -42,7 +42,7 @@ describe("dashboard API data layer", () => {
     expect(requests[2].url).toBe("/api/c");
   });
 
-  it("requests can be filtered by method", () => {
+  it("captured requests preserve the method field", () => {
     captureRequest(makeCaptureInput({ method: "GET", url: "/api/a" }));
     captureRequest(makeCaptureInput({ method: "POST", url: "/api/b" }));
     captureRequest(makeCaptureInput({ method: "GET", url: "/api/c" }));
@@ -52,7 +52,7 @@ describe("dashboard API data layer", () => {
     expect(getOnly).toHaveLength(2);
   });
 
-  it("requests can be filtered by status range", () => {
+  it("captured requests preserve the statusCode field", () => {
     captureRequest(makeCaptureInput({ statusCode: 200 }));
     captureRequest(makeCaptureInput({ statusCode: 404 }));
     captureRequest(makeCaptureInput({ statusCode: 500 }));
@@ -62,7 +62,7 @@ describe("dashboard API data layer", () => {
     expect(errors).toHaveLength(2);
   });
 
-  it("requests can be searched by URL", () => {
+  it("captured requests preserve the url field", () => {
     captureRequest(makeCaptureInput({ url: "/api/users" }));
     captureRequest(makeCaptureInput({ url: "/api/videos" }));
     captureRequest(makeCaptureInput({ url: "/api/users/123" }));
@@ -74,7 +74,7 @@ describe("dashboard API data layer", () => {
     expect(matched).toHaveLength(2);
   });
 
-  it("requests can be searched by response body", () => {
+  it("captured requests preserve the responseBody field", () => {
     captureRequest(
       makeCaptureInput({
         url: "/api/a",

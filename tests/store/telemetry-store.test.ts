@@ -19,7 +19,7 @@ describe("TelemetryStore", () => {
       parentRequestId: null,
       timestamp: Date.now(),
     });
-    expect(entry.id).toBeDefined();
+    expect(entry.id).toBeTypeOf("string");
     expect(entry.value).toBe("hello");
   });
 
