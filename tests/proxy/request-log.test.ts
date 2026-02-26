@@ -81,7 +81,7 @@ describe("captureRequest", () => {
 
     const result = captureRequest(input);
 
-    expect(result.id).toBeTruthy();
+    expect(result.id).toBeTypeOf("string");
     expect(result.method).toBe("POST");
     expect(result.url).toBe("/api/users?page=2");
     expect(result.path).toBe("/api/users");
