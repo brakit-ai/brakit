@@ -32,14 +32,32 @@ Dashboard at `http://localhost:<port>/__brakit`. Insights in the terminal.
 
 ---
 
+## Dashboard
+
+![Brakit Dashboard](docs/images/dashboard.png)
+
+Live at `/__brakit` on your existing port. No separate server. Updates in real-time via SSE.
+
+- **Performance overview** — health grades, p95 latency, error rates per endpoint
+- **Time breakdown** — see exactly where time goes: DB queries, outbound fetches, or app code
+- **Request history** — every request with status, duration, breakdown, and query count
+- **Scatter chart** — response time distribution with outlier detection
+- **Security tab** — live findings from 8 rules scanning your traffic
+- **Insights tab** — N+1s, duplicates, regressions, and 12 other patterns
+
+---
+
 ## What You Get
 
-- **8 security rules** scanned against live traffic — leaked secrets, PII in responses, missing auth, N+1 queries flagged automatically
+- **8 security rules** scanned against live traffic — leaked secrets, PII in responses, missing auth flags
+- **Time breakdown** — every endpoint shows where time goes: DB, Fetch, or App code
+- **N+1 query detection** — same query pattern repeated 5+ times in a single request
+- **Regression detection** — p95 latency or query count increased vs. previous session
 - **Action-level visibility** — see "Sign Up" and "Load Dashboard", not 47 raw HTTP requests
 - **Duplicate detection** — same API called twice? Flagged with redundancy percentage
-- **N+1 query detection** — same query pattern repeated 5+ times in a single request? That's an N+1
 - **Full server tracing** — fetch calls, DB queries, console logs, errors — zero code changes
-- **Live dashboard** at `/__brakit` — 9 tabs updating in real-time
+- **Response overfetch** — large JSON responses with many fields your client doesn't use
+- **Live dashboard** at `/__brakit` — real-time updates, no polling
 - **Performance tracking** — health grades and p95 trends across dev sessions
 
 ---
@@ -157,34 +175,40 @@ Only 2 production dependencies: `citty` (CLI) and `picocolors` (terminal colors)
 
 ```
 src/
-  runtime/        In-process entry point, server hooks, capture, safety
-  analysis/       Security scanning, N+1 detection, insights engine
+  runtime/        In-process entry point, interceptor, capture, safety
+  analysis/       Insights engine and security scanner
+    insights/     InsightRule implementations (one file per rule)
     rules/        SecurityRule implementations (one file per rule)
   cli/            CLI commands (install, uninstall)
+  constants/      Shared thresholds, route paths, limits
   dashboard/
     api/          REST handlers — requests, flows, telemetry, metrics
     client/       Browser JS generated as template strings
       views/      Tab renderers (overview, flows, graph, etc.)
     styles/       CSS modules
   detect/         Framework auto-detection
-  instrument/     Runtime hooks and database adapters
+  instrument/     Database adapters and instrumentation hooks
     adapters/     BrakitAdapter implementations (one file per library)
     hooks/        Core hooks (fetch, console, errors, context)
+  output/         Terminal insight listener
   store/          In-memory telemetry stores + persistent metrics
   types/          TypeScript definitions by domain
+  utils/          Shared utilities (collections, format, math, endpoint)
 ```
 
 ---
 
 ## Contributing
 
-Brakit is early and moving fast. The most common contributions — adding a new
-database adapter or a new security rule — each require exactly one file and one
-interface. See [CONTRIBUTING.md](CONTRIBUTING.md) for step-by-step guides.
+Brakit is early and moving fast. The most common contributions — adding a
+database adapter, a security rule, or an insight rule — each require exactly
+one file and one interface. See [CONTRIBUTING.md](CONTRIBUTING.md) for
+step-by-step guides.
 
 Some areas where help would be great:
 
 - **Database adapters** — Drizzle, Mongoose, SQLite, MongoDB
+- **Insight rules** — New performance patterns, custom thresholds
 - **Security rules** — More patterns, configurable severity
 - **Dashboard** — Request diff, timeline view, HAR export
 

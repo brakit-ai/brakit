@@ -8,139 +8,114 @@ changing your code. This document explains how it does that.
 
 ## The big idea
 
-When you run `npx brakit dev`, two things happen:
-
-1. Brakit starts a **proxy server** that sits between your browser and your
-   dev server. Every request passes through it. Your app works exactly the same,
-   but Brakit can now see every request and response.
-
-2. Brakit starts your **dev server** with special hooks that report internal
-   activity — database queries, fetch calls, console output, errors — back to
-   the proxy.
-
-The proxy collects everything, runs analysis (security scanning, N+1 detection,
-performance insights), and serves a live dashboard at `/__brakit`.
+When you add `import 'brakit'` to your app (or use the CLI), brakit hooks into
+your HTTP server from inside the same process. It intercepts every request and
+response, captures internal activity — database queries, fetch calls, console
+output, errors — and serves a live dashboard at `/__brakit`.
 
 ```
-┌────────────┐         ┌───────────────────┐         ┌───────────────────┐
-│            │         │                   │         │                   │
-│   Browser  │────────▶│   Brakit Proxy    │────────▶│    Dev Server     │
-│            │◀────────│   (port 3000)     │◀────────│    (port 3001)    │
-│            │         │                   │         │                   │
-└────────────┘         │  + Dashboard      │         │  Hooks report     │
-                       │  + Analysis       │◀────────│  queries, fetches │
-                       │  + Security scan  │  HTTP   │  logs, errors     │
-                       │                   │  POST   │                   │
-                       └───────────────────┘         └───────────────────┘
+┌──────────┐     ┌─────────────────────────────────────┐
+│          │     │  Your HTTP Server                   │
+│  Browser ├────>│                                     │
+│          │<────┤  ┌─────────────────────────────┐    │
+│          │     │  │  Brakit (in-process)        │    │
+└──────────┘     │  │                             │    │
+                 │  │  Interceptor --> Capture    │    │
+                 │  │       |                     │    │
+                 │  │       v                     │    │
+                 │  │  Stores (reqs, queries...)  │    │
+                 │  │       |                     │    │
+                 │  │       v                     │    │
+                 │  │  Analysis --> Dashboard     │    │
+                 │  └─────────────────────────────┘    │
+                 │                                     │
+                 │  Your route handlers, middleware    │
+                 └─────────────────────────────────────┘
 ```
 
-That's the entire system. Two processes, one HTTP connection between them, and
-a dashboard that shows everything.
+Everything runs in a single process. No proxy, no separate server, no port
+forwarding. Brakit patches `http.Server.prototype.emit` so it sees every
+request the moment Node.js receives it.
 
 ---
 
-## Why two processes?
+## How setup works
 
-The proxy and the dev server are separate processes on purpose. This gives us
-two independent views of what's happening:
+When `import 'brakit'` runs, three things happen in order:
 
-**From the outside (proxy):** Every HTTP request and response. Method, URL,
-headers, body, status code, timing. This works with any backend — Node.js,
-Python, Go, anything that speaks HTTP.
+### 1. Activation check
 
-**From the inside (hooks):** Database queries, outgoing fetch calls, console
-output, unhandled errors. This is the stuff you'd normally have to add
-`console.log` statements to see. The hooks capture it automatically.
+`src/runtime/activate.ts` decides whether to activate. Brakit stays dormant in
+production, staging, CI, and cloud environments. You can also disable it with
+`BRAKIT_DISABLE=true`.
 
-The two views are connected by a simple trick: the proxy adds a unique ID
-(called `x-brakit-request-id`) to every request it forwards. The hooks inside
-the dev server read that ID and tag their events with it. So when the dashboard
-shows "this request fired 4 database queries," it knows which queries belong to
-which request.
+### 2. Instrumentation hooks
+
+`src/runtime/setup.ts` wires up the capture pipeline:
+
+- **Fetch hook** — Uses Node.js `diagnostics_channel` to capture every
+  outgoing `fetch()` call. Records URL, method, status code, and duration.
+- **Console hook** — Wraps `console.log`, `console.warn`, `console.error`.
+  Records every message along with which request triggered it.
+- **Error hook** — Listens for uncaught exceptions and unhandled rejections.
+  Records the error name, message, and stack trace.
+- **Database adapters** — Auto-detects installed database libraries and
+  monkey-patches them to capture queries (see "The adapter system" below).
+
+### 3. HTTP interceptor
+
+`src/runtime/interceptor.ts` patches `http.Server.prototype.emit` using
+`safeWrap` — a safety wrapper that falls back to the original if brakit throws.
+
+For every incoming request:
+
+1. Generate a unique `requestId` (UUID).
+2. If the URL starts with `/__brakit`, serve the dashboard (localhost only).
+3. Otherwise, wrap the request in an `AsyncLocalStorage` context carrying the
+   `requestId`, and hook `res.write()`/`res.end()` to capture the response body.
+4. Call the original handler — your app runs normally.
+
+The `requestId` propagates through the entire async call stack. When a database
+adapter fires inside that request, `AsyncLocalStorage` tells it which request
+it belongs to. This is how brakit correlates "this request fired 4 database
+queries" without any HTTP headers or external communication.
 
 ---
 
-## How the proxy works
+## Request capture
 
-The proxy (`src/proxy/server.ts`) is a plain Node.js HTTP server with no
-third-party proxy libraries. When a request arrives:
+`src/runtime/capture.ts` hooks `res.write()` and `res.end()` to buffer
+response chunks. When the response finishes:
 
-1. Generate a unique `requestId`.
-2. Inject it as the `x-brakit-request-id` header.
-3. Forward the request to the dev server (port + 1).
-4. Stream the response back to the browser, unchanged.
-5. Save a copy of the request and response (headers, body, timing) in memory.
+1. Decompress the body if gzip/brotli/deflate encoded.
+2. Store the complete request record (method, URL, headers, status, body,
+   timing) in the RequestStore.
 
-If the URL starts with `/__brakit`, the proxy serves the dashboard instead of
-forwarding. Everything else passes through transparently.
-
-The proxy also hosts a **telemetry endpoint** (`/__brakit/api/ingest`) where
-the dev server's hooks POST their captured events. This is how internal data
-(queries, fetches, logs) gets from one process to the other.
-
----
-
-## How the hooks work
-
-When Brakit starts your dev server, it sets `NODE_OPTIONS="--import <preload>"`.
-This is a Node.js feature that runs a script before any of your code loads. The
-preload script (`src/instrument/preload.ts`) sets up four things:
-
-### Request context tracking
-
-Every incoming HTTP request gets wrapped in an `AsyncLocalStorage` context that
-carries the `x-brakit-request-id` from the proxy. Any code that runs as part of
-that request — even deep inside a database driver callback — can look up which
-request it belongs to.
-
-### Fetch hook
-
-Uses Node.js `diagnostics_channel` to capture every outgoing `fetch()` call.
-Records the URL, method, status code, and duration.
-
-### Console hook
-
-Wraps `console.log`, `console.warn`, `console.error`, etc. Records every
-message along with which request triggered it.
-
-### Error hook
-
-Listens for uncaught exceptions and unhandled promise rejections. Records the
-error name, message, and stack trace.
-
-### Database adapters
-
-This is where it gets interesting. Different projects use different database
-libraries — pg, mysql2, Prisma, and so on. Brakit can't hardcode support for
-all of them. Instead, it uses a **plugin system** where each library gets its
-own adapter.
+All timing is measured with `performance.now()` to avoid clock drift, and
+decompression happens after timing measurement so it doesn't inflate response
+duration numbers.
 
 ---
 
 ## The adapter system
 
-Adding support for a new database library is the most common type of
-contribution to Brakit. The system is designed so that it takes exactly **one
-file** implementing **one interface**.
-
-### How it works
+Different projects use different database libraries — pg, mysql2, Prisma, and
+so on. Brakit uses a plugin system where each library gets its own adapter.
 
 Each adapter answers three questions:
 
 1. **Is this library installed?** Check if the package exists in the user's
    `node_modules`. If not, skip it.
 2. **How do I capture its queries?** Monkey-patch the library's internal methods
-   to record what's happening and report it.
+   to record what's happening.
 3. **How do I clean up?** Optionally restore the original methods.
-
-In code, that's the `BrakitAdapter` interface:
 
 ```typescript
 interface BrakitAdapter {
-  name: string;          // "pg", "mysql2", "prisma", etc.
-  detect(): boolean;     // Is the library installed?
-  patch(emit): void;     // Start capturing queries
-  unpatch?(): void;      // Stop capturing (optional)
+  name: string; // "pg", "mysql2", "prisma", etc.
+  detect(): boolean; // Is the library installed?
+  patch(emit): void; // Start capturing queries
+  unpatch?(): void; // Stop capturing (optional)
 }
 ```
 
@@ -153,11 +128,11 @@ versions), the others still work.
 
 Currently, brakit ships with three adapters:
 
-| Adapter | Library | What it patches |
-|---------|---------|-----------------|
-| pg | `pg` (PostgreSQL) | `Client.prototype.query` |
-| mysql2 | `mysql2` | `Connection.prototype.query` and `.execute` |
-| prisma | `@prisma/client` | Injects a Prisma client extension via `$extends` |
+| Adapter | Library           | What it patches                                  |
+| ------- | ----------------- | ------------------------------------------------ |
+| pg      | `pg` (PostgreSQL) | `Client.prototype.query`                         |
+| mysql2  | `mysql2`          | `Connection.prototype.query` and `.execute`      |
+| prisma  | `@prisma/client`  | Injects a Prisma client extension via `$extends` |
 
 ### Normalization
 
@@ -169,65 +144,26 @@ the same fields:
 - **table** — The table or model being queried
 - **duration** — How long it took, in milliseconds
 
-This is important because it means the analysis code (N+1 detection, security
-scanning) never needs to know which database library you're using. It just sees
-normalized queries.
+The analysis code never needs to know which database library you're using.
 
 ---
 
-## How events get from the dev server to the proxy
+## Event routing
 
-All captured events (queries, fetches, logs, errors) are sent over HTTP to the
-proxy's ingest endpoint. The transport (`src/instrument/transport.ts`) batches
-events and flushes them every 50ms or when 20 events accumulate — whichever
-comes first.
+All captured events flow through the same path:
 
-The transport is "fire and forget" — it doesn't wait for a response or retry on
-failure. If the proxy isn't running, events are silently dropped. This ensures
-the instrumentation never slows down or breaks the user's application.
+```
+Instrumentation hooks ──▶ setEmitter() ──▶ routeEvent() ──▶ Store
+                                                              │
+                                                    pub/sub notifications
+                                                              │
+                                              ┌───────────────┼────────────────┐
+                                              ▼               ▼                ▼
+                                        SSE stream    Analysis engine    Metrics store
+```
 
----
-
-## The analysis engine
-
-Once events are stored, the analysis engine (`src/analysis/engine.ts`) runs
-pattern detection across all captured data. It subscribes to the in-memory
-stores and recomputes whenever new data arrives (with a 300ms debounce to avoid
-thrashing during burst traffic).
-
-The engine produces two kinds of results:
-
-### Security findings
-
-A set of rules that scan live traffic for real security issues:
-
-| Rule | Severity | What it detects |
-|------|----------|-----------------|
-| Exposed secret | Critical | Fields like `password` or `api_key` in responses with real values |
-| Token in URL | Critical | Auth tokens in query parameters instead of headers |
-| Stack trace leak | Critical | Node.js stack traces sent to the client |
-| Error info leak | Critical | DB connection strings or SQL in error responses |
-| Insecure cookie | Warning | Missing `HttpOnly` or `SameSite` flags |
-| Sensitive logs | Warning | Passwords or tokens in console output |
-| CORS + credentials | Warning | `credentials: true` with wildcard origin |
-
-Each rule is one file implementing a `SecurityRule` interface. Adding a new
-rule means writing one file — the scanner automatically picks it up.
-
-### Performance insights
-
-Pattern detection across requests and queries:
-
-- **N+1 queries** — Same query shape repeated 5+ times within one request
-- **Redundant queries** — Exact same SQL fired multiple times per request
-- **Cross-endpoint queries** — Same query appearing on >50% of endpoints
-- **Slow endpoints** — Average response time above 1 second
-- **Query-heavy endpoints** — More than 5 queries per request on average
-- **Duplicate API calls** — Same endpoint fetched multiple times per action
-- **Error hotspots** — Endpoints with >20% error rate
-- **Large responses** — Average response body above 50KB
-- **SELECT * detection** — Queries selecting all columns
-- **High row counts** — Queries returning 100+ rows
+Events are routed directly to stores via function calls — no HTTP transport, no
+serialization. This is possible because everything runs in the same process.
 
 ---
 
@@ -236,56 +172,153 @@ Pattern detection across requests and queries:
 All captured data lives in bounded in-memory arrays. No external database
 required. Each store holds up to 1,000 entries and evicts the oldest when full.
 
-| Store | Contains |
-|-------|----------|
-| RequestStore | HTTP requests and responses captured by the proxy |
-| QueryStore | Database queries from adapters |
-| FetchStore | Outgoing fetch calls |
-| LogStore | Console output |
-| ErrorStore | Uncaught exceptions and unhandled rejections |
-| MetricsStore | Per-endpoint statistics, persisted to `.brakit/metrics.json` |
+| Store        | Contains                                                             |
+| ------------ | -------------------------------------------------------------------- |
+| RequestStore | HTTP requests and responses captured in-process                      |
+| QueryStore   | Database queries from adapters                                       |
+| FetchStore   | Outgoing fetch calls                                                 |
+| LogStore     | Console output                                                       |
+| ErrorStore   | Uncaught exceptions and unhandled rejections                         |
+| MetricsStore | Per-endpoint session statistics, persisted to `.brakit/metrics.json` |
 
 Every store supports pub/sub — when a new entry is added, all subscribers are
-notified. This is how the SSE stream (real-time dashboard updates) and the
-analysis engine stay in sync without polling.
+notified. This is how the SSE stream and the analysis engine stay in sync
+without polling.
+
+### Metrics persistence
+
+The MetricsStore accumulates per-endpoint metrics (p95 latency, error rate,
+average query count, time breakdown) and flushes to `.brakit/metrics.json`
+every 30 seconds. On shutdown, it flushes synchronously. This enables
+cross-session regression detection — the analysis engine compares the current
+session against previous sessions to detect performance degradation.
+
+---
+
+## The analysis engine
+
+The analysis engine (`src/analysis/engine.ts`) subscribes to all stores and
+recomputes whenever new data arrives (with a 300ms debounce to avoid thrashing
+during burst traffic).
+
+It produces two kinds of results:
+
+### Security findings
+
+A set of rules that scan live traffic for real security issues:
+
+| Rule               | Severity | What it detects                                                   |
+| ------------------ | -------- | ----------------------------------------------------------------- |
+| Exposed secret     | Critical | Fields like `password` or `api_key` in responses with real values |
+| Token in URL       | Critical | Auth tokens in query parameters instead of headers                |
+| Stack trace leak   | Critical | Node.js stack traces sent to the client                           |
+| Error info leak    | Critical | DB connection strings or SQL in error responses                   |
+| Insecure cookie    | Warning  | Missing `HttpOnly` or `SameSite` flags                            |
+| Sensitive logs     | Warning  | Passwords or tokens in console output                             |
+| CORS + credentials | Warning  | `credentials: true` with wildcard origin                          |
+| Response PII leak  | Warning  | Personal data (emails, phone numbers) in API responses            |
+
+Each rule is one file in `src/analysis/rules/` implementing the `SecurityRule`
+interface. The scanner automatically picks up registered rules.
+
+### Performance insights
+
+Modular rules in `src/analysis/insights/rules/` detect performance issues:
+
+| Rule                   | What it detects                                                |
+| ---------------------- | -------------------------------------------------------------- |
+| N+1 queries            | Same query shape repeated 5+ times within one request          |
+| Cross-endpoint queries | Same query appearing on >50% of endpoints                      |
+| Redundant queries      | Exact same SQL fired multiple times per request                |
+| Slow endpoints         | High average response time, with time breakdown (DB/Fetch/App) |
+| Query-heavy endpoints  | More than 5 queries per request on average                     |
+| Duplicate API calls    | Same endpoint fetched multiple times per action                |
+| Error hotspots         | Endpoints with >20% error rate                                 |
+| Large responses        | Average response body above 50KB                               |
+| SELECT \* detection    | Queries selecting all columns                                  |
+| High row counts        | Queries returning 100+ rows                                    |
+| Response overfetch     | Large JSON responses with many unused fields                   |
+| Regression detection   | P95 latency or query count increased vs. previous session      |
+
+Each rule is one file implementing the `InsightRule` interface. All rules
+receive a `PreparedInsightContext` with pre-computed indexes (queries grouped by
+request, endpoint aggregations, etc.) so they don't duplicate work.
+
+---
+
+## The dashboard
+
+The dashboard is a server-rendered HTML page served at `/__brakit`. It uses no
+frontend framework — the entire client is assembled from template-literal
+JavaScript functions at build time. No build step, no external dependencies.
+
+Real-time updates use Server-Sent Events (SSE). When brakit captures a new
+request or a database adapter reports a query, the dashboard updates instantly
+without polling. The SSE handler (`src/dashboard/sse.ts`) subscribes to all
+stores and the analysis engine, streaming events as they arrive.
+
+The dashboard is only served to localhost — requests from non-local IPs get a 404.
+
+---
+
+## Safety guarantees
+
+Brakit is designed to never break your application:
+
+- **`safeWrap`** — Every monkey-patch is wrapped so that if brakit throws, the
+  original function runs instead. Your app behaves as if brakit wasn't there.
+- **Circuit breaker** — If brakit encounters too many errors, it disables itself
+  for the rest of the session and restores all original methods.
+- **Bounded stores** — Memory usage is capped. Stores evict old entries.
+- **Activation guards** — Brakit stays dormant in production, staging, CI, and
+  cloud environments. It only activates in local development.
+- **Empty catch blocks** — Capture failures are silently swallowed. A response
+  body that can't be decompressed or a query that can't be normalized should
+  never become a runtime error in your app.
+
+---
+
+## Build output
+
+Brakit builds three files:
+
+| File                    | What it does                                        |
+| ----------------------- | --------------------------------------------------- |
+| `dist/api.js`           | Public API — for programmatic use or CI integration |
+| `dist/bin/brakit.js`    | The CLI you run with `npx brakit`                   |
+| `dist/runtime/index.js` | The runtime entry point for `import 'brakit'`       |
+
+Database drivers (pg, mysql2, @prisma/client) are **not** bundled. The adapters
+load them from your project's `node_modules` at runtime. This is essential —
+the adapter needs to patch the exact same module instance your code imports.
 
 ---
 
 ## Framework detection
 
 Brakit reads your `package.json` and looks for known framework dependencies to
-figure out how to start your dev server:
+figure out how to start your dev server when using the CLI:
 
-| Dependency | Framework | Dev command |
-|-----------|-----------|-------------|
-| `next` | Next.js | `next dev --port <port>` |
-| `@remix-run/dev` | Remix | `remix dev` |
-| `nuxt` | Nuxt | `nuxt dev --port <port>` |
-| `vite` | Vite | `vite --port <port>` |
-| `astro` | Astro | `astro dev --port <port>` |
+| Dependency       | Framework | Dev command               |
+| ---------------- | --------- | ------------------------- |
+| `next`           | Next.js   | `next dev --port <port>`  |
+| `@remix-run/dev` | Remix     | `remix dev`               |
+| `nuxt`           | Nuxt      | `nuxt dev --port <port>`  |
+| `vite`           | Vite      | `vite --port <port>`      |
+| `astro`          | Astro     | `astro dev --port <port>` |
 
-If your framework isn't listed, or you're not using Node.js at all, you can
-tell brakit exactly what to run:
-
-```bash
-brakit --command "python manage.py runserver"
-brakit --command "go run main.go"
-```
-
-When you use `--command`, brakit skips framework detection and runs your command
-directly. The proxy still captures all HTTP traffic. For Node.js commands, the
-`--import` hooks are still injected automatically.
+When using the in-process `import 'brakit'` approach, framework detection is
+not needed — brakit hooks into whatever HTTP server your app creates.
 
 ---
 
 ## Supporting other languages
 
-Brakit isn't limited to Node.js. The proxy captures HTTP traffic from any
-backend. For deeper instrumentation (database queries, logs), any language can
-POST events to the ingest endpoint:
+For non-Node.js backends, brakit exposes an HTTP ingest endpoint that any
+language can POST events to:
 
 ```
-POST http://localhost:<BRAKIT_PORT>/__brakit/api/ingest
+POST http://localhost:<PORT>/__brakit/api/ingest
 ```
 
 ```json
@@ -296,7 +329,7 @@ POST http://localhost:<BRAKIT_PORT>/__brakit/api/ingest
   "events": [
     {
       "type": "db.query",
-      "requestId": "from-x-brakit-request-id-header",
+      "requestId": "uuid",
       "timestamp": 1708000000000,
       "data": {
         "operation": "SELECT",
@@ -309,44 +342,15 @@ POST http://localhost:<BRAKIT_PORT>/__brakit/api/ingest
 }
 ```
 
-A language SDK just needs to: (1) read the `x-brakit-request-id` header from
-incoming requests, (2) wrap database calls to capture timing, and (3) POST
-events to the ingest endpoint. The proxy, stores, analysis engine, and
-dashboard are completely reused.
-
----
-
-## The dashboard
-
-The dashboard is a server-rendered HTML page served at `/__brakit`. It uses no
-frontend framework — the entire client is assembled from template-literal
-JavaScript functions at build time. No build step, no external dependencies.
-
-Real-time updates use Server-Sent Events (SSE). When the proxy captures a new
-request or the dev server reports a new query, the dashboard updates instantly
-without polling.
-
----
-
-## Build output
-
-Brakit builds three files:
-
-| File | What it does |
-|------|-------------|
-| `dist/index.js` | Public API — for programmatic use or CI integration |
-| `dist/bin/brakit.js` | The CLI you run with `npx brakit dev` |
-| `dist/instrument/preload.js` | The hooks that run inside your dev server |
-
-Database drivers (pg, mysql2, @prisma/client) are **not** bundled. The adapters
-load them from your project's `node_modules` at runtime. This is essential —
-the adapter needs to patch the exact same module instance your code imports.
+A language SDK needs to: (1) generate or propagate a request ID, (2) wrap
+database calls to capture timing, and (3) POST events to the ingest endpoint.
+The stores, analysis engine, and dashboard are completely reused.
 
 ---
 
 ## Extending brakit
 
-The architecture is designed around three extension points:
+The architecture is designed around four extension points:
 
 1. **New database adapter** — One file implementing `BrakitAdapter`. See
    [CONTRIBUTING.md](../../CONTRIBUTING.md) for a step-by-step guide.
@@ -354,9 +358,13 @@ The architecture is designed around three extension points:
 2. **New security rule** — One file implementing `SecurityRule`. The scanner
    picks it up automatically.
 
-3. **New language SDK** — POST events to the ingest endpoint. No changes to
+3. **New insight rule** — One file implementing `InsightRule`. Detects
+   performance patterns using pre-computed request and query indexes.
+
+4. **New language SDK** — POST events to the ingest endpoint. No changes to
    brakit itself.
 
 Each extension point is isolated. Adding a Drizzle adapter doesn't touch the
-analysis engine. Adding a new security rule doesn't touch the adapters. Building
-a Python SDK doesn't require any changes to the Node.js codebase.
+analysis engine. Adding a new security rule doesn't touch the adapters. Adding
+a new insight rule doesn't touch the security scanner. Building a Python SDK
+doesn't require any changes to the Node.js codebase.
