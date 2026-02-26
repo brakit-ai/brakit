@@ -28,7 +28,22 @@ Dashboard at `http://localhost:<port>/__brakit`. Insights in the terminal.
 
 > **Requirements:** Node.js >= 18 and a project with `package.json`.
 
-[Documentation](https://brakit.ai/docs) · [Website](https://brakit.ai)
+[Architecture](docs/design/architecture.md) · [Website](https://brakit.ai)
+
+---
+
+## Dashboard
+
+![Brakit Dashboard](docs/images/dashboard.png)
+
+Live at `/__brakit` on your existing port. No separate server. Updates in real-time via SSE.
+
+- **Performance overview** — health grades, p95 latency, error rates per endpoint
+- **Time breakdown** — see exactly where time goes: DB queries, outbound fetches, or app code
+- **Request history** — every request with status, duration, breakdown, and query count
+- **Scatter chart** — response time distribution with outlier detection
+- **Security tab** — live findings from 8 rules scanning your traffic
+- **Insights tab** — N+1s, duplicates, regressions, and 12 other patterns
 
 ---
 
