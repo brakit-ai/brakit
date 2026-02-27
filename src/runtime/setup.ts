@@ -5,6 +5,8 @@ import { setupErrorHook } from "../instrument/hooks/errors.js";
 import { createDefaultRegistry } from "../instrument/adapters/index.js";
 import { createDashboardHandler } from "../dashboard/router.js";
 import { onRequest } from "../store/request-log.js";
+import { writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   defaultFetchStore,
   defaultLogStore,
@@ -13,10 +15,11 @@ import {
   MetricsStore,
   FileMetricsPersistence,
 } from "../store/index.js";
+import { FindingStore } from "../store/finding-store.js";
 import { AnalysisEngine } from "../analysis/engine.js";
 import { createConsoleInsightListener } from "../output/terminal.js";
 import { VERSION } from "../index.js";
-import { DASHBOARD_PREFIX, DEFAULT_MAX_BODY_CAPTURE } from "../constants/index.js";
+import { DASHBOARD_PREFIX, DEFAULT_MAX_BODY_CAPTURE, METRICS_DIR, PORT_FILE } from "../constants/index.js";
 import type { TelemetryEvent } from "../types/index.js";
 import type { BrakitConfig } from "../types/index.js";
 import { health } from "./health.js";
@@ -41,7 +44,10 @@ export function setup(): void {
   const metricsStore = new MetricsStore(new FileMetricsPersistence(cwd));
   metricsStore.start();
 
-  const analysisEngine = new AnalysisEngine(metricsStore);
+  const findingStore = new FindingStore(cwd);
+  findingStore.start();
+
+  const analysisEngine = new AnalysisEngine(metricsStore, findingStore);
   analysisEngine.start();
 
   const config: BrakitConfig = {
@@ -51,7 +57,7 @@ export function setup(): void {
     maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE,
   };
 
-  const handleDashboard = createDashboardHandler({ metricsStore, analysisEngine });
+  const handleDashboard = createDashboardHandler({ metricsStore, analysisEngine, findingStore });
 
   onRequest((req) => {
     const queries = defaultQueryStore.getByRequest(req.id);
@@ -67,6 +73,11 @@ export function setup(): void {
     handleDashboard,
     config,
     onFirstRequest(port) {
+      // Write port file for MCP server discovery
+      const dir = resolve(cwd, METRICS_DIR);
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(cwd, PORT_FILE), String(port));
+
       analysisEngine.onUpdate(createConsoleInsightListener(port, metricsStore));
       process.stdout.write(`  brakit v${VERSION} — http://localhost:${port}${DASHBOARD_PREFIX}\n`);
     },
@@ -75,7 +86,14 @@ export function setup(): void {
   health.setTeardown(() => {
     uninstallInterceptor();
     analysisEngine.stop();
+    findingStore.stop();
     metricsStore.stop();
+
+    // Remove port file so MCP server knows brakit is no longer running
+    try {
+      const portPath = resolve(cwd, PORT_FILE);
+      if (existsSync(portPath)) unlinkSync(portPath);
+    } catch { /* non-critical */ }
   });
 }
 

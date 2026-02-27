@@ -105,7 +105,13 @@ export default defineCommand({
       console.log(pc.dim("  No brakit instrumentation files found."));
     }
 
-    // 2. Uninstall package
+    // 2. Remove MCP config
+    const mcpRemoved = await removeMcpConfig(rootDir);
+    if (mcpRemoved) {
+      console.log(pc.green("  ✓ Removed brakit MCP configuration"));
+    }
+
+    // 3. Uninstall package
     const pm = project?.packageManager ?? "npm";
     const uninstalled = await uninstallPackage(rootDir, pm);
     if (uninstalled) {
@@ -115,6 +121,29 @@ export default defineCommand({
     console.log();
   },
 });
+
+async function removeMcpConfig(rootDir: string): Promise<boolean> {
+  const mcpPath = join(rootDir, ".mcp.json");
+  if (!(await fileExists(mcpPath))) return false;
+
+  try {
+    const raw = await readFile(mcpPath, "utf-8");
+    const config = JSON.parse(raw);
+    if (!config?.mcpServers?.brakit) return false;
+
+    delete config.mcpServers.brakit;
+
+    // If no MCP servers left, delete the file entirely
+    if (Object.keys(config.mcpServers).length === 0) {
+      await unlink(mcpPath);
+    } else {
+      await writeFile(mcpPath, JSON.stringify(config, null, 2) + "\n");
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function uninstallPackage(rootDir: string, pm: DetectedProject["packageManager"]): Promise<boolean> {
   try {

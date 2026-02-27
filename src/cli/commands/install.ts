@@ -73,7 +73,15 @@ export default defineCommand({
       printManualInstructions(project.framework);
     }
 
-    // 3. Print next steps
+    // 3. Configure MCP for Claude Code / Cursor
+    const mcpResult = await setupMcp(rootDir);
+    if (mcpResult === "created" || mcpResult === "updated") {
+      console.log(pc.green("  ✓ Configured MCP for Claude Code / Cursor"));
+    } else if (mcpResult === "exists") {
+      console.log(pc.dim("  ✓ MCP already configured"));
+    }
+
+    // 4. Print next steps
     console.log();
     console.log(pc.dim("  Start your app and visit:"));
     console.log(pc.bold("  http://localhost:<port>/__brakit"));
@@ -209,6 +217,53 @@ async function setupGeneric(rootDir: string): Promise<InstrumentationSetup> {
   if (result.action !== "manual") return result;
 
   return { action: "manual", file: null };
+}
+
+const MCP_CONFIG = {
+  mcpServers: {
+    brakit: {
+      command: "npx",
+      args: ["brakit", "mcp"],
+    },
+  },
+};
+
+async function setupMcp(rootDir: string): Promise<"created" | "updated" | "exists"> {
+  const mcpPath = join(rootDir, ".mcp.json");
+
+  if (await fileExists(mcpPath)) {
+    const raw = await readFile(mcpPath, "utf-8");
+    try {
+      const config = JSON.parse(raw);
+      if (config?.mcpServers?.brakit) return "exists";
+      // Merge brakit into existing config
+      config.mcpServers = { ...config.mcpServers, ...MCP_CONFIG.mcpServers };
+      await writeFile(mcpPath, JSON.stringify(config, null, 2) + "\n");
+      await ensureGitignoreMcp(rootDir);
+      return "updated";
+    } catch {
+      // Corrupt JSON — overwrite
+    }
+  }
+
+  await writeFile(mcpPath, JSON.stringify(MCP_CONFIG, null, 2) + "\n");
+  await ensureGitignoreMcp(rootDir);
+  return "created";
+}
+
+async function ensureGitignoreMcp(rootDir: string): Promise<void> {
+  const gitignorePath = join(rootDir, ".gitignore");
+  try {
+    if (await fileExists(gitignorePath)) {
+      const content = await readFile(gitignorePath, "utf-8");
+      if (content.split("\n").some((l) => l.trim() === ".mcp.json")) return;
+      await writeFile(gitignorePath, content.trimEnd() + "\n.mcp.json\n");
+    } else {
+      await writeFile(gitignorePath, ".mcp.json\n");
+    }
+  } catch {
+    // Non-critical
+  }
 }
 
 function printManualInstructions(framework: Framework): void {

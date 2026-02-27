@@ -41,12 +41,11 @@ function truncate(s: string, max = 80): string {
   return s.length <= max ? s : s.slice(0, max - 1) + "\u2026";
 }
 
-function formatConsoleLine(insight: Insight, dashboardUrl: string, suffix?: string): string {
+function formatConsoleLine(insight: Insight, suffix?: string): string {
   const icon = severityIcon(insight.severity);
   const title = colorTitle(insight.severity, insight.title);
   const desc = pc.dim(truncate(insight.desc) + (suffix ?? ""));
-  const link = pc.dim(`\u2192  ${dashboardUrl}`);
-  let line = `  ${icon} ${title} \u2014 ${desc}  ${link}`;
+  let line = `  ${icon} ${title} \u2014 ${desc}`;
   if (insight.detail) {
     line += `\n    ${pc.dim("\u2514 " + insight.detail)}`;
   }
@@ -79,12 +78,14 @@ export function createConsoleInsightListener(
         }
       }
 
-      lines.push(formatConsoleLine(insight, dashUrl, suffix));
+      lines.push(formatConsoleLine(insight, suffix));
     }
 
     if (lines.length > 0) {
       print("");
       for (const line of lines) print(line);
+      print("");
+      print(`  ${pc.magenta(pc.bold("brakit"))} ${pc.dim("→")} ${pc.dim("Dashboard:")} ${pc.underline(`http://${dashUrl}`)}  ${pc.dim("or ask your AI:")} ${pc.bold('"Fix brakit findings"')}`);
     }
   };
 }

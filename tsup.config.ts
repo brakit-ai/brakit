@@ -8,13 +8,14 @@ export default defineConfig({
     api: "src/index.ts",
     "bin/brakit": "bin/brakit.ts",
     "runtime/index": "src/runtime/index.ts",
+    "mcp/server": "src/mcp/server.ts",
   },
   format: ["esm"],
   dts: true,
   clean: true,
   target: "node18",
   splitting: false,
-  external: ["pg", "mysql2", "@prisma/client"],
+  external: ["pg", "mysql2", "@prisma/client", "@modelcontextprotocol/sdk"],
   define: {
     "process.env.BRAKIT_VERSION": JSON.stringify(pkg.version),
     "process.env.POSTHOG_API_KEY": JSON.stringify(
