@@ -43,9 +43,13 @@ output, errors — and serves a live dashboard at `/__brakit`.
                  │  │  Stores (reqs, queries...)  │    │
                  │  │       |                     │    │
                  │  │       v                     │    │
-                 │  │  Analysis --> Dashboard     │    │
-                 │  └─────────────────────────────┘    │
-                 │                                     │
+                 │  │  Analysis --> Dashboard     │    │  ┌───────────┐
+                 │  │       |                     │    │  │           │
+                 │  │       v                     │    │  │  AI Agent │
+                 │  │  MCP Server <───────────────│────│──│  (Claude, │
+                 │  │                             │    │  │   Cursor) │
+                 │  └─────────────────────────────┘    │  │           │
+                 │                                     │  └───────────┘
                  │  Your route handlers, middleware    │
                  └─────────────────────────────────────┘
 ```
