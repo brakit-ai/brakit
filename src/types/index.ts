@@ -35,3 +35,10 @@ export type {
 } from "./metrics.js";
 
 export type { SecuritySeverity, SecurityFinding } from "./security.js";
+
+export type {
+  FindingState,
+  FindingSource,
+  StatefulFinding,
+  FindingsData,
+} from "./finding-lifecycle.js";

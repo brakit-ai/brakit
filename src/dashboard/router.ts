@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { BrakitConfig } from "../types/index.js";
 import type { MetricsStore } from "../store/index.js";
 import type { AnalysisEngine } from "../analysis/engine.js";
+import type { FindingStore } from "../store/finding-store.js";
 import {
   DASHBOARD_PREFIX,
   DASHBOARD_API_REQUESTS,
@@ -19,6 +20,7 @@ import {
   DASHBOARD_API_INSIGHTS,
   DASHBOARD_API_SECURITY,
   DASHBOARD_API_TAB,
+  DASHBOARD_API_FINDINGS,
   MAX_TAB_NAME_LENGTH,
 } from "../constants/index.js";
 import {
@@ -35,6 +37,7 @@ import {
   handleApiActivity,
 } from "./api/index.js";
 import { createInsightsHandler, createSecurityHandler } from "./api/insights.js";
+import { createFindingsHandler } from "./api/findings.js";
 import { createSSEHandler } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
 import { recordTabViewed, recordDashboardOpened, isTelemetryEnabled } from "../telemetry/index.js";
@@ -59,6 +62,7 @@ export function isDashboardRequest(url: string): boolean {
 export interface DashboardDeps {
   metricsStore: MetricsStore;
   analysisEngine?: AnalysisEngine;
+  findingStore?: FindingStore;
 }
 
 export function createDashboardHandler(
@@ -82,6 +86,10 @@ export function createDashboardHandler(
   if (deps.analysisEngine) {
     routes[DASHBOARD_API_INSIGHTS] = createInsightsHandler(deps.analysisEngine);
     routes[DASHBOARD_API_SECURITY] = createSecurityHandler(deps.analysisEngine);
+  }
+
+  if (deps.findingStore) {
+    routes[DASHBOARD_API_FINDINGS] = createFindingsHandler(deps.findingStore);
   }
 
   routes[DASHBOARD_API_TAB] = (req, res) => {

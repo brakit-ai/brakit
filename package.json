@@ -43,6 +43,7 @@
   },
   "author": "Brakit <dev@brakit.ai> (https://brakit.ai)",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "citty": "^0.1.6",
     "picocolors": "^1.1.1"
   },

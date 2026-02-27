@@ -10,6 +10,7 @@ import type {
 import type { RequestFlow } from "../types/index.js";
 import type { TelemetryListener } from "../store/index.js";
 import type { MetricsStore } from "../store/index.js";
+import type { FindingStore } from "../store/finding-store.js";
 import { getRequests } from "../store/request-log.js";
 import {
   defaultQueryStore,
@@ -37,6 +38,7 @@ export class AnalysisEngine {
 
   constructor(
     private metricsStore: MetricsStore,
+    private findingStore?: FindingStore,
     private debounceMs = 300,
   ) {
     this.scanner = createDefaultScanner();
@@ -99,6 +101,13 @@ export class AnalysisEngine {
     const flows = groupRequestsIntoFlows(requests);
 
     this.cachedFindings = this.scanner.scan({ requests, logs });
+
+    if (this.findingStore) {
+      for (const finding of this.cachedFindings) {
+        this.findingStore.upsert(finding, "passive");
+      }
+      this.findingStore.reconcilePassive(this.cachedFindings);
+    }
 
     this.cachedInsights = computeInsights({
       requests,
