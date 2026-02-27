@@ -1,11 +1,12 @@
 import { defineCommand } from "citty";
 import { resolve, join } from "node:path";
-import { readFile, writeFile, unlink } from "node:fs/promises";
+import { readFile, writeFile, unlink, rm } from "node:fs/promises";
 import { execSync } from "node:child_process";
 import pc from "picocolors";
 import { VERSION } from "../../index.js";
 import { detectProject } from "../../detect/project.js";
 import { fileExists } from "../../utils/fs.js";
+import { METRICS_DIR } from "../../constants/index.js";
 import type { DetectedProject } from "../../types/index.js";
 
 const IMPORT_LINE = `import "brakit";`;
@@ -111,7 +112,19 @@ export default defineCommand({
       console.log(pc.green("  ✓ Removed brakit MCP configuration"));
     }
 
-    // 3. Uninstall package
+    // 3. Remove .brakit data directory
+    const dataRemoved = await removeBrakitData(rootDir);
+    if (dataRemoved) {
+      console.log(pc.green("  ✓ Removed .brakit directory"));
+    }
+
+    // 4. Clean .brakit from .gitignore
+    const gitignoreCleaned = await cleanGitignore(rootDir);
+    if (gitignoreCleaned) {
+      console.log(pc.green("  ✓ Removed .brakit from .gitignore"));
+    }
+
+    // 5. Uninstall package
     const pm = project?.packageManager ?? "npm";
     const uninstalled = await uninstallPackage(rootDir, pm);
     if (uninstalled) {
@@ -168,4 +181,33 @@ async function uninstallPackage(rootDir: string, pm: DetectedProject["packageMan
     console.warn(pc.yellow(`  ⚠ Failed to run "${cmd}". Remove brakit manually.`));
   }
   return true;
+}
+
+async function removeBrakitData(rootDir: string): Promise<boolean> {
+  const dataDir = join(rootDir, METRICS_DIR);
+  if (!(await fileExists(dataDir))) return false;
+
+  try {
+    await rm(dataDir, { recursive: true, force: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function cleanGitignore(rootDir: string): Promise<boolean> {
+  const gitignorePath = join(rootDir, ".gitignore");
+  if (!(await fileExists(gitignorePath))) return false;
+
+  try {
+    const content = await readFile(gitignorePath, "utf-8");
+    const lines = content.split("\n");
+    const filtered = lines.filter((line) => line.trim() !== METRICS_DIR);
+    if (filtered.length === lines.length) return false;
+
+    await writeFile(gitignorePath, filtered.join("\n"));
+    return true;
+  } catch {
+    return false;
+  }
 }
