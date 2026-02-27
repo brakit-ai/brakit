@@ -15,7 +15,8 @@ describe("printBanner", () => {
 });
 
 describe("createConsoleInsightListener", () => {
-  let spy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let spy: any;
 
   beforeEach(() => {
     spy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
@@ -26,7 +27,7 @@ describe("createConsoleInsightListener", () => {
   });
 
   function getOutput(): string {
-    return spy.mock.calls.map((c) => c[0]).join("");
+    return spy.mock.calls.map((c: unknown[]) => c[0]).join("");
   }
 
   function makeInsight(overrides: Partial<Insight> = {}): Insight {

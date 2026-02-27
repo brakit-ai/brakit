@@ -1,7 +1,14 @@
 import { defineConfig } from "tsup";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
+
+if (existsSync(".env")) {
+  for (const line of readFileSync(".env", "utf-8").split("\n")) {
+    const match = line.match(/^\s*([^#=]+?)\s*=\s*(.*)\s*$/);
+    if (match && !process.env[match[1]]) process.env[match[1]] = match[2];
+  }
+}
 
 export default defineConfig({
   entry: {

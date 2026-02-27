@@ -41,6 +41,14 @@ The build produces three entry points in `dist/`:
 During development, `npm run dev` runs tsup in watch mode. Tests use vitest
 (`npm test` or `npm run test:watch`).
 
+Additional test scripts:
+
+| Script | Purpose |
+|--------|---------|
+| `npm run test:contracts` | Adapter contract + normalize tests |
+| `npm run test:integration` | Integration tests (registry, pipeline) |
+| `npm run ci` | Full CI check: typecheck + test + build |
+
 ## Project structure
 
 ```
@@ -170,7 +178,21 @@ external: ["pg", "mysql2", "@prisma/client", "drizzle-orm"],
 This ensures tsup doesn't bundle the library — the adapter resolves it from
 the user's `node_modules` at runtime.
 
-**4. Test it:**
+**4. Add contract tests in `tests/adapters/adapter-contract.test.ts`:**
+
+Import your adapter and add it to the contract test suite:
+
+```typescript
+import { drizzleAdapter } from "../../src/instrument/adapters/drizzle.js";
+
+// Inside describe("adapter contracts", ...)
+runContractTests(drizzleAdapter);
+```
+
+This validates interface compliance: non-empty name, boolean `detect()`, safe
+failure when the library is not installed, and `unpatch()` never throws.
+
+**5. Test it:**
 
 ```bash
 npm run build
@@ -277,6 +299,32 @@ export function createDefaultScanner(): SecurityScanner {
 export { myRule } from "./my-rule.js";
 ```
 
+**4. Add tests in `tests/analysis/security-rules.test.ts`:**
+
+Use the shared helpers to create test data:
+
+```typescript
+import { makeRequest, makeLog, makeSecurityContext } from "../helpers/index.js";
+
+describe("myRule", () => {
+  it("detects the issue", () => {
+    const ctx = makeSecurityContext({
+      requests: [makeRequest({ /* trigger data */ })],
+    });
+    const findings = myRule.check(ctx);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].rule).toBe("my-rule-id");
+  });
+
+  it("does not trigger for safe data", () => {
+    const ctx = makeSecurityContext({
+      requests: [makeRequest()],
+    });
+    expect(myRule.check(ctx)).toHaveLength(0);
+  });
+});
+```
+
 ### Key rules
 
 - **Deduplicate findings.** Use a `Map` or `Set` keyed by endpoint to avoid
@@ -371,6 +419,38 @@ export function createDefaultInsightRunner(): InsightRunner {
   runner.register(myRule);
   return runner;
 }
+```
+
+**4. Add tests in `tests/analysis/insight-rules.test.ts`:**
+
+Use the shared helpers and `InsightRunner`:
+
+```typescript
+import { makeRequest, makeQuery, makeInsightContext as makeCtx } from "../helpers/index.js";
+
+describe("myRule", () => {
+  it("triggers above threshold", () => {
+    const runner = new InsightRunner();
+    runner.register(myRule);
+
+    const ctx = makeCtx({
+      requests: [/* data that triggers the rule */],
+      queries: [/* if needed */],
+    });
+
+    const insights = runner.run(ctx);
+    expect(insights).toHaveLength(1);
+    expect(insights[0].type).toBe("my-rule");
+  });
+
+  it("does not trigger below threshold", () => {
+    const runner = new InsightRunner();
+    runner.register(myRule);
+
+    const ctx = makeCtx({ requests: [makeRequest()] });
+    expect(runner.run(ctx)).toHaveLength(0);
+  });
+});
 ```
 
 ### Key rules

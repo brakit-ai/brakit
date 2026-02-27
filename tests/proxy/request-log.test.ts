@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { randomUUID } from "node:crypto";
 import {
   captureRequest,
   onRequest,
@@ -7,25 +6,8 @@ import {
   clearRequests,
   isStaticPath,
   flattenHeaders,
-  type CaptureInput,
 } from "../../src/store/request-log.js";
-
-function makeCaptureInput(overrides: Partial<CaptureInput> = {}): CaptureInput {
-  return {
-    requestId: randomUUID(),
-    method: "GET",
-    url: "/api/users",
-    requestHeaders: {},
-    requestBody: null,
-    statusCode: 200,
-    responseHeaders: { "content-type": "application/json" },
-    responseBody: Buffer.from('{"ok":true}'),
-    responseContentType: "application/json",
-    startTime: performance.now() - 25,
-    config: { maxBodyCapture: 10240 },
-    ...overrides,
-  };
-}
+import { makeCaptureInput } from "../helpers/index.js";
 
 describe("isStaticPath", () => {
   it("identifies _next/ paths as static", () => {
