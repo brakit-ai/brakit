@@ -63,6 +63,7 @@ Dashboard at `http://localhost:<port>/__brakit`. Insights in the terminal.
 - **Full server tracing** — fetch calls, DB queries, console logs, errors — zero code changes
 - **Response overfetch** — large JSON responses with many fields your client doesn't use
 - **Performance tracking** — health grades and p95 trends across dev sessions
+- **AI-native via MCP** — Claude, Cursor, and other AI tools can query findings, inspect endpoints, and verify fixes directly
 
 ---
 
@@ -93,7 +94,9 @@ Brakit watches every action your app takes — not raw HTTP noise, but what actu
 
 ## Who Is This For
 
-Developers using AI tools (Cursor, Copilot, Claude Code) to generate API code they don't fully review. Developers who debug with `console.log` and wish they could just see every action their API is executing. Anyone building Node.js APIs who wants to catch security and performance issues before production.
+- **AI-assisted developers** — Using Cursor, Copilot, or Claude Code to generate API code you don't fully review? Brakit catches the issues they introduce.
+- **Console.log debuggers** — Wish you could just see every action your API executes without adding log statements everywhere? That's literally what brakit does.
+- **Anyone shipping Node.js APIs** — If you want to catch security and performance issues before they reach production, brakit surfaces them as you develop.
 
 ---
 
@@ -105,6 +108,7 @@ import 'brakit'  →  hooks into http.Server  →  captures everything
                           +-- Dashboard UI    (/__brakit)
                           +-- Live SSE stream (real-time updates)
                           +-- Terminal output  (insights as you develop)
+                          +-- MCP server      (AI assistant integration)
 ```
 
 `import 'brakit'` runs inside your process. It patches `http.Server.prototype.emit` to intercept all requests — capturing request/response pairs, grouping them into actions, and streaming everything to the dashboard at `/__brakit` on your existing port. No proxy, no second process, no different port.
@@ -156,7 +160,7 @@ Brakit never runs in production. 7 independent layers ensure it:
 npx brakit uninstall
 ```
 
-Removes the instrumentation file and devDependency. Your app is unchanged.
+Removes the instrumentation file, MCP configuration, `.brakit` data directory, `.gitignore` entry, and devDependency. Your app is unchanged.
 
 ---
 
@@ -194,6 +198,8 @@ src/
   instrument/     Database adapters and instrumentation hooks
     adapters/     BrakitAdapter implementations (one file per library)
     hooks/        Core hooks (fetch, console, errors, context)
+  mcp/            MCP server for AI tool integration (Claude, Cursor)
+    tools/        Tool implementations (one file per tool)
   output/         Terminal insight listener
   store/          In-memory telemetry stores + persistent metrics
   types/          TypeScript definitions by domain
@@ -214,6 +220,7 @@ Some areas where help would be great:
 - **Database adapters** — Drizzle, Mongoose, SQLite, MongoDB
 - **Insight rules** — New performance patterns, custom thresholds
 - **Security rules** — More patterns, configurable severity
+- **MCP tools** — New AI-facing tools for the MCP server
 - **Dashboard** — Request diff, timeline view, HAR export
 
 Please open an issue first for larger changes so we can discuss the approach.

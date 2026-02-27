@@ -2,7 +2,7 @@
 
 Brakit is designed so that the most common contributions — adding support for a
 new database library, adding a security rule, or adding an insight rule —
-require exactly one file and one interface. This guide covers the four main
+require exactly one file and one interface. This guide covers the five main
 contribution paths.
 
 ## Table of contents
@@ -13,6 +13,7 @@ contribution paths.
 - [Adding a security rule](#adding-a-security-rule)
 - [Adding an insight rule](#adding-an-insight-rule)
 - [Building a language SDK](#building-a-language-sdk)
+- [Adding an MCP tool](#adding-an-mcp-tool)
 - [How to contribute](#how-to-contribute)
 - [Code style](#code-style)
 - [Commit messages](#commit-messages)
@@ -30,13 +31,14 @@ npm run build
 npm test
 ```
 
-The build produces three entry points in `dist/`:
+The build produces four entry points in `dist/`:
 
 | Entry | Purpose |
 |-------|---------|
 | `dist/api.js` | Public library API |
 | `dist/bin/brakit.js` | CLI binary |
 | `dist/runtime/index.js` | In-process runtime (`import 'brakit'`) |
+| `dist/mcp/server.js` | MCP server (AI tool integration) |
 
 During development, `npm run dev` runs tsup in watch mode. Tests use vitest
 (`npm test` or `npm run test:watch`).
@@ -65,9 +67,11 @@ src/
   instrument/          # Instrumentation adapters and hooks
     adapters/          # BrakitAdapter implementations (one file per library)
     hooks/             # Core runtime hooks (fetch, console, errors, context)
+  mcp/                 # MCP server and tool definitions
+    tools/             # McpTool implementations (one file per tool)
   output/              # Terminal insight listener
   runtime/             # In-process architecture (interceptor, capture, health)
-  store/               # In-memory bounded stores with pub/sub
+  store/               # In-memory bounded stores, persistent finding store
   telemetry/           # Anonymous usage analytics
   types/               # TypeScript type definitions
   utils/               # Shared utilities (collections, format, math, endpoint)
@@ -562,6 +566,35 @@ brakit-<language>/
 
 The SDK should auto-detect installed libraries (like the Node.js adapter
 registry) and patch only those found.
+
+---
+
+## Adding an MCP tool
+
+MCP tools let AI assistants interact with brakit — querying findings,
+inspecting endpoints, verifying fixes. Each tool is one file in
+`src/mcp/tools/` implementing the `McpTool` interface.
+
+### The interface
+
+```typescript
+// src/mcp/types.ts
+interface McpTool {
+  name: string;           // snake_case (MCP convention)
+  description: string;    // one sentence for the AI
+  inputSchema: { ... };   // JSON Schema for parameters
+  handler(client, args): Promise<McpToolResult>;
+}
+```
+
+### Quick version
+
+1. Create `src/mcp/tools/<your-tool>.ts` — implement `McpTool`.
+2. Add it to the `TOOL_MAP` in `src/mcp/tools/index.ts`.
+3. Add tests in `tests/mcp/tools.test.ts`.
+
+For the full walkthrough with code examples, see
+[docs/design/mcp.md](docs/design/mcp.md#adding-a-new-mcp-tool).
 
 ---
 

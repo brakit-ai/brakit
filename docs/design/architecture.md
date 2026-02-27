@@ -4,6 +4,23 @@ Brakit is a developer tool that shows you what your API does at runtime — ever
 HTTP request, database query, fetch call, console log, and error — without
 changing your code. This document explains how it does that.
 
+## Table of contents
+
+- [The big idea](#the-big-idea)
+- [How setup works](#how-setup-works)
+- [Request capture](#request-capture)
+- [The adapter system](#the-adapter-system)
+- [Event routing](#event-routing)
+- [Data storage](#data-storage)
+- [The analysis engine](#the-analysis-engine)
+- [The dashboard](#the-dashboard)
+- [MCP server](#mcp-server)
+- [Safety guarantees](#safety-guarantees)
+- [Build output](#build-output)
+- [Framework detection](#framework-detection)
+- [Supporting other languages](#supporting-other-languages)
+- [Extending brakit](#extending-brakit)
+
 ---
 
 ## The big idea
@@ -180,6 +197,7 @@ required. Each store holds up to 1,000 entries and evicts the oldest when full.
 | LogStore     | Console output                                                       |
 | ErrorStore   | Uncaught exceptions and unhandled rejections                         |
 | MetricsStore | Per-endpoint session statistics, persisted to `.brakit/metrics.json` |
+| FindingStore | Stateful security findings with lifecycle tracking, persisted to `.brakit/findings.json` |
 
 Every store supports pub/sub — when a new entry is added, all subscribers are
 notified. This is how the SSE stream and the analysis engine stay in sync
@@ -261,6 +279,24 @@ The dashboard is only served to localhost — requests from non-local IPs get a 
 
 ---
 
+## MCP server
+
+Brakit exposes its findings and performance data to AI assistants (Claude,
+Cursor, Copilot) through the Model Context Protocol. The MCP server runs as a
+separate process and connects to your running app through the same dashboard
+API that powers the browser UI.
+
+It discovers your app by reading the `.brakit/port` file, then provides 6
+tools that let AI assistants query findings, inspect endpoints, drill into
+request details, and verify fixes. A finding lifecycle system tracks issues
+as they move through `open → fixing → resolved`, with persistence across
+app restarts.
+
+See [MCP documentation](mcp.md) for the full protocol reference, tool
+descriptions, finding lifecycle details, and how to add new tools.
+
+---
+
 ## Safety guarantees
 
 Brakit is designed to never break your application:
@@ -280,13 +316,14 @@ Brakit is designed to never break your application:
 
 ## Build output
 
-Brakit builds three files:
+Brakit builds four files:
 
 | File                    | What it does                                        |
 | ----------------------- | --------------------------------------------------- |
 | `dist/api.js`           | Public API — for programmatic use or CI integration |
 | `dist/bin/brakit.js`    | The CLI you run with `npx brakit`                   |
 | `dist/runtime/index.js` | The runtime entry point for `import 'brakit'`       |
+| `dist/mcp/server.js`   | MCP server for AI tool integration                  |
 
 Database drivers (pg, mysql2, @prisma/client) are **not** bundled. The adapters
 load them from your project's `node_modules` at runtime. This is essential —
@@ -350,7 +387,7 @@ The stores, analysis engine, and dashboard are completely reused.
 
 ## Extending brakit
 
-The architecture is designed around four extension points:
+The architecture is designed around five extension points:
 
 1. **New database adapter** — One file implementing `BrakitAdapter`. See
    [CONTRIBUTING.md](../../CONTRIBUTING.md) for a step-by-step guide.
@@ -363,6 +400,9 @@ The architecture is designed around four extension points:
 
 4. **New language SDK** — POST events to the ingest endpoint. No changes to
    brakit itself.
+
+5. **New MCP tool** — One file implementing `McpTool`, registered in the tool
+   map. See [MCP documentation](mcp.md).
 
 Each extension point is isolated. Adding a Drizzle adapter doesn't touch the
 analysis engine. Adding a new security rule doesn't touch the adapters. Adding
