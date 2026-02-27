@@ -1,6 +1,6 @@
 {
   "name": "brakit",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "description": "See what your API is really doing. Security scanning, N+1 detection, duplicate calls, DB queries — one command, zero config.",
   "type": "module",
   "bin": {
@@ -28,6 +28,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:contracts": "vitest run tests/contracts tests/adapters",
+    "test:integration": "vitest run tests/integration",
+    "ci": "npm run typecheck && npm test && npm run build",
     "lint": "tsc --noEmit"
   },
   "repository": {

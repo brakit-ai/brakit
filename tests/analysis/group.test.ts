@@ -1,25 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { groupRequestsIntoFlows } from "../../src/analysis/group.js";
-import type { TracedRequest } from "../../src/types/index.js";
-
-function makeReq(overrides: Partial<TracedRequest> = {}): TracedRequest {
-  return {
-    id: "test-" + Math.random().toString(36).slice(2, 8),
-    method: "GET",
-    url: "/api/users",
-    path: "/api/users",
-    headers: {},
-    requestBody: null,
-    statusCode: 200,
-    responseHeaders: {},
-    responseBody: null,
-    startedAt: 0,
-    durationMs: 50,
-    responseSize: 100,
-    isStatic: false,
-    ...overrides,
-  };
-}
+import { makeRequest as makeReq } from "../helpers/index.js";
 
 describe("groupRequestsIntoFlows", () => {
   it("groups requests within time gap into one flow", () => {
