@@ -3,7 +3,7 @@
 <p align="center">
   <b>See what your app is actually doing.</b> <br />
   Every request, query, and security issue — before you ship. <br />
-  <b>Open source · Local only · Zero config · 2 dependencies</b>
+  <b>Open source · Local first · Zero config · 2 dependencies</b>
 </p>
 
 <h3 align="center">
@@ -22,6 +22,9 @@
   <a href="https://typescriptlang.org">
     <img src="https://img.shields.io/badge/built%20with-TypeScript-3178c6.svg" alt="TypeScript" />
   </a>
+  <a href="https://www.npmjs.com/package/brakit">
+    <img src="https://img.shields.io/npm/v/brakit" alt="npm version" />
+  </a>
   <a href="CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
   </a>
@@ -30,7 +33,15 @@
 ---
 
 <p align="center">
-  <img width="700" src="docs/images/dashboard.png" alt="Brakit Dashboard" />
+  <img width="700" src="docs/images/dashboard.png" alt="Brakit Dashboard — issues surfaced automatically" />
+  <br />
+  <sub>Brakit catches N+1 queries, PII leaks, and slow endpoints as you develop</sub>
+</p>
+
+<p align="center">
+  <img width="700" src="docs/images/vscode.png" alt="Claude reading Brakit findings in VS Code" />
+  <br />
+  <sub>Claude reads findings via MCP and fixes your code</sub>
 </p>
 
 ## Quick Start
