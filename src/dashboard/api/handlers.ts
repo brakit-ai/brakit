@@ -9,6 +9,7 @@ import {
 } from "../../store/index.js";
 import { DEFAULT_API_LIMIT } from "../../constants/index.js";
 import type { MetricsStore } from "../../store/index.js";
+import type { FindingStore } from "../../store/finding-store.js";
 import { sendJson, requireGet, handleTelemetryGet, maskSensitiveHeaders } from "./shared.js";
 import type { TracedRequest } from "../../types/index.js";
 
@@ -85,6 +86,7 @@ export function handleApiFlows(
 
 export function createClearHandler(
   metricsStore: MetricsStore,
+  findingStore?: FindingStore,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (req.method !== "POST") {
@@ -97,6 +99,7 @@ export function createClearHandler(
     defaultErrorStore.clear();
     defaultQueryStore.clear();
     metricsStore.reset();
+    findingStore?.clear();
     sendJson(req, res, 200, { cleared: true });
   };
 }

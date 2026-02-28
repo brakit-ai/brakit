@@ -53,9 +53,9 @@ export function createSSEHandler(
     };
 
     const analysisListener: AnalysisListener | undefined = engine
-      ? (insights, findings) => {
-          writeEvent("insights", JSON.stringify(insights));
-          writeEvent("security", JSON.stringify(findings));
+      ? ({ statefulInsights, statefulFindings }) => {
+          writeEvent("insights", JSON.stringify(statefulInsights));
+          writeEvent("security", JSON.stringify(statefulFindings));
         }
       : undefined;
 

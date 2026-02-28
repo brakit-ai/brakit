@@ -29,3 +29,14 @@ export const QUERY_COUNT_REGRESSION_RATIO = 1.5;
 export const OVERFETCH_MANY_FIELDS = 12;
 export const OVERFETCH_UNWRAP_MIN_SIZE = 3;
 export const MAX_DUPLICATE_INSIGHTS = 3;
+
+export const INSIGHT_WINDOW_PER_ENDPOINT = 2;
+
+/**
+ * Consecutive recompute cycles an insight must be absent before resolving.
+ * Hysteresis guard: prevents flickering from the sliding analysis window.
+ */
+export const RESOLVE_AFTER_ABSENCES = 3;
+
+/** Remove resolved insights from tracking after 30 minutes. */
+export const RESOLVED_INSIGHT_TTL_MS = 1_800_000;

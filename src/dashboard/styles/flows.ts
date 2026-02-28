@@ -12,7 +12,7 @@ export function getFlowStyles(): string {
 .flow-label{font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
 .flow-req-count{font-family:var(--mono);font-size:12px;color:var(--text-muted);flex-shrink:0;text-align:right}
 .flow-badge-pill{font-size:11px;flex-shrink:0;font-family:var(--mono);font-weight:600;padding:2px 10px;border-radius:10px;text-align:center}
-.flow-badge-pill.badge-clean{background:rgba(22,163,74,0.07);color:var(--green)}
+.flow-badge-pill.badge-clean{background:var(--green-bg);color:var(--green)}
 .flow-badge-pill.badge-warn{background:rgba(217,119,6,0.07);color:var(--amber)}
 .flow-badge-pill.badge-error{background:rgba(220,38,38,0.07);color:var(--red)}
 .flow-duration{font-family:var(--mono);font-size:12px;color:var(--text-muted);flex-shrink:0;width:60px;text-align:right}
@@ -32,7 +32,7 @@ export function getFlowStyles(): string {
 
 /* Method badges */
 .method-badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;font-family:var(--mono);letter-spacing:.3px;flex-shrink:0}
-.method-badge-GET{background:rgba(22,163,74,0.08);color:var(--green)}
+.method-badge-GET{background:var(--green-bg);color:var(--green)}
 .method-badge-POST{background:rgba(37,99,235,0.08);color:var(--blue)}
 .method-badge-PUT,.method-badge-PATCH{background:rgba(217,119,6,0.08);color:var(--amber)}
 .method-badge-DELETE{background:rgba(220,38,38,0.08);color:var(--red)}
@@ -40,7 +40,7 @@ export function getFlowStyles(): string {
 
 /* Status pills */
 .status-pill{display:inline-flex;align-items:center;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600;font-family:var(--mono);flex-shrink:0}
-.status-pill-2xx{background:rgba(22,163,74,0.07);color:var(--green)}
+.status-pill-2xx{background:var(--green-bg);color:var(--green)}
 .status-pill-3xx{background:rgba(8,145,178,0.07);color:var(--cyan)}
 .status-pill-4xx{background:rgba(217,119,6,0.07);color:var(--amber)}
 .status-pill-5xx{background:rgba(220,38,38,0.07);color:var(--red)}

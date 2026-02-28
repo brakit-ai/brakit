@@ -12,6 +12,7 @@ export function getBaseStyles(): string {
   --amber:#d97706;
   --red:#dc2626;
   --cyan:#0891b2;
+  --green-bg:rgba(22,163,74,0.08);--green-bg-subtle:rgba(22,163,74,0.05);--green-border:rgba(22,163,74,0.2);--green-border-subtle:rgba(22,163,74,0.15);
   --sidebar-width:232px;--header-height:52px;
   --radius:8px;--radius-sm:6px;
   --shadow-sm:0 1px 2px rgba(0,0,0,0.05);

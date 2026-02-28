@@ -1,15 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ReadonlyTelemetryStore } from "../../store/index.js";
-import { LOCALHOST_HOSTNAMES } from "../../constants/index.js";
-
-const SENSITIVE_HEADER_NAMES = new Set([
-  "authorization",
-  "cookie",
-  "set-cookie",
-  "proxy-authorization",
-  "x-api-key",
-  "x-auth-token",
-]);
+import { LOCALHOST_HOSTNAMES, SENSITIVE_HEADER_NAMES } from "../../constants/index.js";
+import { SENSITIVE_MASK_MIN_LENGTH, SENSITIVE_MASK_VISIBLE_CHARS } from "../../constants/limits.js";
 
 export function maskSensitiveHeaders(
   headers: Record<string, string>,
@@ -18,7 +10,9 @@ export function maskSensitiveHeaders(
   for (const [key, value] of Object.entries(headers)) {
     if (SENSITIVE_HEADER_NAMES.has(key.toLowerCase())) {
       const s = String(value);
-      masked[key] = s.length <= 8 ? "****" : s.slice(0, 4) + "..." + s.slice(-4);
+      masked[key] = s.length <= SENSITIVE_MASK_MIN_LENGTH
+        ? "****"
+        : s.slice(0, SENSITIVE_MASK_VISIBLE_CHARS) + "..." + s.slice(-SENSITIVE_MASK_VISIBLE_CHARS);
     } else {
       masked[key] = value;
     }

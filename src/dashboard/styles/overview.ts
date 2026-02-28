@@ -21,6 +21,7 @@ export function getOverviewStyles(): string {
 .ov-card-icon.critical{background:rgba(220,38,38,.08);color:var(--red)}
 .ov-card-icon.warning{background:rgba(217,119,6,.08);color:var(--amber)}
 .ov-card-icon.info{background:rgba(37,99,235,.08);color:var(--blue)}
+.ov-card-icon.resolved{background:var(--green-bg);color:var(--green)}
 .ov-card-body{flex:1;min-width:0}
 .ov-card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
 .ov-card-desc{font-size:12px;color:var(--text-dim);line-height:1.5}
@@ -37,7 +38,12 @@ export function getOverviewStyles(): string {
 .ov-detail-item{font-size:12px;color:var(--text);font-family:var(--mono);padding:2px 0}
 
 /* All-clear banner */
-.ov-clear{display:flex;align-items:center;gap:12px;padding:16px 20px;background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.2);border-radius:var(--radius);color:var(--green);font-size:13px;font-weight:500}
+.ov-clear{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--green-bg-subtle);border:1px solid var(--green-border);border-radius:var(--radius);color:var(--green);font-size:13px;font-weight:500}
 .ov-clear-icon{font-size:16px}
+
+/* Resolved section */
+.ov-resolved-title{margin-top:24px}
+.ov-card-resolved{opacity:.7;border-color:var(--green-border);cursor:default}
+.ov-card-resolved:hover{opacity:1;box-shadow:var(--shadow-sm)}
 `;
 }

@@ -3,3 +3,7 @@ export const DEFAULT_MAX_BODY_CAPTURE = 10_240;
 export const DEFAULT_API_LIMIT = 500;
 export const MAX_TELEMETRY_ENTRIES = 1_000;
 export const MAX_TAB_NAME_LENGTH = 32;
+export const MAX_INGEST_BYTES = 10 * 1_024 * 1_024;
+export const TERMINAL_TRUNCATE_LENGTH = 80;
+export const SENSITIVE_MASK_MIN_LENGTH = 8;
+export const SENSITIVE_MASK_VISIBLE_CHARS = 4;

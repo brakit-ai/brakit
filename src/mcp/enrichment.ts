@@ -59,7 +59,9 @@ export async function enrichFindings(
     });
   }
 
-  for (const i of insightsData.insights) {
+  for (const si of insightsData.insights) {
+    if (si.state === "resolved") continue;
+    const i = si.insight;
     if (!ENRICHMENT_SEVERITY_FILTER.includes(i.severity)) continue;
 
     const endpoint = i.nav ?? "global";

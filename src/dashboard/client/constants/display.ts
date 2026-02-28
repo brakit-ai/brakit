@@ -49,3 +49,6 @@ export const HTTP_STATUS_MAP = `{400:'Bad Request',401:'Unauthorized',403:'Forbi
 export const NAV_LABELS = `{ queries: 'Queries', requests: 'Requests', actions: 'Actions', errors: 'Errors', security: 'Security', fetches: 'Fetches', logs: 'Logs', performance: 'Performance' }`;
 
 export const CURL_SKIP_HEADERS = `['host', 'connection', 'accept-encoding']`;
+
+// Severity display config — icon, CSS class, and sort order per level
+export const SEVERITY_MAP = `{ critical: { icon: '\\u2717', cls: 'critical', sort: 0 }, warning: { icon: '\\u26A0', cls: 'warning', sort: 1 }, info: { icon: '\\u2139', cls: 'info', sort: 2 } }`;

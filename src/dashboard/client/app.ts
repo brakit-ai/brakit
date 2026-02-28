@@ -196,7 +196,7 @@ export function getApp(): string {
     if (queryCount) queryCount.textContent = state.queries.length;
     var secCount = document.getElementById('sidebar-count-security');
     if (secCount) {
-      var numFindings = (state.findings || []).length;
+      var numFindings = (state.findings || []).filter(function(f) { return f.state !== 'resolved'; }).length;
       secCount.textContent = numFindings;
       secCount.style.display = numFindings > 0 ? '' : 'none';
     }
