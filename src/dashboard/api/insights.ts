@@ -7,7 +7,7 @@ export function createInsightsHandler(
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;
-    sendJson(req, res, 200, { insights: engine.getInsights() });
+    sendJson(req, res, 200, { insights: engine.getStatefulInsights() });
   };
 }
 
@@ -16,6 +16,6 @@ export function createSecurityHandler(
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;
-    sendJson(req, res, 200, { findings: engine.getFindings() });
+    sendJson(req, res, 200, { findings: engine.getStatefulFindings() });
   };
 }

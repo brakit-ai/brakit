@@ -1,8 +1,9 @@
-import type { TracedQuery } from "../../types/index.js";
+import type { TracedQuery, TracedRequest } from "../../types/index.js";
 import type { InsightContext, PreparedInsightContext, EndpointGroup } from "./types.js";
 import { groupBy } from "../../utils/collections.js";
 import { getEndpointKey } from "../../utils/endpoint.js";
 import { DASHBOARD_PREFIX } from "../../constants/index.js";
+import { INSIGHT_WINDOW_PER_ENDPOINT } from "../../constants/thresholds.js";
 import { getQueryShape, getQueryInfo } from "./query-helpers.js";
 
 function createEndpointGroup(): EndpointGroup {
@@ -18,6 +19,21 @@ function createEndpointGroup(): EndpointGroup {
   };
 }
 
+function windowByEndpoint(requests: readonly TracedRequest[]): TracedRequest[] {
+  const byEndpoint = new Map<string, TracedRequest[]>();
+  for (const r of requests) {
+    const ep = getEndpointKey(r.method, r.path);
+    let list = byEndpoint.get(ep);
+    if (!list) { list = []; byEndpoint.set(ep, list); }
+    list.push(r);
+  }
+  const windowed: TracedRequest[] = [];
+  for (const [, reqs] of byEndpoint) {
+    windowed.push(...reqs.slice(-INSIGHT_WINDOW_PER_ENDPOINT));
+  }
+  return windowed;
+}
+
 export function prepareContext(ctx: InsightContext): PreparedInsightContext {
   const nonStatic = ctx.requests.filter(
     (r) => !r.isStatic && (!r.path || !r.path.startsWith(DASHBOARD_PREFIX)),
@@ -28,8 +44,9 @@ export function prepareContext(ctx: InsightContext): PreparedInsightContext {
 
   const reqById = new Map(nonStatic.map((r) => [r.id, r]));
 
+  const recent = windowByEndpoint(nonStatic);
   const endpointGroups = new Map<string, EndpointGroup>();
-  for (const r of nonStatic) {
+  for (const r of recent) {
     const ep = getEndpointKey(r.method, r.path);
     let g = endpointGroups.get(ep);
     if (!g) { g = createEndpointGroup(); endpointGroups.set(ep, g); }

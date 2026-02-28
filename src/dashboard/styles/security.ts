@@ -4,7 +4,7 @@ export function getSecurityStyles(): string {
 .sec-container{padding:24px 28px}
 
 /* All-clear */
-.sec-clear{display:flex;align-items:center;gap:16px;padding:20px 24px;background:rgba(22,163,74,.05);border:1px solid rgba(22,163,74,.15);border-radius:var(--radius);margin-bottom:24px}
+.sec-clear{display:flex;align-items:center;gap:16px;padding:20px 24px;background:var(--green-bg-subtle);border:1px solid var(--green-border-subtle);border-radius:var(--radius);margin-bottom:24px}
 .sec-clear-icon{font-size:24px;color:var(--green);flex-shrink:0}
 .sec-clear-title{font-size:15px;font-weight:600;color:var(--green);margin-bottom:2px}
 .sec-clear-sub{font-size:12px;color:var(--text-dim)}
@@ -40,5 +40,18 @@ export function getSecurityStyles(): string {
 .sec-item-desc{color:var(--text-dim);line-height:1.5;flex:1;min-width:0}
 .sec-item-desc strong{color:var(--text);font-family:var(--mono);font-weight:600}
 .sec-item-count{font-size:10px;font-family:var(--mono);color:var(--text-muted);flex-shrink:0;margin-left:12px}
+
+/* Resolved badge in summary */
+.sec-resolved-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:12px}
+
+/* Resolved section */
+.sec-resolved-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text-dim);margin:20px 0 8px 0}
+.sec-resolved-check{color:var(--green);font-size:14px}
+.sec-resolved-count{font-size:11px;font-family:var(--mono);color:var(--text-muted);background:var(--bg-muted);padding:1px 8px;border-radius:10px;border:1px solid var(--border)}
+.sec-group-resolved{opacity:.7;border-color:var(--green-border)}
+.sec-group-resolved:hover{opacity:1}
+.sec-item-resolved{color:var(--text-muted)}
+.sec-item-resolved .sec-item-desc{text-decoration:line-through;text-decoration-color:var(--text-muted)}
+.sec-resolved-item-icon{color:var(--green);font-size:12px;flex-shrink:0;margin-right:8px}
 `;
 }

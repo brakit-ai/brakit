@@ -5,10 +5,11 @@ import type {
   TracedFetch,
   SecurityFinding,
   EndpointMetrics,
+  Severity,
 } from "../../types/index.js";
 import type { RequestFlow } from "../../types/index.js";
 
-export type InsightSeverity = "critical" | "warning" | "info";
+export type InsightSeverity = Severity;
 export type InsightType =
   | "n1" | "cross-endpoint" | "redundant-query" | "error" | "error-hotspot"
   | "duplicate" | "slow" | "query-heavy"

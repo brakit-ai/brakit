@@ -34,7 +34,7 @@ export type {
   RequestMetrics,
 } from "./metrics.js";
 
-export type { SecuritySeverity, SecurityFinding } from "./security.js";
+export type { Severity, SecuritySeverity, SecurityFinding } from "./security.js";
 
 export type {
   FindingState,
@@ -42,3 +42,5 @@ export type {
   StatefulFinding,
   FindingsData,
 } from "./finding-lifecycle.js";
+
+export type { InsightState, StatefulInsight } from "./insight-lifecycle.js";

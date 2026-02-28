@@ -7,6 +7,7 @@ import {
 } from "../../store/index.js";
 import type { TelemetryBatch, TelemetryEvent } from "../../types/index.js";
 import type { NormalizedOp } from "../../types/index.js";
+import { MAX_INGEST_BYTES } from "../../constants/limits.js";
 import { sendJson } from "./shared.js";
 
 // --- Internal batch format (from Node.js --import hooks) ---
@@ -133,7 +134,6 @@ export function handleApiIngest(
     return;
   }
 
-  const MAX_INGEST_BYTES = 10 * 1024 * 1024; // 10 MB
   const chunks: Buffer[] = [];
   let totalSize = 0;
   req.on("data", (chunk: Buffer) => {

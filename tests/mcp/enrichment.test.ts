@@ -2,8 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { enrichFindings, enrichEndpoints, enrichRequestDetail } from "../../src/mcp/enrichment.js";
 import type { BrakitClient } from "../../src/mcp/client.js";
 import { makeSecurityFinding } from "../helpers/mcp-factories.js";
-import { makeRequest, makeQuery, makeFetch } from "../helpers/factories.js";
-import type { Insight } from "../../src/analysis/insights/types.js";
+import { makeRequest, makeQuery, makeStatefulInsight } from "../helpers/factories.js";
 
 function makeMockClient(overrides: Partial<Record<keyof BrakitClient, unknown>> = {}): BrakitClient {
   return {
@@ -23,17 +22,6 @@ function makeMockClient(overrides: Partial<Record<keyof BrakitClient, unknown>> 
     isAlive: vi.fn().mockResolvedValue(true),
     ...overrides,
   } as unknown as BrakitClient;
-}
-
-function makeInsight(overrides: Partial<Insight> = {}): Insight {
-  return {
-    severity: "warning",
-    type: "slow",
-    title: "Slow endpoint",
-    desc: "Endpoint is slow",
-    hint: "Optimize it",
-    ...overrides,
-  };
 }
 
 describe("enrichFindings", () => {
@@ -67,7 +55,7 @@ describe("enrichFindings", () => {
   });
 
   it("includes critical/warning insights", async () => {
-    const insight = makeInsight({ severity: "critical", nav: "GET /api/slow" });
+    const insight = makeStatefulInsight({ severity: "critical", nav: "GET /api/slow" });
     const client = makeMockClient({
       getInsights: vi.fn().mockResolvedValue({ insights: [insight] }),
     });
@@ -78,7 +66,7 @@ describe("enrichFindings", () => {
   });
 
   it("excludes info severity insights", async () => {
-    const insight = makeInsight({ severity: "info" });
+    const insight = makeStatefulInsight({ severity: "info" });
     const client = makeMockClient({
       getInsights: vi.fn().mockResolvedValue({ insights: [insight] }),
     });

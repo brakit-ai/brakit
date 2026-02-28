@@ -32,13 +32,15 @@ export const getReport = {
       0,
     );
 
+    const openInsightCount = insightsData.insights.filter((si) => si.state === "open").length;
+
     const lines: string[] = [
       "=== Brakit Report ===",
       "",
       `Endpoints observed: ${metricsData.endpoints.length}`,
       `Total requests captured: ${totalRequests}`,
       `Active security rules: ${securityData.findings.length} finding(s)`,
-      `Performance insights: ${insightsData.insights.length} insight(s)`,
+      `Performance insights: ${openInsightCount} open, ${insightsData.insights.length - openInsightCount} resolved`,
       "",
       "--- Finding Summary ---",
       `Total: ${findings.length}`,

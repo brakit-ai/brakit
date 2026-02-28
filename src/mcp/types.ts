@@ -1,9 +1,13 @@
 import type { BrakitClient } from "./client.js";
-import type { TracedRequest, TracedQuery, TracedFetch } from "../types/index.js";
-import type { SecurityFinding } from "../types/index.js";
-import type { Insight } from "../analysis/insights/types.js";
-import type { LiveEndpointData } from "../types/metrics.js";
-import type { StatefulFinding } from "../types/finding-lifecycle.js";
+import type {
+  TracedRequest,
+  TracedQuery,
+  TracedFetch,
+  SecurityFinding,
+  StatefulInsight,
+  StatefulFinding,
+  LiveEndpointData,
+} from "../types/index.js";
 
 export interface McpToolInputProperty {
   type: string;
@@ -82,7 +86,7 @@ export interface SecurityFindingsResponse {
 }
 
 export interface InsightsResponse {
-  insights: Insight[];
+  insights: StatefulInsight[];
 }
 
 export interface TelemetryEntriesResponse<T = unknown> {

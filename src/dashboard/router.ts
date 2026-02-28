@@ -72,7 +72,7 @@ export function createDashboardHandler(
     [DASHBOARD_API_REQUESTS]: handleApiRequests,
     [DASHBOARD_API_EVENTS]: createSSEHandler(deps.analysisEngine),
     [DASHBOARD_API_FLOWS]: handleApiFlows,
-    [DASHBOARD_API_CLEAR]: createClearHandler(deps.metricsStore),
+    [DASHBOARD_API_CLEAR]: createClearHandler(deps.metricsStore, deps.findingStore),
     [DASHBOARD_API_LOGS]: handleApiLogs,
     [DASHBOARD_API_FETCHES]: handleApiFetches,
     [DASHBOARD_API_ERRORS]: handleApiErrors,

@@ -7,7 +7,8 @@ import type {
   SecurityFinding,
   RequestListener,
 } from "../types/index.js";
-import type { RequestFlow } from "../types/index.js";
+import type { StatefulFinding } from "../types/finding-lifecycle.js";
+import type { StatefulInsight } from "../types/insight-lifecycle.js";
 import type { TelemetryListener } from "../store/index.js";
 import type { MetricsStore } from "../store/index.js";
 import type { FindingStore } from "../store/finding-store.js";
@@ -22,13 +23,23 @@ import { onRequest, offRequest } from "../store/request-log.js";
 import { groupRequestsIntoFlows } from "./group.js";
 import { createDefaultScanner, type SecurityScanner } from "./rules/index.js";
 import { computeInsights, type Insight } from "./insights.js";
+import { InsightTracker } from "./insight-tracker.js";
 
-export type AnalysisListener = (insights: Insight[], findings: SecurityFinding[]) => void;
+export interface AnalysisUpdate {
+  insights: Insight[];
+  findings: SecurityFinding[];
+  statefulFindings: readonly StatefulFinding[];
+  statefulInsights: readonly StatefulInsight[];
+}
+
+export type AnalysisListener = (update: AnalysisUpdate) => void;
 
 export class AnalysisEngine {
   private scanner: SecurityScanner;
+  private insightTracker = new InsightTracker();
   private cachedInsights: Insight[] = [];
   private cachedFindings: SecurityFinding[] = [];
+  private cachedStatefulInsights: readonly StatefulInsight[] = [];
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private listeners: AnalysisListener[] = [];
   private boundRequestListener: RequestListener;
@@ -84,6 +95,14 @@ export class AnalysisEngine {
     return this.cachedFindings;
   }
 
+  getStatefulFindings(): readonly StatefulFinding[] {
+    return this.findingStore?.getAll() ?? [];
+  }
+
+  getStatefulInsights(): readonly StatefulInsight[] {
+    return this.cachedStatefulInsights;
+  }
+
   private scheduleRecompute(): void {
     if (this.debounceTimer) return;
     this.debounceTimer = setTimeout(() => {
@@ -119,8 +138,17 @@ export class AnalysisEngine {
       securityFindings: this.cachedFindings,
     });
 
+    this.cachedStatefulInsights = this.insightTracker.reconcile(this.cachedInsights);
+
+    const update: AnalysisUpdate = {
+      insights: this.cachedInsights,
+      findings: this.cachedFindings,
+      statefulFindings: this.getStatefulFindings(),
+      statefulInsights: this.cachedStatefulInsights,
+    };
+
     for (const fn of this.listeners) {
-      try { fn(this.cachedInsights, this.cachedFindings); } catch { /* listener failure is non-fatal */ }
+      try { fn(update); } catch { /* non-fatal */ }
     }
   }
 }

@@ -1,4 +1,7 @@
-export type SecuritySeverity = "critical" | "warning" | "info";
+/** Shared severity levels used by both security findings and insights. */
+export type Severity = "critical" | "warning" | "info";
+
+export type SecuritySeverity = Severity;
 
 export interface SecurityFinding {
   severity: SecuritySeverity;

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { printBanner, createConsoleInsightListener } from "../../src/output/terminal.js";
-import type { Insight } from "../../src/analysis/insights.js";
+import { makeInsight, makeAnalysisUpdate } from "../helpers/factories.js";
 
 describe("printBanner", () => {
   it("prints proxy, target, and dashboard URLs", () => {
@@ -30,35 +30,18 @@ describe("createConsoleInsightListener", () => {
     return spy.mock.calls.map((c: unknown[]) => c[0]).join("");
   }
 
-  function makeInsight(overrides: Partial<Insight> = {}): Insight {
-    return {
-      severity: "warning",
-      type: "slow",
-      title: "Slow Endpoint",
-      desc: "GET /api/users — avg 2.1s",
-      hint: "Check queries",
-      ...overrides,
-    };
-  }
-
   const metricsStore = { getEndpoint: vi.fn().mockReturnValue(undefined) } as any;
 
   it("prints warning and critical insights to stdout", () => {
     const listener = createConsoleInsightListener(3000, metricsStore);
-    listener(
-      [makeInsight({ severity: "warning", title: "Slow Endpoint" })],
-      [],
-    );
+    listener(makeAnalysisUpdate([makeInsight({ severity: "warning", title: "Slow Endpoint" })]));
     const output = getOutput();
     expect(output).toContain("Slow Endpoint");
   });
 
   it("skips info-severity insights", () => {
     const listener = createConsoleInsightListener(3000, metricsStore);
-    listener(
-      [makeInsight({ severity: "info", title: "Info Insight" })],
-      [],
-    );
+    listener(makeAnalysisUpdate([makeInsight({ severity: "info", title: "Info Insight" })]));
     expect(getOutput()).toBe("");
   });
 
@@ -66,18 +49,18 @@ describe("createConsoleInsightListener", () => {
     const listener = createConsoleInsightListener(3000, metricsStore);
     const insight = makeInsight();
 
-    listener([insight], []);
+    listener(makeAnalysisUpdate([insight]));
     const firstOutput = getOutput();
     expect(firstOutput).toContain("Slow Endpoint");
 
     spy.mockClear();
-    listener([insight], []);
+    listener(makeAnalysisUpdate([insight]));
     expect(getOutput()).toBe("");
   });
 
   it("prints nothing for empty insights array", () => {
     const listener = createConsoleInsightListener(3000, metricsStore);
-    listener([], []);
+    listener(makeAnalysisUpdate([]));
     expect(getOutput()).toBe("");
   });
 });

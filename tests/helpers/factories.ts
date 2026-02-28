@@ -8,8 +8,12 @@ import type {
   TelemetryEvent,
 } from "../../src/types/telemetry.js";
 import type { SecurityContext } from "../../src/analysis/rules/rule.js";
-import type { InsightContext } from "../../src/analysis/insights/types.js";
+import type { Insight, InsightContext } from "../../src/analysis/insights/types.js";
+import type { StatefulInsight } from "../../src/types/insight-lifecycle.js";
+import type { AnalysisUpdate } from "../../src/analysis/engine.js";
+import type { SecurityFinding } from "../../src/types/security.js";
 import type { CaptureInput } from "../../src/store/request-store.js";
+import { extractEndpointFromDesc } from "../../src/utils/endpoint.js";
 
 export function makeRequest(
   overrides: Partial<TracedRequest> = {},
@@ -157,5 +161,47 @@ export function makeCaptureInput(
     startTime: performance.now() - 25,
     config: { maxBodyCapture: 10240 },
     ...overrides,
+  };
+}
+
+export function makeInsight(
+  overrides: Partial<Insight> = {},
+): Insight {
+  return {
+    severity: "warning",
+    type: "slow",
+    title: "Slow Endpoint",
+    desc: "GET /api/users — avg 2.1s",
+    hint: "Check queries",
+    ...overrides,
+  };
+}
+
+export function makeStatefulInsight(
+  overrides: Partial<Insight> = {},
+  stateOverrides: Partial<Omit<StatefulInsight, "insight">> = {},
+): StatefulInsight {
+  const insight = makeInsight(overrides);
+  return {
+    key: `${insight.type}:${extractEndpointFromDesc(insight.desc) ?? insight.title}`,
+    state: "open",
+    insight,
+    firstSeenAt: Date.now(),
+    lastSeenAt: Date.now(),
+    resolvedAt: null,
+    consecutiveAbsences: 0,
+    ...stateOverrides,
+  };
+}
+
+export function makeAnalysisUpdate(
+  insights: Insight[] = [],
+  findings: SecurityFinding[] = [],
+): AnalysisUpdate {
+  return {
+    insights,
+    findings,
+    statefulFindings: [],
+    statefulInsights: insights.map((i) => makeStatefulInsight(i)),
   };
 }
