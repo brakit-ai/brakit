@@ -1,9 +1,9 @@
 <h1 align="center"><img src="docs/images/icon.png" height="24" alt="" />&nbsp;&nbsp;Brakit</h1>
 
 <p align="center">
-  <b>See what your app is actually doing.</b> <br />
-  Every request, query, and security issue — before you ship. <br />
-  <b>Open source · Local first · Zero config · 2 dependencies</b>
+  <b>AI writes your code. Brakit watches what it does.</b> <br />
+  Every request, query, and security issue, caught before you ship. <br />
+  <b>Open source · Local first · Zero config · AI-native via MCP</b>
 </p>
 
 <h3 align="center">
@@ -188,7 +188,7 @@ npm run typecheck   # Type-check without emitting
 npm test            # Run tests with vitest
 ```
 
-Only 2 production dependencies: `citty` (CLI) and `picocolors` (terminal colors). Everything else is Node.js built-ins.
+Minimal production dependencies. Everything else is Node.js built-ins.
 
 ### Architecture
 
