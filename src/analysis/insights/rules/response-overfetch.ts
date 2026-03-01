@@ -8,7 +8,7 @@ import {
   OVERFETCH_MIN_INTERNAL_IDS,
   OVERFETCH_NULL_RATIO,
   OVERFETCH_MANY_FIELDS,
-} from "../../../constants/thresholds.js";
+} from "../../../constants/index.js";
 
 export const responseOverfetchRule: InsightRule = {
   id: "response-overfetch",

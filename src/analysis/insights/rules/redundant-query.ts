@@ -3,7 +3,7 @@ import type { Insight, PreparedInsightContext } from "../types.js";
 import type { TracedQuery } from "../../../types/index.js";
 import { getQueryInfo } from "../query-helpers.js";
 import { getEndpointKey } from "../../../utils/endpoint.js";
-import { REDUNDANT_QUERY_MIN_COUNT } from "../../../constants/thresholds.js";
+import { REDUNDANT_QUERY_MIN_COUNT } from "../../../constants/index.js";
 
 export const redundantQueryRule: InsightRule = {
   id: "redundant-query",

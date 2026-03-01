@@ -15,3 +15,8 @@ export const DASHBOARD_API_INSIGHTS = "/__brakit/api/insights";
 export const DASHBOARD_API_SECURITY = "/__brakit/api/security";
 export const DASHBOARD_API_TAB = "/__brakit/api/tab";
 export const DASHBOARD_API_FINDINGS = "/__brakit/api/findings";
+
+export const VALID_TABS = new Set([
+  "overview", "actions", "requests", "fetches",
+  "queries", "errors", "logs", "performance", "security",
+]);

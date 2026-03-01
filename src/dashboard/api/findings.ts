@@ -1,12 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { FindingStore } from "../../store/finding-store.js";
+import type { FindingStoreInterface } from "../../types/services.js";
 import { sendJson, requireGet } from "./shared.js";
 import type { FindingState } from "../../types/finding-lifecycle.js";
 
 const VALID_STATES = new Set<FindingState>(["open", "fixing", "resolved"]);
 
 export function createFindingsHandler(
-  findingStore: FindingStore,
+  findingStore: FindingStoreInterface,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;

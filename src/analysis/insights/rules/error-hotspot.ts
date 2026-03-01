@@ -1,6 +1,6 @@
 import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
-import { MIN_REQUESTS_FOR_INSIGHT, ERROR_RATE_THRESHOLD_PCT } from "../../../constants/thresholds.js";
+import { MIN_REQUESTS_FOR_INSIGHT, ERROR_RATE_THRESHOLD_PCT } from "../../../constants/index.js";
 
 export const errorHotspotRule: InsightRule = {
   id: "error-hotspot",

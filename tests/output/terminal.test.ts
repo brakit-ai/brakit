@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { printBanner, createConsoleInsightListener } from "../../src/output/terminal.js";
+import { printBanner, startTerminalInsights } from "../../src/output/terminal.js";
 import { makeInsight, makeAnalysisUpdate } from "../helpers/factories.js";
+import { EventBus } from "../../src/core/event-bus.js";
+import { ServiceRegistry } from "../../src/core/service-registry.js";
 
 describe("printBanner", () => {
   it("prints proxy, target, and dashboard URLs", () => {
@@ -14,12 +16,26 @@ describe("printBanner", () => {
   });
 });
 
-describe("createConsoleInsightListener", () => {
+describe("startTerminalInsights", () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let spy: any;
+  let bus: EventBus;
+  let registry: ServiceRegistry;
 
   beforeEach(() => {
     spy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    bus = new EventBus();
+    registry = new ServiceRegistry();
+    registry.register("event-bus", bus);
+    registry.register("metrics-store", {
+      getEndpoint: vi.fn().mockReturnValue(undefined),
+      recordRequest: vi.fn(),
+      getAll: vi.fn().mockReturnValue([]),
+      getLiveEndpoints: vi.fn().mockReturnValue([]),
+      reset: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    } as any);
   });
 
   afterEach(() => {
@@ -30,37 +46,39 @@ describe("createConsoleInsightListener", () => {
     return spy.mock.calls.map((c: unknown[]) => c[0]).join("");
   }
 
-  const metricsStore = { getEndpoint: vi.fn().mockReturnValue(undefined) } as any;
-
   it("prints warning and critical insights to stdout", () => {
-    const listener = createConsoleInsightListener(3000, metricsStore);
-    listener(makeAnalysisUpdate([makeInsight({ severity: "warning", title: "Slow Endpoint" })]));
+    const dispose = startTerminalInsights(registry, 3000);
+    bus.emit("analysis:updated", makeAnalysisUpdate([makeInsight({ severity: "warning", title: "Slow Endpoint" })]));
     const output = getOutput();
     expect(output).toContain("Slow Endpoint");
+    dispose();
   });
 
   it("skips info-severity insights", () => {
-    const listener = createConsoleInsightListener(3000, metricsStore);
-    listener(makeAnalysisUpdate([makeInsight({ severity: "info", title: "Info Insight" })]));
+    const dispose = startTerminalInsights(registry, 3000);
+    bus.emit("analysis:updated", makeAnalysisUpdate([makeInsight({ severity: "info", title: "Info Insight" })]));
     expect(getOutput()).toBe("");
+    dispose();
   });
 
   it("deduplicates same insight type and endpoint across calls", () => {
-    const listener = createConsoleInsightListener(3000, metricsStore);
+    const dispose = startTerminalInsights(registry, 3000);
     const insight = makeInsight();
 
-    listener(makeAnalysisUpdate([insight]));
+    bus.emit("analysis:updated", makeAnalysisUpdate([insight]));
     const firstOutput = getOutput();
     expect(firstOutput).toContain("Slow Endpoint");
 
     spy.mockClear();
-    listener(makeAnalysisUpdate([insight]));
+    bus.emit("analysis:updated", makeAnalysisUpdate([insight]));
     expect(getOutput()).toBe("");
+    dispose();
   });
 
   it("prints nothing for empty insights array", () => {
-    const listener = createConsoleInsightListener(3000, metricsStore);
-    listener(makeAnalysisUpdate([]));
+    const dispose = startTerminalInsights(registry, 3000);
+    bus.emit("analysis:updated", makeAnalysisUpdate([]));
     expect(getOutput()).toBe("");
+    dispose();
   });
 });

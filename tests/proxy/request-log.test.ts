@@ -1,13 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  captureRequest,
-  onRequest,
-  getRequests,
-  clearRequests,
-  isStaticPath,
-  flattenHeaders,
-} from "../../src/store/request-log.js";
+import { RequestStore } from "../../src/store/request-store.js";
+import { isStaticPath } from "../../src/store/request-log.js";
+import { flattenHeaders } from "../../src/store/request-store.js";
+import type { TracedRequest } from "../../src/types/index.js";
 import { makeCaptureInput } from "../helpers/index.js";
+
+let store: RequestStore;
 
 describe("isStaticPath", () => {
   it("identifies _next/ paths as static", () => {
@@ -50,7 +48,7 @@ describe("flattenHeaders", () => {
 
 describe("captureRequest", () => {
   beforeEach(() => {
-    clearRequests();
+    store = new RequestStore();
   });
 
   it("creates a TracedRequest with correct fields", () => {
@@ -61,7 +59,7 @@ describe("captureRequest", () => {
       statusCode: 201,
     });
 
-    const result = captureRequest(input);
+    const result = store.capture(input);
 
     expect(result.id).toBeTypeOf("string");
     expect(result.method).toBe("POST");
@@ -76,37 +74,37 @@ describe("captureRequest", () => {
 
   it("stores requests in the ring buffer", () => {
     for (let i = 0; i < 5; i++) {
-      captureRequest(makeCaptureInput({ url: `/api/test/${i}` }));
+      store.capture(makeCaptureInput({ url: `/api/test/${i}` }));
     }
-    expect(getRequests()).toHaveLength(5);
+    expect(store.getAll()).toHaveLength(5);
   });
 
   it("enforces ring buffer max size", () => {
     for (let i = 0; i < 1005; i++) {
-      captureRequest(makeCaptureInput({ url: `/api/test/${i}` }));
+      store.capture(makeCaptureInput({ url: `/api/test/${i}` }));
     }
-    expect(getRequests()).toHaveLength(1000);
-    expect(getRequests()[0].url).toBe("/api/test/5");
+    expect(store.getAll()).toHaveLength(1000);
+    expect(store.getAll()[0].url).toBe("/api/test/5");
   });
 
   it("calls onRequest listeners", () => {
     const captured: string[] = [];
-    onRequest((req) => captured.push(req.url));
+    store.onRequest((req: TracedRequest) => captured.push(req.url));
 
-    captureRequest(makeCaptureInput({ url: "/api/hello" }));
+    store.capture(makeCaptureInput({ url: "/api/hello" }));
 
     expect(captured).toContain("/api/hello");
   });
 
   it("marks static paths correctly", () => {
-    const result = captureRequest(
+    const result = store.capture(
       makeCaptureInput({ url: "/_next/static/chunks/main.js" }),
     );
     expect(result.isStatic).toBe(true);
   });
 
   it("does not capture response body for binary content types", () => {
-    const result = captureRequest(
+    const result = store.capture(
       makeCaptureInput({
         responseContentType: "image/png",
         responseBody: Buffer.from([0x89, 0x50, 0x4e, 0x47]),
@@ -117,7 +115,7 @@ describe("captureRequest", () => {
 
   it("truncates bodies at maxBodyCapture", () => {
     const largeBody = Buffer.alloc(20000, "x");
-    const result = captureRequest(
+    const result = store.capture(
       makeCaptureInput({
         method: "POST",
         requestBody: largeBody,

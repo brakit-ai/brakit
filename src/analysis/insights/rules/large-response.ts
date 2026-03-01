@@ -1,7 +1,7 @@
 import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
 import { formatSize } from "../../../utils/format.js";
-import { OVERFETCH_MIN_REQUESTS, LARGE_RESPONSE_BYTES } from "../../../constants/thresholds.js";
+import { OVERFETCH_MIN_REQUESTS, LARGE_RESPONSE_BYTES } from "../../../constants/index.js";
 
 export const largeResponseRule: InsightRule = {
   id: "large-response",

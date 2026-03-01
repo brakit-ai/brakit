@@ -1,7 +1,7 @@
 import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
 import { getQueryInfo } from "../query-helpers.js";
-import { OVERFETCH_MIN_REQUESTS } from "../../../constants/thresholds.js";
+import { OVERFETCH_MIN_REQUESTS } from "../../../constants/index.js";
 import { SELECT_STAR_RE, SELECT_DOT_STAR_RE } from "../../rules/patterns.js";
 
 export const selectStarRule: InsightRule = {

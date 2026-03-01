@@ -5,7 +5,7 @@ export function getGraphDetail(): string {
   function renderEndpointDetail(container) {
     var ep = graphData.find(function(e) { return e.endpoint === selectedEndpoint; });
     if (!ep || !ep.requests || ep.requests.length === 0) {
-      container.innerHTML += '<div class="empty" style="height:300px"><span class="empty-sub">No data for this endpoint</span></div>';
+      container.innerHTML += '<div class="empty"><span class="empty-sub">No data for this endpoint</span></div>';
       return;
     }
 

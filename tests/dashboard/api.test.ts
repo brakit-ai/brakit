@@ -1,53 +1,51 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  captureRequest,
-  clearRequests,
-  getRequests,
-} from "../../src/store/request-log.js";
+import { RequestStore } from "../../src/store/request-store.js";
 import { makeCaptureInput } from "../helpers/index.js";
+
+let store: RequestStore;
 
 describe("dashboard API data layer", () => {
   beforeEach(() => {
-    clearRequests();
+    store = new RequestStore();
   });
 
   it("getRequests returns captured requests", () => {
-    captureRequest(makeCaptureInput({ url: "/api/a" }));
-    captureRequest(makeCaptureInput({ url: "/api/b" }));
-    captureRequest(makeCaptureInput({ url: "/api/c" }));
+    store.capture(makeCaptureInput({ url: "/api/a" }));
+    store.capture(makeCaptureInput({ url: "/api/b" }));
+    store.capture(makeCaptureInput({ url: "/api/c" }));
 
-    const requests = getRequests();
+    const requests = store.getAll();
     expect(requests).toHaveLength(3);
     expect(requests[0].url).toBe("/api/a");
     expect(requests[2].url).toBe("/api/c");
   });
 
   it("captured requests preserve the method field", () => {
-    captureRequest(makeCaptureInput({ method: "GET", url: "/api/a" }));
-    captureRequest(makeCaptureInput({ method: "POST", url: "/api/b" }));
-    captureRequest(makeCaptureInput({ method: "GET", url: "/api/c" }));
+    store.capture(makeCaptureInput({ method: "GET", url: "/api/a" }));
+    store.capture(makeCaptureInput({ method: "POST", url: "/api/b" }));
+    store.capture(makeCaptureInput({ method: "GET", url: "/api/c" }));
 
-    const all = [...getRequests()].reverse();
+    const all = [...store.getAll()].reverse();
     const getOnly = all.filter((r) => r.method === "GET");
     expect(getOnly).toHaveLength(2);
   });
 
   it("captured requests preserve the statusCode field", () => {
-    captureRequest(makeCaptureInput({ statusCode: 200 }));
-    captureRequest(makeCaptureInput({ statusCode: 404 }));
-    captureRequest(makeCaptureInput({ statusCode: 500 }));
+    store.capture(makeCaptureInput({ statusCode: 200 }));
+    store.capture(makeCaptureInput({ statusCode: 404 }));
+    store.capture(makeCaptureInput({ statusCode: 500 }));
 
-    const all = [...getRequests()];
+    const all = [...store.getAll()];
     const errors = all.filter((r) => r.statusCode >= 400);
     expect(errors).toHaveLength(2);
   });
 
   it("captured requests preserve the url field", () => {
-    captureRequest(makeCaptureInput({ url: "/api/users" }));
-    captureRequest(makeCaptureInput({ url: "/api/videos" }));
-    captureRequest(makeCaptureInput({ url: "/api/users/123" }));
+    store.capture(makeCaptureInput({ url: "/api/users" }));
+    store.capture(makeCaptureInput({ url: "/api/videos" }));
+    store.capture(makeCaptureInput({ url: "/api/users/123" }));
 
-    const all = [...getRequests()];
+    const all = [...store.getAll()];
     const matched = all.filter((r) =>
       r.url.toLowerCase().includes("users"),
     );
@@ -55,14 +53,14 @@ describe("dashboard API data layer", () => {
   });
 
   it("captured requests preserve the responseBody field", () => {
-    captureRequest(
+    store.capture(
       makeCaptureInput({
         url: "/api/a",
         responseBody: Buffer.from('{"error":"not found"}'),
         responseContentType: "application/json",
       }),
     );
-    captureRequest(
+    store.capture(
       makeCaptureInput({
         url: "/api/b",
         responseBody: Buffer.from('{"data":"ok"}'),
@@ -70,7 +68,7 @@ describe("dashboard API data layer", () => {
       }),
     );
 
-    const all = [...getRequests()];
+    const all = [...store.getAll()];
     const matched = all.filter(
       (r) => r.responseBody?.toLowerCase().includes("not found"),
     );
@@ -79,19 +77,19 @@ describe("dashboard API data layer", () => {
   });
 
   it("clearRequests empties the store", () => {
-    captureRequest(makeCaptureInput());
-    captureRequest(makeCaptureInput());
-    expect(getRequests()).toHaveLength(2);
+    store.capture(makeCaptureInput());
+    store.capture(makeCaptureInput());
+    expect(store.getAll()).toHaveLength(2);
 
-    clearRequests();
-    expect(getRequests()).toHaveLength(0);
+    store.clear();
+    expect(store.getAll()).toHaveLength(0);
   });
 
   it("each request has a unique id", () => {
-    captureRequest(makeCaptureInput());
-    captureRequest(makeCaptureInput());
+    store.capture(makeCaptureInput());
+    store.capture(makeCaptureInput());
 
-    const requests = getRequests();
+    const requests = store.getAll();
     expect(requests[0].id).not.toBe(requests[1].id);
   });
 });
