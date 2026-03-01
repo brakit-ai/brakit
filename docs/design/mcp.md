@@ -1,7 +1,7 @@
 # MCP Server
 
 Brakit ships an MCP (Model Context Protocol) server so that AI assistants —
-Claude, Cursor, Copilot, and others — can talk directly to your running app.
+Claude Code and Cursor — can talk directly to your running app.
 Instead of copy-pasting terminal output or describing bugs in chat, the AI
 reads brakit's findings and performance data itself, then fixes your code.
 
@@ -203,15 +203,16 @@ AI calls tool ──> server.ts ──> client.ts ──> dashboard API ──> 
 ### Build entry point
 
 The MCP server builds to `dist/mcp/server.js` (configured in `tsup.config.ts`).
-AI tools reference this path in their MCP configuration. For example, in
-Claude's `claude_desktop_config.json`:
+
+`npx brakit install` automatically creates a `.mcp.json` at the project root,
+which both Claude Code and Cursor read:
 
 ```json
 {
   "mcpServers": {
     "brakit": {
-      "command": "node",
-      "args": ["path/to/brakit/dist/mcp/server.js"]
+      "command": "npx",
+      "args": ["brakit", "mcp"]
     }
   }
 }

@@ -74,7 +74,7 @@ Dashboard at `http://localhost:<port>/__brakit`. Insights in the terminal.
 - **Full server tracing** — fetch calls, DB queries, console logs, errors — zero code changes
 - **Response overfetch** — large JSON responses with many fields your client doesn't use
 - **Performance tracking** — health grades and p95 trends across dev sessions
-- **AI-native via MCP** — Claude, Cursor, and other AI tools can query findings, inspect endpoints, and verify fixes directly
+- **AI-native via MCP** — Claude Code and Cursor can query findings, inspect endpoints, and verify fixes directly
 
 ---
 
