@@ -1,7 +1,7 @@
 import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
 import { getQueryInfo } from "../query-helpers.js";
-import { HIGH_ROW_COUNT, OVERFETCH_MIN_REQUESTS } from "../../../constants/thresholds.js";
+import { HIGH_ROW_COUNT, OVERFETCH_MIN_REQUESTS } from "../../../constants/index.js";
 
 export const highRowsRule: InsightRule = {
   id: "high-rows",

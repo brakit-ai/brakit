@@ -6,7 +6,7 @@ import {
   REGRESSION_MIN_INCREASE_MS,
   REGRESSION_MIN_REQUESTS,
   QUERY_COUNT_REGRESSION_RATIO,
-} from "../../../constants/thresholds.js";
+} from "../../../constants/index.js";
 
 export const regressionRule: InsightRule = {
   id: "regression",

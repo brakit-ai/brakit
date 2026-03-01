@@ -1,26 +1,28 @@
-import { send } from "../transport.js";
+import type { TelemetryEvent } from "../../types/index.js";
 import { getRequestContext } from "./context.js";
 
-function captureError(err: unknown): void {
-  const error = err instanceof Error ? err : new Error(String(err));
-  const ctx = getRequestContext();
-  send({
-    type: "error",
-    data: {
-      name: error.name,
-      message: error.message,
-      stack: error.stack ?? "",
-      parentRequestId: ctx?.requestId ?? null,
-      timestamp: Date.now(),
-    },
-  });
+function createCaptureError(emit: (event: TelemetryEvent) => void) {
+  return (err: unknown): void => {
+    const error = err instanceof Error ? err : new Error(String(err));
+    const ctx = getRequestContext();
+    emit({
+      type: "error",
+      data: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack ?? "",
+        parentRequestId: ctx?.requestId ?? null,
+        timestamp: Date.now(),
+      },
+    });
+  };
 }
 
-export function setupErrorHook(): void {
+export function setupErrorHook(emit: (event: TelemetryEvent) => void): void {
+  const captureError = createCaptureError(emit);
+
   process.on("uncaughtException", (err) => {
     captureError(err);
-    // Re-throw so Node.js default behavior (crash) is preserved
-    // The listener is removed temporarily to avoid infinite loop
     process.removeAllListeners("uncaughtException");
     throw err;
   });

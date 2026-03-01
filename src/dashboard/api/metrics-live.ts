@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { MetricsStore } from "../../store/index.js";
+import type { MetricsStoreInterface } from "../../types/services.js";
 import { sendJson, requireGet } from "./shared.js";
 
 export function createLiveMetricsHandler(
-  metricsStore: MetricsStore,
+  metricsStore: MetricsStoreInterface,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;

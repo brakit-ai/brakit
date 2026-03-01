@@ -1,12 +1,6 @@
 import { platform, release, arch } from "node:os";
 import { VERSION } from "../index.js";
-import type { AnalysisEngine } from "../analysis/engine.js";
-import type { MetricsStore } from "../store/index.js";
-import {
-  defaultQueryStore,
-  defaultFetchStore,
-  defaultErrorStore,
-} from "../store/index.js";
+import type { ServiceRegistry } from "../core/service-registry.js";
 import { readConfig, getOrCreateConfig, isTelemetryEnabled } from "./config.js";
 
 export { isTelemetryEnabled, setTelemetryEnabled } from "./config.js";
@@ -74,13 +68,14 @@ function speedBucket(ms: number): string {
 }
 
 export function trackSession(
-  metricsStore: MetricsStore,
-  analysisEngine: AnalysisEngine,
+  registry: ServiceRegistry,
 ): void {
   if (!isTelemetryEnabled()) return;
 
   const isFirstSession = readConfig() === null;
   const config = getOrCreateConfig();
+  const metricsStore = registry.get("metrics-store");
+  const analysisEngine = registry.get("analysis-engine");
   const live = metricsStore.getLiveEndpoints();
   const insights = analysisEngine.getInsights();
   const findings = analysisEngine.getFindings();
@@ -111,9 +106,9 @@ export function trackSession(
       first_session: isFirstSession,
       adapters_detected: sessionAdapters,
       request_count: requestCount,
-      error_count: defaultErrorStore.getAll().length,
-      query_count: defaultQueryStore.getAll().length,
-      fetch_count: defaultFetchStore.getAll().length,
+      error_count: registry.get("error-store").getAll().length,
+      query_count: registry.get("query-store").getAll().length,
+      fetch_count: registry.get("fetch-store").getAll().length,
       insight_count: insights.length,
       finding_count: findings.length,
       insight_types: [...insightTypes],

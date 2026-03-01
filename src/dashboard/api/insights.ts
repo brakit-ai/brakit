@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { AnalysisEngine } from "../../analysis/engine.js";
+import type { AnalysisEngineInterface } from "../../types/services.js";
 import { sendJson, requireGet } from "./shared.js";
 
 export function createInsightsHandler(
-  engine: AnalysisEngine,
+  engine: AnalysisEngineInterface,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;
@@ -12,7 +12,7 @@ export function createInsightsHandler(
 }
 
 export function createSecurityHandler(
-  engine: AnalysisEngine,
+  engine: AnalysisEngineInterface,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;

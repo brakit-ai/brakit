@@ -2,7 +2,7 @@ import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
 import { getQueryShape, getQueryInfo } from "../query-helpers.js";
 import { getEndpointKey } from "../../../utils/endpoint.js";
-import { N1_QUERY_THRESHOLD } from "../../../constants/thresholds.js";
+import { N1_QUERY_THRESHOLD } from "../../../constants/index.js";
 
 export const n1Rule: InsightRule = {
   id: "n1",

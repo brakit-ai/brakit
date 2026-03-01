@@ -1,5 +1,5 @@
 import { format } from "node:util";
-import { send } from "../transport.js";
+import type { TelemetryEvent } from "../../types/index.js";
 import { getRequestContext } from "./context.js";
 
 type LogLevel = "log" | "warn" | "error" | "info" | "debug";
@@ -14,7 +14,7 @@ const originals: Record<LogLevel, (...args: unknown[]) => void> = {
   debug: console.debug,
 };
 
-export function setupConsoleHook(): void {
+export function setupConsoleHook(emit: (event: TelemetryEvent) => void): void {
   for (const level of LEVELS) {
     const original = originals[level];
     console[level] = (...args: unknown[]) => {
@@ -25,14 +25,12 @@ export function setupConsoleHook(): void {
       const timestamp = Date.now();
       const parentRequestId = ctx?.requestId ?? null;
 
-      // When console.error is called, check if it's an actual error
-      // (thrown + caught by framework). Route to Errors tab instead of Logs.
       if (level === "error") {
         const errorArg = args.find((a) => a instanceof Error) as
           | Error
           | undefined;
         if (errorArg) {
-          send({
+          emit({
             type: "error",
             data: {
               name: errorArg.name,
@@ -45,10 +43,9 @@ export function setupConsoleHook(): void {
           return;
         }
 
-        // Detect formatted error strings (e.g. "⨯ Error: message ...")
         const match = message.match(/(\w*Error):\s+(.+)/s);
         if (match) {
-          send({
+          emit({
             type: "error",
             data: {
               name: match[1],
@@ -62,7 +59,7 @@ export function setupConsoleHook(): void {
         }
       }
 
-      send({
+      emit({
         type: "log",
         data: { level, message, parentRequestId, timestamp },
       });

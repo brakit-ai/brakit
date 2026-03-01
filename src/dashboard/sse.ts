@@ -1,17 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { onRequest, offRequest } from "../store/request-log.js";
-import {
-  defaultFetchStore,
-  defaultLogStore,
-  defaultErrorStore,
-  defaultQueryStore,
-} from "../store/index.js";
-import type { TracedRequest, TracedFetch, TracedLog, TracedError, TracedQuery } from "../types/index.js";
-import type { AnalysisEngine, AnalysisListener } from "../analysis/engine.js";
+import type { ServiceRegistry } from "../core/service-registry.js";
+import { SubscriptionBag } from "../core/disposable.js";
 import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants/index.js";
 
 export function createSSEHandler(
-  engine?: AnalysisEngine,
+  registry: ServiceRegistry,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     res.writeHead(200, {
@@ -32,39 +25,18 @@ export function createSSEHandler(
       }
     };
 
-    const requestListener = (traced: TracedRequest) => {
-      writeEvent(null, JSON.stringify(traced));
-    };
+    const bus = registry.get("event-bus");
+    const subs = new SubscriptionBag();
 
-    const fetchListener = (entry: TracedFetch) => {
-      writeEvent("fetch", JSON.stringify(entry));
-    };
-
-    const logListener = (entry: TracedLog) => {
-      writeEvent("log", JSON.stringify(entry));
-    };
-
-    const errorListener = (entry: TracedError) => {
-      writeEvent("error_event", JSON.stringify(entry));
-    };
-
-    const queryListener = (entry: TracedQuery) => {
-      writeEvent("query", JSON.stringify(entry));
-    };
-
-    const analysisListener: AnalysisListener | undefined = engine
-      ? ({ statefulInsights, statefulFindings }) => {
-          writeEvent("insights", JSON.stringify(statefulInsights));
-          writeEvent("security", JSON.stringify(statefulFindings));
-        }
-      : undefined;
-
-    onRequest(requestListener);
-    defaultFetchStore.onEntry(fetchListener);
-    defaultLogStore.onEntry(logListener);
-    defaultErrorStore.onEntry(errorListener);
-    defaultQueryStore.onEntry(queryListener);
-    if (engine && analysisListener) engine.onUpdate(analysisListener);
+    subs.add(bus.on("request:completed", (r) => writeEvent(null, JSON.stringify(r))));
+    subs.add(bus.on("telemetry:fetch", (e) => writeEvent("fetch", JSON.stringify(e))));
+    subs.add(bus.on("telemetry:log", (e) => writeEvent("log", JSON.stringify(e))));
+    subs.add(bus.on("telemetry:error", (e) => writeEvent("error_event", JSON.stringify(e))));
+    subs.add(bus.on("telemetry:query", (e) => writeEvent("query", JSON.stringify(e))));
+    subs.add(bus.on("analysis:updated", ({ statefulInsights, statefulFindings }) => {
+      writeEvent("insights", JSON.stringify(statefulInsights));
+      writeEvent("security", JSON.stringify(statefulFindings));
+    }));
 
     const heartbeat = setInterval(() => {
       if (res.destroyed) {
@@ -76,12 +48,7 @@ export function createSSEHandler(
 
     req.on("close", () => {
       clearInterval(heartbeat);
-      offRequest(requestListener);
-      defaultFetchStore.offEntry(fetchListener);
-      defaultLogStore.offEntry(logListener);
-      defaultErrorStore.offEntry(errorListener);
-      defaultQueryStore.offEntry(queryListener);
-      if (engine && analysisListener) engine.offUpdate(analysisListener);
+      subs.dispose();
     });
   };
 }

@@ -1,3 +1,14 @@
+/**
+ * Response capture — monkeypatches `res.write()` and `res.end()` to collect
+ * response body chunks in a buffer, then records the complete request/response
+ * pair when the response finishes.
+ *
+ * Safety guarantees:
+ * - Every catch block is intentionally silent — capture failures must never
+ *   prevent the original response from being sent.
+ * - Body capture is bounded by DEFAULT_MAX_BODY_CAPTURE to prevent memory issues.
+ * - Compressed responses (gzip/br/deflate) are decompressed for readable storage.
+ */
 import type {
   IncomingMessage,
   ServerResponse,
@@ -5,8 +16,17 @@ import type {
 } from "node:http";
 import type { IncomingHttpHeaders } from "node:http";
 import { gunzipSync, brotliDecompressSync, inflateSync } from "node:zlib";
-import { defaultStore } from "../store/request-log.js";
-import { DEFAULT_MAX_BODY_CAPTURE } from "../constants/index.js";
+import type { RequestStoreInterface } from "../types/services.js";
+import {
+  DEFAULT_MAX_BODY_CAPTURE,
+  CONTENT_ENCODING_GZIP,
+  CONTENT_ENCODING_BR,
+  CONTENT_ENCODING_DEFLATE,
+} from "../constants/index.js";
+import { brakitDebug } from "../utils/log.js";
+
+type WriteFn = ServerResponse["write"];
+type EndFn = ServerResponse["end"];
 
 function outgoingToIncoming(headers: OutgoingHttpHeaders): IncomingHttpHeaders {
   const result: IncomingHttpHeaders = {};
@@ -23,10 +43,12 @@ function outgoingToIncoming(headers: OutgoingHttpHeaders): IncomingHttpHeaders {
 
 function decompress(body: Buffer<ArrayBuffer>, encoding: string): Buffer<ArrayBuffer> {
   try {
-    if (encoding === "gzip") return gunzipSync(body);
-    if (encoding === "br") return brotliDecompressSync(body);
-    if (encoding === "deflate") return inflateSync(body);
-  } catch {}
+    if (encoding === CONTENT_ENCODING_GZIP) return gunzipSync(body);
+    if (encoding === CONTENT_ENCODING_BR) return brotliDecompressSync(body);
+    if (encoding === CONTENT_ENCODING_DEFLATE) return inflateSync(body);
+  } catch (e) {
+    brakitDebug(`decompress failed: ${(e as Error).message}`);
+  }
   return body;
 }
 
@@ -41,14 +63,15 @@ export function captureInProcess(
   req: IncomingMessage,
   res: ServerResponse,
   requestId: string,
+  requestStore: RequestStoreInterface,
 ): void {
   const startTime = performance.now();
   const method = req.method ?? "GET";
 
   const resChunks: Buffer[] = [];
   let resSize = 0;
-  const originalWrite = res.write;
-  const originalEnd = res.end;
+  const originalWrite: WriteFn = res.write;
+  const originalEnd: EndFn = res.end;
 
   res.write = function (this: ServerResponse, ...args: unknown[]): boolean {
     try {
@@ -60,8 +83,10 @@ export function captureInProcess(
           resSize += buf.length;
         }
       }
-    } catch {}
-    return (originalWrite as Function).apply(this, args);
+    } catch (e) {
+      brakitDebug(`capture write: ${(e as Error).message}`);
+    }
+    return (originalWrite as WriteFn).apply(this, args as Parameters<WriteFn>);
   } as typeof res.write;
 
   res.end = function (this: ServerResponse, ...args: unknown[]): ServerResponse {
@@ -73,9 +98,11 @@ export function captureInProcess(
           resChunks.push(buf);
         }
       }
-    } catch {}
+    } catch (e) {
+      brakitDebug(`capture end: ${(e as Error).message}`);
+    }
 
-    const result = (originalEnd as Function).apply(this, args);
+    const result = (originalEnd as EndFn).apply(this, args as Parameters<EndFn>);
     const endTime = performance.now();
 
     try {
@@ -85,7 +112,7 @@ export function captureInProcess(
         body = decompress(body, encoding);
       }
 
-      defaultStore.capture({
+      requestStore.capture({
         requestId,
         method,
         url: req.url ?? "/",
@@ -99,7 +126,9 @@ export function captureInProcess(
         endTime,
         config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
       });
-    } catch {}
+    } catch (e) {
+      brakitDebug(`capture store: ${(e as Error).message}`);
+    }
 
     return result;
   } as typeof res.end;

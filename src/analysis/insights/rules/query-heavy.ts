@@ -1,6 +1,6 @@
 import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
-import { MIN_REQUESTS_FOR_INSIGHT, HIGH_QUERY_COUNT_PER_REQ } from "../../../constants/thresholds.js";
+import { MIN_REQUESTS_FOR_INSIGHT, HIGH_QUERY_COUNT_PER_REQ } from "../../../constants/index.js";
 
 export const queryHeavyRule: InsightRule = {
   id: "query-heavy",
