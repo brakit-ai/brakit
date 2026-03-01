@@ -15,7 +15,7 @@ export function getSecurityView(): string {
     if (open.length === 0 && resolved.length === 0) {
       var hasData = state.requests.length > 0 || state.logs.length > 0 || state.queries.length > 0;
       if (!hasData) {
-        container.innerHTML = '<div class="empty" style="height:400px"><span class="empty-title">Waiting for requests...</span><span class="empty-sub">Start using your app to see security findings here</span></div>';
+        container.innerHTML = '<div class="empty"><span class="empty-title">Waiting for requests...</span><span class="empty-sub">Start using your app to see security findings here</span></div>';
       } else {
         container.innerHTML = '<div class="sec-clear"><span class="sec-clear-icon">\\u2713</span><div class="sec-clear-text"><div class="sec-clear-title">All clear</div><div class="sec-clear-sub">No security or quality issues detected this session</div></div></div>';
       }
@@ -102,7 +102,7 @@ export function getSecurityView(): string {
           var row = document.createElement('div');
           row.className = 'sec-item';
           row.innerHTML =
-            '<div class="sec-item-desc">' + item.desc + '</div>' +
+            '<div class="sec-item-desc">' + escHtml(item.desc) + '</div>' +
             (item.count > 1 ? '<span class="sec-item-count">' + item.count + 'x</span>' : '');
           list.appendChild(row);
         }

@@ -1,13 +1,13 @@
 export {
-  handleApiRequests,
-  handleApiFlows,
+  createRequestsHandler,
+  createFlowsHandler,
   createClearHandler,
-  handleApiFetches,
-  handleApiLogs,
-  handleApiErrors,
-  handleApiQueries,
+  createFetchesHandler,
+  createLogsHandler,
+  createErrorsHandler,
+  createQueriesHandler,
 } from "./handlers.js";
-export { handleApiIngest } from "./ingest.js";
+export { createIngestHandler } from "./ingest.js";
 export { createMetricsHandler } from "./metrics.js";
 export { createLiveMetricsHandler } from "./metrics-live.js";
-export { handleApiActivity } from "./activity.js";
+export { createActivityHandler } from "./activity.js";

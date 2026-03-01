@@ -15,7 +15,7 @@ export function getOverviewRender(): string {
     var hasData = nonStatic.length > 0 || state.queries.length > 0 || state.errors.length > 0;
 
     if (!hasData) {
-      container.innerHTML = '<div class="empty" style="height:400px"><span class="empty-title">Waiting for requests...</span><span class="empty-sub">Start using your app to see insights here</span></div>';
+      container.innerHTML = '<div class="empty"><span class="empty-title">Waiting for requests...</span><span class="empty-sub">Start using your app to see insights here</span></div>';
       return;
     }
 

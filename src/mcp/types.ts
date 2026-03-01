@@ -1,13 +1,18 @@
 import type { BrakitClient } from "./client.js";
-import type {
-  TracedRequest,
-  TracedQuery,
-  TracedFetch,
-  SecurityFinding,
-  StatefulInsight,
-  StatefulFinding,
-  LiveEndpointData,
-} from "../types/index.js";
+import type { TracedQuery, TracedFetch } from "../types/index.js";
+
+export type {
+  TimelineEvent,
+  RequestsResponse,
+  SecurityFindingsResponse,
+  InsightsResponse,
+  TelemetryEntriesResponse,
+  ActivityResponse,
+  LiveMetricsResponse,
+  FindingsResponse,
+} from "../types/api-contracts.js";
+
+import type { TimelineEvent } from "../types/api-contracts.js";
 
 export interface McpToolInputProperty {
   type: string;
@@ -57,12 +62,6 @@ export interface EndpointSummary {
   avgAppTimeMs: number;
 }
 
-export interface TimelineEvent {
-  type: "fetch" | "log" | "error" | "query";
-  timestamp: number;
-  data: Record<string, unknown>;
-}
-
 export interface RequestDetail {
   id: string;
   method: string;
@@ -75,42 +74,3 @@ export interface RequestDetail {
 }
 
 export type EndpointSortKey = "p95" | "error_rate" | "query_count" | "requests";
-
-export interface RequestsResponse {
-  total: number;
-  requests: TracedRequest[];
-}
-
-export interface SecurityFindingsResponse {
-  findings: SecurityFinding[];
-}
-
-export interface InsightsResponse {
-  insights: StatefulInsight[];
-}
-
-export interface TelemetryEntriesResponse<T = unknown> {
-  total: number;
-  entries: T[];
-}
-
-export interface ActivityResponse {
-  requestId: string;
-  total: number;
-  timeline: TimelineEvent[];
-  counts: {
-    fetches: number;
-    logs: number;
-    errors: number;
-    queries: number;
-  };
-}
-
-export interface LiveMetricsResponse {
-  endpoints: LiveEndpointData[];
-}
-
-export interface FindingsResponse {
-  total: number;
-  findings: StatefulFinding[];
-}

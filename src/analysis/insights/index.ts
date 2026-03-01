@@ -11,20 +11,22 @@ export { InsightRunner } from "./runner.js";
 
 import type { InsightContext, Insight } from "./types.js";
 import { InsightRunner } from "./runner.js";
-import { n1Rule } from "./rules/n1.js";
-import { crossEndpointRule } from "./rules/cross-endpoint.js";
-import { redundantQueryRule } from "./rules/redundant-query.js";
-import { errorRule } from "./rules/error.js";
-import { errorHotspotRule } from "./rules/error-hotspot.js";
-import { duplicateRule } from "./rules/duplicate.js";
-import { slowRule } from "./rules/slow.js";
-import { queryHeavyRule } from "./rules/query-heavy.js";
-import { selectStarRule } from "./rules/select-star.js";
-import { highRowsRule } from "./rules/high-rows.js";
-import { responseOverfetchRule } from "./rules/response-overfetch.js";
-import { largeResponseRule } from "./rules/large-response.js";
-import { regressionRule } from "./rules/regression.js";
-import { securityRule } from "./rules/security.js";
+import {
+  n1Rule,
+  crossEndpointRule,
+  redundantQueryRule,
+  errorRule,
+  errorHotspotRule,
+  duplicateRule,
+  slowRule,
+  queryHeavyRule,
+  selectStarRule,
+  highRowsRule,
+  responseOverfetchRule,
+  largeResponseRule,
+  regressionRule,
+  securityRule,
+} from "./rules/index.js";
 
 export function createDefaultInsightRunner(): InsightRunner {
   const runner = new InsightRunner();

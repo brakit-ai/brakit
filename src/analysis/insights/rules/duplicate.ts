@@ -1,6 +1,6 @@
 import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
-import { MAX_DUPLICATE_INSIGHTS } from "../../../constants/thresholds.js";
+import { MAX_DUPLICATE_INSIGHTS } from "../../../constants/index.js";
 
 export const duplicateRule: InsightRule = {
   id: "duplicate",

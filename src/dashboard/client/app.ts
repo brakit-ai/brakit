@@ -76,41 +76,20 @@ export function getApp(): string {
       }
     };
 
-    events.addEventListener('fetch', function(e) {
-      var f = JSON.parse(e.data);
-      state.fetches.unshift(f);
-      if (state.fetches.length > ${MAX_TELEMETRY_ENTRIES}) state.fetches.pop();
-      prependFetchRow(f);
-      updateStats();
-      if (f.parentRequestId) { invalidateTimelineCache(f.parentRequestId); refreshVisibleTimeline(f.parentRequestId); }
-    });
-
-    events.addEventListener('log', function(e) {
-      var l = JSON.parse(e.data);
-      state.logs.unshift(l);
-      if (state.logs.length > ${MAX_TELEMETRY_ENTRIES}) state.logs.pop();
-      prependLogRow(l);
-      updateStats();
-      if (l.parentRequestId) { invalidateTimelineCache(l.parentRequestId); refreshVisibleTimeline(l.parentRequestId); }
-    });
-
-    events.addEventListener('error_event', function(e) {
-      var err = JSON.parse(e.data);
-      state.errors.unshift(err);
-      if (state.errors.length > ${MAX_TELEMETRY_ENTRIES}) state.errors.pop();
-      prependErrorRow(err);
-      updateStats();
-      if (err.parentRequestId) { invalidateTimelineCache(err.parentRequestId); refreshVisibleTimeline(err.parentRequestId); }
-    });
-
-    events.addEventListener('query', function(e) {
-      var q = JSON.parse(e.data);
-      state.queries.unshift(q);
-      if (state.queries.length > ${MAX_TELEMETRY_ENTRIES}) state.queries.pop();
-      prependQueryRow(q);
-      updateStats();
-      if (q.parentRequestId) { invalidateTimelineCache(q.parentRequestId); refreshVisibleTimeline(q.parentRequestId); }
-    });
+    function registerTelemetryListener(eventName, stateKey, prependFn) {
+      events.addEventListener(eventName, function(e) {
+        var item = JSON.parse(e.data);
+        state[stateKey].unshift(item);
+        if (state[stateKey].length > ${MAX_TELEMETRY_ENTRIES}) state[stateKey].pop();
+        prependFn(item);
+        updateStats();
+        if (item.parentRequestId) { invalidateTimelineCache(item.parentRequestId); refreshVisibleTimeline(item.parentRequestId); }
+      });
+    }
+    registerTelemetryListener('fetch', 'fetches', prependFetchRow);
+    registerTelemetryListener('log', 'logs', prependLogRow);
+    registerTelemetryListener('error_event', 'errors', prependErrorRow);
+    registerTelemetryListener('query', 'queries', prependQueryRow);
 
     events.addEventListener('insights', function(e) {
       state.insights = JSON.parse(e.data);
@@ -122,6 +101,12 @@ export function getApp(): string {
       state.findings = JSON.parse(e.data);
       if (state.activeView === 'security') renderSecurity();
       updateStats();
+    });
+
+    window.addEventListener('beforeunload', function() {
+      events.close();
+      clearTimeout(reloadTimer);
+      clearTimeout(perfReloadTimer);
     });
   }
 

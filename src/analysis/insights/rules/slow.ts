@@ -1,7 +1,7 @@
 import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
 import { formatDuration, pct } from "../../../utils/format.js";
-import { MIN_REQUESTS_FOR_INSIGHT, SLOW_ENDPOINT_THRESHOLD_MS } from "../../../constants/thresholds.js";
+import { MIN_REQUESTS_FOR_INSIGHT, SLOW_ENDPOINT_THRESHOLD_MS } from "../../../constants/index.js";
 
 export const slowRule: InsightRule = {
   id: "slow",

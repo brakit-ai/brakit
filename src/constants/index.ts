@@ -6,3 +6,5 @@ export * from "./metrics.js";
 export * from "./headers.js";
 export * from "./network.js";
 export * from "./mcp.js";
+export * from "./encoding.js";
+export * from "./severity.js";

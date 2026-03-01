@@ -1,11 +1,4 @@
-import {
-  readFileSync,
-  writeFileSync,
-  existsSync,
-  mkdirSync,
-  renameSync,
-} from "node:fs";
-import { writeFile, mkdir, rename } from "node:fs/promises";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { SecurityFinding } from "../types/index.js";
 import type {
@@ -19,22 +12,25 @@ import {
   FINDINGS_FILE,
   FINDINGS_FLUSH_INTERVAL_MS,
 } from "../constants/index.js";
-import { ensureGitignore } from "../utils/fs.js";
+import { AtomicWriter } from "../utils/atomic-writer.js";
 import { computeFindingId } from "./finding-id.js";
 
 export class FindingStore {
   private findings = new Map<string, StatefulFinding>();
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private dirty = false;
-  private writing = false;
+  private readonly writer: AtomicWriter;
   private readonly findingsPath: string;
-  private readonly tmpPath: string;
-  private readonly metricsDir: string;
 
   constructor(private rootDir: string) {
-    this.metricsDir = resolve(rootDir, METRICS_DIR);
+    const metricsDir = resolve(rootDir, METRICS_DIR);
     this.findingsPath = resolve(rootDir, FINDINGS_FILE);
-    this.tmpPath = this.findingsPath + ".tmp";
+    this.writer = new AtomicWriter({
+      dir: metricsDir,
+      filePath: this.findingsPath,
+      gitignoreEntry: METRICS_DIR,
+      label: "findings",
+    });
     this.load();
   }
 
@@ -97,6 +93,15 @@ export class FindingStore {
     return true;
   }
 
+  /**
+   * Reconcile passive findings against the current analysis results.
+   *
+   * Passive findings are detected by continuous scanning (not user-triggered).
+   * When a previously-seen finding is absent from the current results, it means
+   * the issue has been fixed — transition it to "resolved" automatically.
+   * Active findings (from MCP verify-fix) are not auto-resolved because they
+   * require explicit verification.
+   */
   reconcilePassive(currentFindings: readonly SecurityFinding[]): void {
     const currentIds = new Set(currentFindings.map(computeFindingId));
 
@@ -142,62 +147,27 @@ export class FindingStore {
         }
       }
     } catch {
-      // Start fresh if file is corrupt
+      // Corrupt or missing file — start with empty store
     }
   }
 
   private flush(): void {
     if (!this.dirty) return;
-    this.writeAsync();
+    this.writer.writeAsync(this.serialize());
+    this.dirty = false;
   }
 
   private flushSync(): void {
     if (!this.dirty) return;
-    try {
-      this.ensureDir();
-      const data: FindingsData = {
-        version: 1,
-        findings: [...this.findings.values()],
-      };
-      writeFileSync(this.tmpPath, JSON.stringify(data));
-      renameSync(this.tmpPath, this.findingsPath);
-      this.dirty = false;
-    } catch (err) {
-      process.stderr.write(
-        `[brakit] failed to save findings: ${(err as Error).message}\n`,
-      );
-    }
+    this.writer.writeSync(this.serialize());
+    this.dirty = false;
   }
 
-  private async writeAsync(): Promise<void> {
-    if (this.writing) return;
-    this.writing = true;
-    try {
-      if (!existsSync(this.metricsDir)) {
-        await mkdir(this.metricsDir, { recursive: true });
-        ensureGitignore(this.metricsDir, METRICS_DIR);
-      }
-      const data: FindingsData = {
-        version: 1,
-        findings: [...this.findings.values()],
-      };
-      await writeFile(this.tmpPath, JSON.stringify(data));
-      await rename(this.tmpPath, this.findingsPath);
-      this.dirty = false;
-    } catch (err) {
-      process.stderr.write(
-        `[brakit] failed to save findings: ${(err as Error).message}\n`,
-      );
-    } finally {
-      this.writing = false;
-      if (this.dirty) this.writeAsync();
-    }
-  }
-
-  private ensureDir(): void {
-    if (!existsSync(this.metricsDir)) {
-      mkdirSync(this.metricsDir, { recursive: true });
-      ensureGitignore(this.metricsDir, METRICS_DIR);
-    }
+  private serialize(): string {
+    const data: FindingsData = {
+      version: 1,
+      findings: [...this.findings.values()],
+    };
+    return JSON.stringify(data);
   }
 }

@@ -6,8 +6,8 @@ import { SEVERITY_ICON } from "../constants/severity.js";
 import { extractEndpointFromDesc } from "../utils/endpoint.js";
 import type { Severity } from "../types/security.js";
 import type { Insight } from "../analysis/insights.js";
-import type { AnalysisListener } from "../analysis/engine.js";
-import type { MetricsStore } from "../store/index.js";
+import type { ServiceRegistry } from "../core/service-registry.js";
+import type { AnalysisUpdate } from "../core/event-bus.js";
 
 const SEVERITY_COLOR: Record<Severity, (s: string) => string> = {
   critical: pc.red,
@@ -59,15 +59,17 @@ function formatConsoleLine(insight: Insight, suffix?: string): string {
   return line;
 }
 
-export function createConsoleInsightListener(
+export function startTerminalInsights(
+  registry: ServiceRegistry,
   proxyPort: number,
-  metricsStore: MetricsStore,
-): AnalysisListener {
+): () => void {
+  const bus = registry.get("event-bus");
+  const metricsStore = registry.get("metrics-store");
   const printedKeys = new Set<string>();
   const resolvedKeys = new Set<string>();
   const dashUrl = `localhost:${proxyPort}${DASHBOARD_PREFIX}`;
 
-  return ({ statefulInsights }) => {
+  return bus.on("analysis:updated", ({ statefulInsights }: AnalysisUpdate) => {
     const newLines: string[] = [];
     const resolvedLines: string[] = [];
 
@@ -115,5 +117,5 @@ export function createConsoleInsightListener(
       print("");
       print(`  ${pc.magenta(pc.bold("brakit"))} ${pc.dim("\u2192")} ${pc.green("Issues fixed!")}`);
     }
-  };
+  });
 }

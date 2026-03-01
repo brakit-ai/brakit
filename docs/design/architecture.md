@@ -72,16 +72,18 @@ production, staging, CI, and cloud environments. You can also disable it with
 
 ### 2. Instrumentation hooks
 
-`src/runtime/setup.ts` wires up the capture pipeline:
+`src/runtime/setup.ts` creates the core primitives (EventBus, ServiceRegistry),
+instantiates all stores, registers them, and wires up the capture pipeline:
 
 - **Fetch hook** — Uses Node.js `diagnostics_channel` to capture every
-  outgoing `fetch()` call. Records URL, method, status code, and duration.
+  outgoing `fetch()` call. Emits `telemetry:fetch` on the bus.
 - **Console hook** — Wraps `console.log`, `console.warn`, `console.error`.
-  Records every message along with which request triggered it.
+  Emits `telemetry:log` on the bus.
 - **Error hook** — Listens for uncaught exceptions and unhandled rejections.
-  Records the error name, message, and stack trace.
+  Emits `telemetry:error` on the bus.
 - **Database adapters** — Auto-detects installed database libraries and
   monkey-patches them to capture queries (see "The adapter system" below).
+  Emits `telemetry:query` on the bus.
 
 ### 3. HTTP interceptor
 
@@ -171,20 +173,27 @@ The analysis code never needs to know which database library you're using.
 
 ## Event routing
 
-All captured events flow through the same path:
+All captured events flow through a typed EventBus:
 
 ```
-Instrumentation hooks ──▶ setEmitter() ──▶ routeEvent() ──▶ Store
-                                                              │
-                                                    pub/sub notifications
-                                                              │
-                                              ┌───────────────┼────────────────┐
-                                              ▼               ▼                ▼
-                                        SSE stream    Analysis engine    Metrics store
+Hooks/Adapters → bus.emit("telemetry:*") → stores (via bus.on in setup.ts)
+                                          → SSE handler (via bus.on)
+                                          → analysis engine (triggers recompute)
+
+Analysis Engine → bus.emit("analysis:updated") → SSE handler
+                                                → terminal display
 ```
 
-Events are routed directly to stores via function calls — no HTTP transport, no
+The EventBus (`src/core/event-bus.ts`) provides typed publish-subscribe
+channels. Adding a new telemetry type means adding one line to the `ChannelMap`
+interface — TypeScript enforces correct payloads at every call site, and no
+switch-case routing is needed.
+
+Events are routed directly via function calls — no HTTP transport, no
 serialization. This is possible because everything runs in the same process.
+
+See [EventBus design doc](event-bus.md) for channel naming, the full ChannelMap,
+and how to add new channels.
 
 ---
 
@@ -203,9 +212,12 @@ required. Each store holds up to 1,000 entries and evicts the oldest when full.
 | MetricsStore | Per-endpoint session statistics, persisted to `.brakit/metrics.json` |
 | FindingStore | Stateful security findings with lifecycle tracking, persisted to `.brakit/findings.json` |
 
-Every store supports pub/sub — when a new entry is added, all subscribers are
-notified. This is how the SSE stream and the analysis engine stay in sync
-without polling.
+Stores are registered in a typed ServiceRegistry and accessed through it —
+no module-level singletons. The EventBus delivers new entries to all
+subscribers (SSE stream, analysis engine) without polling.
+
+See [ServiceRegistry design doc](service-registry.md) for the full ServiceMap,
+registration flow, and testing patterns.
 
 ### Metrics persistence
 

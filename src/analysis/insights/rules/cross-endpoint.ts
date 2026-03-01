@@ -7,7 +7,7 @@ import {
   CROSS_ENDPOINT_MIN_ENDPOINTS,
   CROSS_ENDPOINT_PCT,
   CROSS_ENDPOINT_MIN_OCCURRENCES,
-} from "../../../constants/thresholds.js";
+} from "../../../constants/index.js";
 
 export const crossEndpointRule: InsightRule = {
   id: "cross-endpoint",
