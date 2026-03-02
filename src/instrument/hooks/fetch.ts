@@ -1,7 +1,7 @@
 import { subscribe } from "node:diagnostics_channel";
 import type { TelemetryEvent } from "../../types/index.js";
 import { getRequestContext } from "./context.js";
-import { NOISE_HOSTS } from "../../constants/index.js";
+import { NOISE_HOSTS, NOISE_PATH_PATTERNS } from "../../constants/index.js";
 
 interface UndiciRequest {
   origin?: string;
@@ -16,7 +16,11 @@ interface UndiciResponse {
   headers?: Buffer[];
 }
 
-function isNoise(origin: string): boolean {
+let brakitPort = 0;
+export function setBrakitPort(port: number): void { brakitPort = port; }
+
+function isNoise(origin: string, path: string): boolean {
+  if (NOISE_PATH_PATTERNS.some((p) => path.includes(p))) return true;
   try {
     const host = new URL(origin).hostname;
     return NOISE_HOSTS.some((h) => host === h || host.endsWith("." + h));
@@ -27,7 +31,7 @@ function isNoise(origin: string): boolean {
 
 const pending = new WeakMap<
   object,
-  { origin: string; method: string; path: string; startTime: number; parentRequestId: string | null }
+  { origin: string; method: string; path: string; startTime: number; parentRequestId: string }
 >();
 
 export function setupFetchHook(emit: (event: TelemetryEvent) => void): void {
@@ -35,14 +39,17 @@ export function setupFetchHook(emit: (event: TelemetryEvent) => void): void {
     const msg = message as { request: UndiciRequest };
     const req = msg.request;
     const origin = req.origin ?? "";
-    if (isNoise(origin)) return;
+    const path = req.path ?? "/";
+    if (isNoise(origin, path)) return;
+    if (brakitPort && origin.includes(`localhost:${brakitPort}`)) return;
     const ctx = getRequestContext();
+    if (!ctx) return;
     pending.set(msg.request, {
       origin,
       method: req.method ?? "GET",
-      path: req.path ?? "/",
+      path,
       startTime: performance.now(),
-      parentRequestId: ctx?.requestId ?? null,
+      parentRequestId: ctx.requestId,
     });
   });
 
