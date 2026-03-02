@@ -1,9 +1,9 @@
-import { setupFetchHook } from "../instrument/hooks/fetch.js";
+import { setupFetchHook, setBrakitPort } from "../instrument/hooks/fetch.js";
 import { setupConsoleHook } from "../instrument/hooks/console.js";
 import { setupErrorHook } from "../instrument/hooks/errors.js";
 import { createDefaultRegistry } from "../instrument/adapters/index.js";
 import { createDashboardHandler } from "../dashboard/router.js";
-import { writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import { EventBus } from "../core/event-bus.js";
 import { ServiceRegistry } from "../core/service-registry.js";
@@ -22,6 +22,7 @@ import type { TelemetryEvent, BrakitConfig } from "../types/index.js";
 import type { ChannelMap } from "../core/event-bus.js";
 import { health } from "./health.js";
 import { installInterceptor, uninstallInterceptor } from "./interceptor.js";
+import { brakitDebug } from "../utils/log.js";
 
 let initialized = false;
 
@@ -107,9 +108,19 @@ export function setup(): void {
     config,
     requestStore,
     onFirstRequest(port) {
+      setBrakitPort(port);
+
       const dir = resolve(cwd, METRICS_DIR);
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-      writeFileSync(resolve(cwd, PORT_FILE), String(port));
+
+      const portPath = resolve(cwd, PORT_FILE);
+      if (existsSync(portPath)) {
+        const old = readFileSync(portPath, "utf-8").trim();
+        if (old && old !== String(port)) {
+          brakitDebug(`Overwriting stale port file (was ${old}, now ${port})`);
+        }
+      }
+      writeFileSync(portPath, String(port));
 
       terminalDispose = startTerminalInsights(registry, port);
       process.stdout.write(`  brakit v${VERSION} — http://localhost:${port}${DASHBOARD_PREFIX}\n`);

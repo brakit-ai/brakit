@@ -57,6 +57,13 @@ export function installInterceptor(deps: InterceptorDeps): void {
         }
       }
 
+      // Only monitor the first server port detected — skip framework-internal
+      // servers (HMR, webpack dev server, turbopack) running on other ports.
+      const localPort = req.socket.localPort;
+      if (bannerPrinted && localPort && deps.config.proxyPort && localPort !== deps.config.proxyPort) {
+        return original.apply(this, [event, ...args]);
+      }
+
       if (isDashboardRequest(url)) {
         if (!isLocalRequest(req)) {
           res.writeHead(404);

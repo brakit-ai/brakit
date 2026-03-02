@@ -21,9 +21,11 @@ export function setupConsoleHook(emit: (event: TelemetryEvent) => void): void {
       original.apply(console, args);
 
       const ctx = getRequestContext();
+      if (!ctx) return;
+
       const message = format(...args);
       const timestamp = Date.now();
-      const parentRequestId = ctx?.requestId ?? null;
+      const parentRequestId = ctx.requestId;
 
       if (level === "error") {
         const errorArg = args.find((a) => a instanceof Error) as
