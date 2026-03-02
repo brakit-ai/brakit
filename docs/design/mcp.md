@@ -103,7 +103,8 @@ point:
 ## Finding lifecycle
 
 Brakit doesn't just detect issues — it tracks them over time. Every finding
-goes through a lifecycle:
+goes through a lifecycle (see also [Analysis Engine](analysis-engine.md) for
+how findings are generated):
 
 ```
   new issue detected

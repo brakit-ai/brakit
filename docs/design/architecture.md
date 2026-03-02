@@ -7,6 +7,8 @@ changing your code. This document explains how it does that.
 ## Table of contents
 
 - [The big idea](#the-big-idea)
+- [Core principles](#core-principles)
+- [Key concepts](#key-concepts)
 - [How setup works](#how-setup-works)
 - [Request capture](#request-capture)
 - [The adapter system](#the-adapter-system)
@@ -16,6 +18,7 @@ changing your code. This document explains how it does that.
 - [The dashboard](#the-dashboard)
 - [MCP server](#mcp-server)
 - [Safety guarantees](#safety-guarantees)
+- [Design decisions](#design-decisions)
 - [Build output](#build-output)
 - [Framework detection](#framework-detection)
 - [Supporting other languages](#supporting-other-languages)
@@ -57,6 +60,33 @@ output, errors — and serves a live dashboard at `/__brakit`.
 Everything runs in a single process. No proxy, no separate server, no port
 forwarding. Brakit patches `http.Server.prototype.emit` so it sees every
 request the moment Node.js receives it.
+
+---
+
+## Core principles
+
+Three rules that every brakit module follows:
+
+1. **Never break the application.** Every monkey-patch is wrapped with `safeWrap` so that if brakit throws, the original function runs as if brakit wasn't there. A circuit breaker disables brakit entirely if too many errors occur. See [Safety Guarantees](safety.md) for the full 5-layer system.
+
+2. **Single process, zero config.** Brakit runs inside your HTTP server — no proxy, no sidecar, no separate port. `import 'brakit'` is the entire setup. This constraint means all inter-module communication happens via function calls (through the EventBus), not HTTP or IPC.
+
+3. **Extend by adding, not modifying.** New database adapters, security rules, insight rules, and MCP tools are each one file implementing one interface. Adding a Drizzle adapter doesn't touch the analysis engine. Adding a new security rule doesn't touch the adapters.
+
+---
+
+## Key concepts
+
+| Term | What it means |
+|------|--------------|
+| **Telemetry event** | A captured piece of runtime data — a fetch call, database query, console log, or error |
+| **Channel** | A typed event bus topic (e.g., `telemetry:fetch`). Producers emit, consumers subscribe |
+| **Service** | A named dependency in the ServiceRegistry (e.g., `"query-store"`, `"event-bus"`) |
+| **Store** | A bounded in-memory collection of telemetry entries. Evicts oldest when full |
+| **Adapter** | A plugin that monkey-patches a database library to capture queries |
+| **Insight** | A performance observation computed by the analysis engine (e.g., "N+1 queries detected") |
+| **Finding** | A security issue detected in live traffic (e.g., "password field exposed in response") |
+| **Flow** | A group of related requests representing a single user action |
 
 ---
 
@@ -202,14 +232,14 @@ and how to add new channels.
 All captured data lives in bounded in-memory arrays. No external database
 required. Each store holds up to 1,000 entries and evicts the oldest when full.
 
-| Store        | Contains                                                             |
-| ------------ | -------------------------------------------------------------------- |
-| RequestStore | HTTP requests and responses captured in-process                      |
-| QueryStore   | Database queries from adapters                                       |
-| FetchStore   | Outgoing fetch calls                                                 |
-| LogStore     | Console output                                                       |
-| ErrorStore   | Uncaught exceptions and unhandled rejections                         |
-| MetricsStore | Per-endpoint session statistics, persisted to `.brakit/metrics.json` |
+| Store        | Contains                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| RequestStore | HTTP requests and responses captured in-process                                          |
+| QueryStore   | Database queries from adapters                                                           |
+| FetchStore   | Outgoing fetch calls                                                                     |
+| LogStore     | Console output                                                                           |
+| ErrorStore   | Uncaught exceptions and unhandled rejections                                             |
+| MetricsStore | Per-endpoint session statistics, persisted to `.brakit/metrics.json`                     |
 | FindingStore | Stateful security findings with lifecycle tracking, persisted to `.brakit/findings.json` |
 
 Stores are registered in a typed ServiceRegistry and accessed through it —
@@ -231,67 +261,37 @@ session against previous sessions to detect performance degradation.
 
 ## The analysis engine
 
-The analysis engine (`src/analysis/engine.ts`) subscribes to all stores and
+The analysis engine (`src/analysis/engine.ts`) subscribes to bus channels and
 recomputes whenever new data arrives (with a 300ms debounce to avoid thrashing
-during burst traffic).
+during burst traffic). It produces two kinds of results:
 
-It produces two kinds of results:
+- **Security findings** — 8 rules scanning live traffic for real vulnerabilities (exposed secrets, stack trace leaks, insecure cookies, etc.)
+- **Performance insights** — 13 rules detecting performance patterns (N+1 queries, slow endpoints, large responses, regressions, etc.)
 
-### Security findings
+Each rule is one file implementing a single interface. The analysis engine
+pre-computes shared indexes (queries grouped by request, endpoint aggregations)
+so rules focus on detection logic, not data wrangling.
 
-A set of rules that scan live traffic for real security issues:
-
-| Rule               | Severity | What it detects                                                   |
-| ------------------ | -------- | ----------------------------------------------------------------- |
-| Exposed secret     | Critical | Fields like `password` or `api_key` in responses with real values |
-| Token in URL       | Critical | Auth tokens in query parameters instead of headers                |
-| Stack trace leak   | Critical | Node.js stack traces sent to the client                           |
-| Error info leak    | Critical | DB connection strings or SQL in error responses                   |
-| Insecure cookie    | Warning  | Missing `HttpOnly` or `SameSite` flags                            |
-| Sensitive logs     | Warning  | Passwords or tokens in console output                             |
-| CORS + credentials | Warning  | `credentials: true` with wildcard origin                          |
-| Response PII leak  | Warning  | Personal data (emails, phone numbers) in API responses            |
-
-Each rule is one file in `src/analysis/rules/` implementing the `SecurityRule`
-interface. The scanner automatically picks up registered rules.
-
-### Performance insights
-
-Modular rules in `src/analysis/insights/rules/` detect performance issues:
-
-| Rule                   | What it detects                                                |
-| ---------------------- | -------------------------------------------------------------- |
-| N+1 queries            | Same query shape repeated 5+ times within one request          |
-| Cross-endpoint queries | Same query appearing on >50% of endpoints                      |
-| Redundant queries      | Exact same SQL fired multiple times per request                |
-| Slow endpoints         | High average response time, with time breakdown (DB/Fetch/App) |
-| Query-heavy endpoints  | More than 5 queries per request on average                     |
-| Duplicate API calls    | Same endpoint fetched multiple times per action                |
-| Error hotspots         | Endpoints with >20% error rate                                 |
-| Large responses        | Average response body above 50KB                               |
-| SELECT \* detection    | Queries selecting all columns                                  |
-| High row counts        | Queries returning 100+ rows                                    |
-| Response overfetch     | Large JSON responses with many unused fields                   |
-| Regression detection   | P95 latency or query count increased vs. previous session      |
-
-Each rule is one file implementing the `InsightRule` interface. All rules
-receive a `PreparedInsightContext` with pre-computed indexes (queries grouped by
-request, endpoint aggregations, etc.) so they don't duplicate work.
+See [Analysis Engine](analysis-engine.md) for the full rule tables, the
+recompute cycle, PreparedInsightContext, finding lifecycle, and how to add new
+rules.
 
 ---
 
 ## The dashboard
 
-The dashboard is a server-rendered HTML page served at `/__brakit`. It uses no
-frontend framework — the entire client is assembled from template-literal
-JavaScript functions at build time. No build step, no external dependencies.
+The dashboard is a self-contained HTML page served at `/__brakit`. All
+JavaScript and CSS are inlined — no external requests, no CDN, no asset loading.
 
 Real-time updates use Server-Sent Events (SSE). When brakit captures a new
 request or a database adapter reports a query, the dashboard updates instantly
-without polling. The SSE handler (`src/dashboard/sse.ts`) subscribes to all
-stores and the analysis engine, streaming events as they arrive.
+without polling. The SSE handler subscribes to bus channels and streams events
+as they arrive.
 
 The dashboard is only served to localhost — requests from non-local IPs get a 404.
+
+See [Dashboard](dashboard.md) for the full route table, API endpoints, SSE
+event types, client architecture, and security measures.
 
 ---
 
@@ -315,18 +315,47 @@ descriptions, finding lifecycle details, and how to add new tools.
 
 ## Safety guarantees
 
-Brakit is designed to never break your application:
+Brakit runs inside your process. If it throws, your app could crash. Five layers
+prevent this:
 
-- **`safeWrap`** — Every monkey-patch is wrapped so that if brakit throws, the
-  original function runs instead. Your app behaves as if brakit wasn't there.
-- **Circuit breaker** — If brakit encounters too many errors, it disables itself
-  for the rest of the session and restores all original methods.
-- **Bounded stores** — Memory usage is capped. Stores evict old entries.
-- **Activation guards** — Brakit stays dormant in production, staging, CI, and
-  cloud environments. It only activates in local development.
-- **Empty catch blocks** — Capture failures are silently swallowed. A response
-  body that can't be decompressed or a query that can't be normalized should
-  never become a runtime error in your app.
+1. **Activation guards** — Dormant in production, staging, CI, and cloud environments
+2. **safeWrap** — Every monkey-patch falls back to the original on throw
+3. **Circuit breaker** — Too many errors → brakit disables itself for the session
+4. **Bounded stores** — Memory capped, oldest entries evicted
+5. **Silent failures** — Capture errors swallowed, never surface to your app
+
+See [Safety Guarantees](safety.md) for how each layer works, code examples, and
+what to do if brakit interferes.
+
+---
+
+## Design decisions
+
+**Why in-process, not a proxy?** A proxy adds latency to every request, requires
+port forwarding, and can't see internal state (which request triggered which
+query). In-process means zero latency overhead, automatic request-query
+correlation via `AsyncLocalStorage`, and no network configuration.
+
+**Why EventBus, not direct callbacks?** Direct callbacks between modules create
+hidden dependencies (the SSE handler importing 5 stores). The bus inverts this:
+modules subscribe to channels without knowing who emits. Adding a new telemetry
+type doesn't require changing existing consumers.
+
+**Why ServiceRegistry, not module singletons?** Singletons are impossible to
+mock without `jest.mock()`, create implicit initialization order, and hide
+dependencies. The registry makes every dependency explicit, testable, and
+traceable.
+
+**Why bounded in-memory stores, not a database?** Brakit is a zero-config dev
+tool. Requiring a database (even SQLite) adds setup friction. Bounded arrays
+with oldest-eviction give predictable memory usage without configuration. The
+MetricsStore and FindingStore persist to JSON files for cross-session features
+(regression detection, finding lifecycle) — everything else is ephemeral.
+
+**Why debounced analysis, not real-time?** A single request can generate 20+
+telemetry events (queries, fetches, logs). Recomputing insights on every event
+would thrash the CPU. The 300ms debounce batches events and recomputes once
+after the burst settles.
 
 ---
 
@@ -339,7 +368,7 @@ Brakit builds four files:
 | `dist/api.js`           | Public API — for programmatic use or CI integration |
 | `dist/bin/brakit.js`    | The CLI you run with `npx brakit`                   |
 | `dist/runtime/index.js` | The runtime entry point for `import 'brakit'`       |
-| `dist/mcp/server.js`   | MCP server for AI tool integration                  |
+| `dist/mcp/server.js`    | MCP server for AI tool integration                  |
 
 Database drivers (pg, mysql2, @prisma/client) are **not** bundled. The adapters
 load them from your project's `node_modules` at runtime. This is essential —
