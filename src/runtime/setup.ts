@@ -18,11 +18,20 @@ import { AnalysisEngine } from "../analysis/engine.js";
 import { startTerminalInsights } from "../output/terminal.js";
 import { VERSION } from "../index.js";
 import { DASHBOARD_PREFIX, DEFAULT_MAX_BODY_CAPTURE, METRICS_DIR, PORT_FILE } from "../constants/index.js";
-import type { TelemetryEvent, BrakitConfig } from "../types/index.js";
+import { SIGNAL_EXIT_SIGINT, SIGNAL_EXIT_SIGTERM } from "../constants/telemetry.js";
+import type { TelemetryEvent, BrakitConfig, Framework } from "../types/index.js";
 import type { ChannelMap } from "../core/event-bus.js";
 import { health } from "./health.js";
 import { installInterceptor, uninstallInterceptor } from "./interceptor.js";
 import { brakitDebug } from "../utils/log.js";
+import { detectFrameworkFromDeps, detectPackageManagerSync } from "../detect/project.js";
+import {
+  initSession,
+  trackSession,
+  recordRequestCount,
+  recordInsightTypes,
+  recordRulesTriggered,
+} from "../telemetry/index.js";
 
 let initialized = false;
 
@@ -46,16 +55,13 @@ export function setup(): void {
   registry.register("error-store", errorStore);
   registry.register("query-store", queryStore);
 
-  // Bus → stores: incoming telemetry events get routed to their stores
   bus.on("telemetry:fetch", (data) => fetchStore.add(data));
   bus.on("telemetry:query", (data) => queryStore.add(data));
   bus.on("telemetry:log", (data) => logStore.add(data));
   bus.on("telemetry:error", (data) => errorStore.add(data));
 
-  // Store → bus: when a request is captured, emit on the bus
   requestStore.onRequest((req) => bus.emit("request:completed", req));
 
-  // Telemetry emit callback for hooks and adapters
   const telemetryEmit = (event: TelemetryEvent): void => {
     const channel = `telemetry:${event.type}` as keyof ChannelMap;
     bus.emit(channel, event.data as ChannelMap[typeof channel]);
@@ -69,6 +75,21 @@ export function setup(): void {
   adapterRegistry.patchAll(telemetryEmit);
 
   const cwd = process.cwd();
+
+  let framework: Framework = "unknown";
+  try {
+    const pkg = JSON.parse(readFileSync(resolve(cwd, "package.json"), "utf-8"));
+    const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+    framework = detectFrameworkFromDeps(allDeps);
+  } catch { /* no package.json */ }
+
+  initSession(
+    framework,
+    detectPackageManagerSync(cwd),
+    false,
+    adapterRegistry.getActive().map((a) => a.name),
+  );
+
   const metricsStore = new MetricsStore(new FileMetricsPersistence(cwd));
   metricsStore.start();
   registry.register("metrics-store", metricsStore);
@@ -81,7 +102,6 @@ export function setup(): void {
   analysisEngine.start();
   registry.register("analysis-engine", analysisEngine);
 
-  // Record metrics for each completed request
   bus.on("request:completed", (req) => {
     const queries = queryStore.getByRequest(req.id);
     const fetches = fetchStore.getByRequest(req.id);
@@ -127,7 +147,17 @@ export function setup(): void {
     },
   });
 
-  health.setTeardown(() => {
+  let teardownCalled = false;
+  const runTeardown = (): void => {
+    if (teardownCalled) return;
+    teardownCalled = true;
+
+    // Collect final telemetry before sending
+    recordRequestCount(requestStore.getAll().length);
+    recordInsightTypes(analysisEngine.getInsights().map((i) => i.type));
+    recordRulesTriggered(analysisEngine.getFindings().map((f) => f.rule));
+    trackSession(registry);
+
     uninstallInterceptor();
     terminalDispose?.();
     analysisEngine.stop();
@@ -138,5 +168,10 @@ export function setup(): void {
       const portPath = resolve(cwd, PORT_FILE);
       if (existsSync(portPath)) unlinkSync(portPath);
     } catch { /* non-critical */ }
-  });
+  };
+
+  health.setTeardown(runTeardown);
+
+  process.once("SIGINT", () => { runTeardown(); process.exit(SIGNAL_EXIT_SIGINT); });
+  process.once("SIGTERM", () => { runTeardown(); process.exit(SIGNAL_EXIT_SIGTERM); });
 }

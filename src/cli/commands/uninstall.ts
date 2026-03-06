@@ -8,24 +8,13 @@ import { detectProject } from "../../detect/project.js";
 import { fileExists } from "../../utils/fs.js";
 import { METRICS_DIR } from "../../constants/index.js";
 import type { DetectedProject } from "../../types/index.js";
+import { isExactBrakitTemplate, IMPORT_LINE, CREATED_FILES, ENTRY_CANDIDATES } from "../templates.js";
 
-const IMPORT_LINE = `import "brakit";`;
-
-/** Files brakit install may have created — checked in order. */
-const CREATED_FILES = [
-  "src/instrumentation.ts",
-  "instrumentation.ts",
-  "server/plugins/brakit.ts",
-];
-
-/** Files where brakit may have prepended an import line. */
+/** Files where brakit may have prepended an import line (Remix entries + shared candidates). */
 const PREPENDED_FILES = [
   "app/entry.server.tsx",
   "app/entry.server.ts",
-  "src/index.ts", "src/server.ts", "src/app.ts",
-  "src/index.js", "src/server.js", "src/app.js",
-  "server.ts", "app.ts", "index.ts",
-  "server.js", "app.js", "index.js",
+  ...ENTRY_CANDIDATES,
 ];
 
 export default defineCommand({
@@ -64,12 +53,22 @@ export default defineCommand({
       const content = await readFile(absPath, "utf-8");
       if (!content.includes("brakit")) continue;
 
-      // Only delete if brakit is the sole purpose of the file
-      const lines = content.split("\n").filter((l) => l.trim().length > 0);
-      const allBrakit = lines.every((l) => l.includes("brakit") || l.includes("register") || l.includes("import") || l.includes("export") || l.includes("try") || l.includes("catch") || l.includes("process.env") || l.includes("{") || l.includes("}"));
-      if (allBrakit) {
+      if (isExactBrakitTemplate(content)) {
+        // File is exactly a brakit-generated template — safe to delete
         await unlink(absPath);
         console.log(pc.green(`  ✓ Removed ${relPath}`));
+        removed = true;
+        break;
+      }
+
+      // File has brakit mixed with other content — remove only brakit lines
+      const lines = content.split("\n");
+      const cleaned = lines.filter(
+        (line) => !line.includes('import("brakit")') && !line.includes('import "brakit"'),
+      );
+      if (cleaned.length < lines.length) {
+        await writeFile(absPath, cleaned.join("\n"));
+        console.log(pc.green(`  ✓ Removed brakit lines from ${relPath}`));
         removed = true;
         break;
       }

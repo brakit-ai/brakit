@@ -6,10 +6,9 @@ import pc from "picocolors";
 import { VERSION } from "../../index.js";
 import { detectProject } from "../../detect/project.js";
 import { fileExists } from "../../utils/fs.js";
+import { METRICS_DIR } from "../../constants/index.js";
 import type { Framework, DetectedProject } from "../../types/index.js";
-
-const IMPORT_LINE = `import "brakit";`;
-const IMPORT_MARKER = "brakit";
+import { BRAKIT_TEMPLATES, IMPORT_LINE, IMPORT_MARKER, ENTRY_CANDIDATES } from "../templates.js";
 
 export default defineCommand({
   meta: {
@@ -30,7 +29,20 @@ export default defineCommand({
     const pkgPath = join(rootDir, "package.json");
 
     if (!(await fileExists(pkgPath))) {
-      console.error(pc.red("  No package.json found. Run this from your project root."));
+      console.error(pc.red("  No project found. Run this from your project directory."));
+      process.exit(1);
+    }
+
+    let pkg: { name?: unknown };
+    try {
+      pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
+    } catch {
+      console.error(pc.red("  Failed to read package.json."));
+      process.exit(1);
+    }
+
+    if (!pkg.name || typeof pkg.name !== "string") {
+      console.error(pc.red("  No project found. Run this from your project directory."));
       process.exit(1);
     }
 
@@ -73,7 +85,10 @@ export default defineCommand({
       printManualInstructions(project.framework);
     }
 
-    // 3. Configure MCP for Claude Code / Cursor
+    // 3. Ensure .brakit is gitignored
+    await ensureGitignoreEntry(rootDir, METRICS_DIR);
+
+    // 4. Configure MCP for Claude Code / Cursor
     const mcpResult = await setupMcp(rootDir);
     if (mcpResult === "created" || mcpResult === "updated") {
       console.log(pc.green("  ✓ Configured MCP for Claude Code / Cursor"));
@@ -81,7 +96,7 @@ export default defineCommand({
       console.log(pc.dim("  ✓ MCP already configured"));
     }
 
-    // 4. Print next steps
+    // 5. Print next steps
     console.log();
     console.log(pc.dim("  Start your app and visit:"));
     console.log(pc.bold("  http://localhost:<port>/__brakit"));
@@ -107,6 +122,7 @@ async function installPackage(rootDir: string, pm: DetectedProject["packageManag
     execSync(cmd, { cwd: rootDir, stdio: "pipe" });
   } catch {
     console.warn(pc.yellow(`  ⚠ Failed to run "${cmd}". Install brakit manually.`));
+    return false;
   }
   return true;
 }
@@ -145,14 +161,7 @@ async function setupNextjs(rootDir: string): Promise<InstrumentationSetup> {
     return { action: "manual", file: relPath };
   }
 
-  const content = [
-    `export async function register() {`,
-    `  if (process.env.NODE_ENV !== "production") {`,
-    `    try { await import("brakit"); } catch {}`,
-    `  }`,
-    `}`,
-    ``,
-  ].join("\n");
+  const content = BRAKIT_TEMPLATES.nextjs + "\n";
 
   await writeFile(absPath, content);
   return { action: "created", file: relPath, content };
@@ -170,7 +179,7 @@ async function setupNuxt(rootDir: string): Promise<InstrumentationSetup> {
     return { action: "manual", file: relPath };
   }
 
-  const content = `${IMPORT_LINE}\n`;
+  const content = BRAKIT_TEMPLATES.nuxt + "\n";
   const dir = join(rootDir, "server/plugins");
   const { mkdirSync } = await import("node:fs");
   mkdirSync(dir, { recursive: true });
@@ -193,13 +202,6 @@ async function setupPrepend(rootDir: string, ...candidates: string[]): Promise<I
   }
   return { action: "manual", file: null };
 }
-
-const ENTRY_CANDIDATES = [
-  "src/index.ts", "src/server.ts", "src/app.ts",
-  "src/index.js", "src/server.js", "src/app.js",
-  "server.ts", "app.ts", "index.ts",
-  "server.js", "app.js", "index.js",
-];
 
 async function setupGeneric(rootDir: string): Promise<InstrumentationSetup> {
   // Check package.json main field first
@@ -239,7 +241,7 @@ async function setupMcp(rootDir: string): Promise<"created" | "updated" | "exist
       // Merge brakit into existing config
       config.mcpServers = { ...config.mcpServers, ...MCP_CONFIG.mcpServers };
       await writeFile(mcpPath, JSON.stringify(config, null, 2) + "\n");
-      await ensureGitignoreMcp(rootDir);
+      await ensureGitignoreEntry(rootDir, ".mcp.json");
       return "updated";
     } catch {
       // Corrupt JSON — overwrite
@@ -247,19 +249,19 @@ async function setupMcp(rootDir: string): Promise<"created" | "updated" | "exist
   }
 
   await writeFile(mcpPath, JSON.stringify(MCP_CONFIG, null, 2) + "\n");
-  await ensureGitignoreMcp(rootDir);
+  await ensureGitignoreEntry(rootDir, ".mcp.json");
   return "created";
 }
 
-async function ensureGitignoreMcp(rootDir: string): Promise<void> {
+async function ensureGitignoreEntry(rootDir: string, entry: string): Promise<void> {
   const gitignorePath = join(rootDir, ".gitignore");
   try {
     if (await fileExists(gitignorePath)) {
       const content = await readFile(gitignorePath, "utf-8");
-      if (content.split("\n").some((l) => l.trim() === ".mcp.json")) return;
-      await writeFile(gitignorePath, content.trimEnd() + "\n.mcp.json\n");
+      if (content.split("\n").some((l) => l.trim() === entry)) return;
+      await writeFile(gitignorePath, content.trimEnd() + "\n" + entry + "\n");
     } else {
-      await writeFile(gitignorePath, ".mcp.json\n");
+      await writeFile(gitignorePath, entry + "\n");
     }
   } catch {
     // Non-critical

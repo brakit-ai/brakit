@@ -11,6 +11,12 @@ function makeTmpDir(): string {
   return dir;
 }
 
+function writePort(dir: string, port: string): void {
+  const portDir = resolve(dir, ".brakit");
+  mkdirSync(portDir, { recursive: true });
+  writeFileSync(resolve(portDir, "port"), port);
+}
+
 describe("discoverBrakitPort", () => {
   let tmpDir: string;
 
@@ -22,50 +28,78 @@ describe("discoverBrakitPort", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("throws when port file does not exist", () => {
-    expect(() => discoverBrakitPort(tmpDir)).toThrow("No port file found");
+  it("throws when no port file exists anywhere in the tree", () => {
+    expect(() => discoverBrakitPort(tmpDir)).toThrow("not running");
   });
 
-  it("returns correct port and baseUrl when file exists", () => {
-    const portDir = resolve(tmpDir, ".brakit");
-    mkdirSync(portDir, { recursive: true });
-    writeFileSync(resolve(portDir, "port"), "3456");
+  it("returns correct port and baseUrl when file exists in cwd", () => {
+    writePort(tmpDir, "3456");
 
     const result = discoverBrakitPort(tmpDir);
     expect(result.port).toBe(3456);
     expect(result.baseUrl).toBe("http://localhost:3456");
   });
 
+  it("finds port file in a child directory", () => {
+    const child = resolve(tmpDir, "my-app");
+    mkdirSync(child, { recursive: true });
+    writePort(child, "4000");
+
+    const result = discoverBrakitPort(tmpDir);
+    expect(result.port).toBe(4000);
+  });
+
+  it("finds port file in a child directory when starting from monorepo root", () => {
+    const monorepoRoot = resolve(tmpDir, "monorepo");
+    const frontend = resolve(monorepoRoot, "frontend");
+    mkdirSync(frontend, { recursive: true });
+    writePort(frontend, "5000");
+
+    // MCP starts at monorepo root — should find the sub-project's port
+    const result = discoverBrakitPort(monorepoRoot);
+    expect(result.port).toBe(5000);
+  });
+
+  it("does not find port in an unrelated sibling project", () => {
+    const parent = resolve(tmpDir, "projects");
+    const projectA = resolve(parent, "frontend");
+    const projectB = resolve(parent, "backend");
+    mkdirSync(projectA, { recursive: true });
+    mkdirSync(projectB, { recursive: true });
+    writePort(projectB, "5000");
+
+    // Starting from projectA should NOT pick up projectB's port
+    expect(() => discoverBrakitPort(projectA)).toThrow("not running");
+  });
+
+  it("finds port file by walking up the directory tree", () => {
+    writePort(tmpDir, "6000");
+    const nested = resolve(tmpDir, "src", "components");
+    mkdirSync(nested, { recursive: true });
+
+    const result = discoverBrakitPort(nested);
+    expect(result.port).toBe(6000);
+  });
+
   it("trims whitespace from port file content", () => {
-    const portDir = resolve(tmpDir, ".brakit");
-    mkdirSync(portDir, { recursive: true });
-    writeFileSync(resolve(portDir, "port"), "  7890\n  ");
+    writePort(tmpDir, "  7890\n  ");
 
     const result = discoverBrakitPort(tmpDir);
     expect(result.port).toBe(7890);
   });
 
   it("throws for invalid port (NaN)", () => {
-    const portDir = resolve(tmpDir, ".brakit");
-    mkdirSync(portDir, { recursive: true });
-    writeFileSync(resolve(portDir, "port"), "notanumber");
-
-    expect(() => discoverBrakitPort(tmpDir)).toThrow("Invalid port");
+    writePort(tmpDir, "notanumber");
+    expect(() => discoverBrakitPort(tmpDir)).toThrow("not running");
   });
 
   it("throws for port out of range", () => {
-    const portDir = resolve(tmpDir, ".brakit");
-    mkdirSync(portDir, { recursive: true });
-    writeFileSync(resolve(portDir, "port"), "99999");
-
-    expect(() => discoverBrakitPort(tmpDir)).toThrow("Invalid port");
+    writePort(tmpDir, "99999");
+    expect(() => discoverBrakitPort(tmpDir)).toThrow("not running");
   });
 
   it("throws for port 0", () => {
-    const portDir = resolve(tmpDir, ".brakit");
-    mkdirSync(portDir, { recursive: true });
-    writeFileSync(resolve(portDir, "port"), "0");
-
-    expect(() => discoverBrakitPort(tmpDir)).toThrow("Invalid port");
+    writePort(tmpDir, "0");
+    expect(() => discoverBrakitPort(tmpDir)).toThrow("not running");
   });
 });

@@ -6,6 +6,7 @@ import type {
   RequestDetail,
   EndpointSortKey,
 } from "./types.js";
+import type { TracedRequest } from "../types/index.js";
 import { ENRICHMENT_SEVERITY_FILTER } from "../constants/mcp.js";
 import { computeFindingId } from "../store/finding-id.js";
 import { parseEndpointKey } from "../utils/endpoint.js";
@@ -108,13 +109,13 @@ export async function enrichRequestDetail(
   if (opts.requestId) {
     const data = await client.getRequests({ search: opts.requestId, limit: 1 });
     if (data.requests.length > 0) {
-      return buildRequestDetail(client, data.requests[0].id);
+      return buildRequestDetail(client, data.requests[0]);
     }
   } else if (opts.endpoint) {
     const { method, path } = parseEndpointKey(opts.endpoint);
     const data = await client.getRequests({ method, search: path, limit: 1 });
     if (data.requests.length > 0) {
-      return buildRequestDetail(client, data.requests[0].id);
+      return buildRequestDetail(client, data.requests[0]);
     }
   }
 
@@ -123,18 +124,16 @@ export async function enrichRequestDetail(
 
 async function buildRequestDetail(
   client: BrakitClient,
-  requestId: string,
+  req: TracedRequest,
 ): Promise<RequestDetail> {
-  const [reqData, activity, queries, fetches] = await Promise.all([
-    client.getRequests({ search: requestId, limit: 1 }),
-    client.getActivity(requestId),
-    client.getQueries(requestId),
-    client.getFetches(requestId),
+  const [activity, queries, fetches] = await Promise.all([
+    client.getActivity(req.id),
+    client.getQueries(req.id),
+    client.getFetches(req.id),
   ]);
 
-  const req = reqData.requests[0];
   return {
-    id: requestId,
+    id: req.id,
     method: req.method,
     url: req.url,
     statusCode: req.statusCode,

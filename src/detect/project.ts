@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Framework, DetectedProject } from "../types/index.js";
 import { fileExists } from "../utils/fs.js";
+
+export type PackageManager = DetectedProject["packageManager"];
 
 interface FrameworkDetector {
   name: Framework;
@@ -29,20 +32,11 @@ export async function detectProject(
   const pkg = JSON.parse(raw);
   const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
 
-  let framework: Framework = "unknown";
-  let devCommand = "";
-  let devBin = "";
-  let defaultPort = 3000;
-
-  for (const f of FRAMEWORKS) {
-    if (allDeps[f.dep]) {
-      framework = f.name;
-      devCommand = f.devCmd;
-      devBin = join(rootDir, "node_modules", ".bin", f.bin);
-      defaultPort = f.defaultPort;
-      break;
-    }
-  }
+  const framework = detectFrameworkFromDeps(allDeps);
+  const matched = FRAMEWORKS.find((f) => f.name === framework);
+  const devCommand = matched?.devCmd ?? "";
+  const devBin = matched ? join(rootDir, "node_modules", ".bin", matched.bin) : "";
+  const defaultPort = matched?.defaultPort ?? 3000;
 
   const packageManager = await detectPackageManager(rootDir);
 
@@ -51,11 +45,28 @@ export async function detectProject(
 
 async function detectPackageManager(
   rootDir: string,
-): Promise<DetectedProject["packageManager"]> {
+): Promise<PackageManager> {
   if (await fileExists(join(rootDir, "bun.lockb"))) return "bun";
   if (await fileExists(join(rootDir, "bun.lock"))) return "bun";
   if (await fileExists(join(rootDir, "pnpm-lock.yaml"))) return "pnpm";
   if (await fileExists(join(rootDir, "yarn.lock"))) return "yarn";
   if (await fileExists(join(rootDir, "package-lock.json"))) return "npm";
+  return "unknown";
+}
+
+/** Match framework from a merged dependencies object. */
+export function detectFrameworkFromDeps(allDeps: Record<string, unknown>): Framework {
+  for (const f of FRAMEWORKS) {
+    if (allDeps[f.dep]) return f.name;
+  }
+  return "unknown";
+}
+
+/** Synchronous package manager detection via lock-file presence. */
+export function detectPackageManagerSync(rootDir: string): PackageManager {
+  if (existsSync(join(rootDir, "bun.lockb")) || existsSync(join(rootDir, "bun.lock"))) return "bun";
+  if (existsSync(join(rootDir, "pnpm-lock.yaml"))) return "pnpm";
+  if (existsSync(join(rootDir, "yarn.lock"))) return "yarn";
+  if (existsSync(join(rootDir, "package-lock.json"))) return "npm";
   return "unknown";
 }
