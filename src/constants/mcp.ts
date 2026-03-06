@@ -6,6 +6,7 @@ export const LAZY_DISCOVERY_TIMEOUT_MS = 2_000;
 export const CLIENT_FETCH_TIMEOUT_MS = 10_000;
 export const HEALTH_CHECK_TIMEOUT_MS = 3_000;
 export const DISCOVERY_POLL_INTERVAL_MS = 500;
+export const MAX_DISCOVERY_DEPTH = 5;
 
 export const MAX_TIMELINE_EVENTS = 20;
 export const MAX_RESOLVED_DISPLAY = 5;

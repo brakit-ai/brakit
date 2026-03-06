@@ -1,24 +1,46 @@
 import { platform, release, arch } from "node:os";
+import { spawnSync } from "node:child_process";
 import { VERSION } from "../index.js";
 import type { ServiceRegistry } from "../core/service-registry.js";
 import { readConfig, getOrCreateConfig, isTelemetryEnabled } from "./config.js";
+import {
+  POSTHOG_HOST,
+  POSTHOG_CAPTURE_PATH,
+  POSTHOG_REQUEST_TIMEOUT_MS,
+  POSTHOG_SPAWN_TIMEOUT_MS,
+} from "../constants/telemetry.js";
 
 export { isTelemetryEnabled, setTelemetryEnabled } from "./config.js";
 
-const POSTHOG_HOST = "https://app.posthog.com";
 const POSTHOG_KEY: string = process.env.POSTHOG_API_KEY ?? "";
 
-let startTime = 0;
-let sessionFramework = "";
-let sessionPackageManager = "";
-let sessionIsCustomCommand = false;
-let sessionAdapters: string[] = [];
-let requestCount = 0;
-const insightTypes = new Set<string>();
-const rulesTriggered = new Set<string>();
-const tabsViewed = new Set<string>();
-let dashboardOpened = false;
-let explainUsed = false;
+interface SessionState {
+  startTime: number;
+  framework: string;
+  packageManager: string;
+  isCustomCommand: boolean;
+  adapters: string[];
+  requestCount: number;
+  insightTypes: Set<string>;
+  rulesTriggered: Set<string>;
+  tabsViewed: Set<string>;
+  dashboardOpened: boolean;
+  explainUsed: boolean;
+}
+
+const session: SessionState = {
+  startTime: 0,
+  framework: "",
+  packageManager: "",
+  isCustomCommand: false,
+  adapters: [],
+  requestCount: 0,
+  insightTypes: new Set(),
+  rulesTriggered: new Set(),
+  tabsViewed: new Set(),
+  dashboardOpened: false,
+  explainUsed: false,
+};
 
 export function initSession(
   framework: string,
@@ -26,35 +48,35 @@ export function initSession(
   isCustomCommand: boolean,
   adapters: string[],
 ): void {
-  startTime = Date.now();
-  sessionFramework = framework;
-  sessionPackageManager = packageManager;
-  sessionIsCustomCommand = isCustomCommand;
-  sessionAdapters = adapters;
+  session.startTime = Date.now();
+  session.framework = framework;
+  session.packageManager = packageManager;
+  session.isCustomCommand = isCustomCommand;
+  session.adapters = adapters;
 }
 
 export function recordRequestCount(count: number): void {
-  requestCount = count;
+  session.requestCount = count;
 }
 
 export function recordInsightTypes(types: string[]): void {
-  for (const t of types) insightTypes.add(t);
+  for (const t of types) session.insightTypes.add(t);
 }
 
 export function recordRulesTriggered(rules: string[]): void {
-  for (const r of rules) rulesTriggered.add(r);
+  for (const r of rules) session.rulesTriggered.add(r);
 }
 
 export function recordTabViewed(tab: string): void {
-  tabsViewed.add(tab);
+  session.tabsViewed.add(tab);
 }
 
 export function recordDashboardOpened(): void {
-  dashboardOpened = true;
+  session.dashboardOpened = true;
 }
 
 export function recordExplainUsed(): void {
-  explainUsed = true;
+  session.explainUsed = true;
 }
 
 function speedBucket(ms: number): string {
@@ -67,9 +89,7 @@ function speedBucket(ms: number): string {
   return ">5000ms";
 }
 
-export function trackSession(
-  registry: ServiceRegistry,
-): void {
+export function trackSession(registry: ServiceRegistry): void {
   if (!isTelemetryEnabled()) return;
 
   const isFirstSession = readConfig() === null;
@@ -100,37 +120,46 @@ export function trackSession(
       node_version: process.version,
       os: `${platform()}-${release()}`,
       arch: arch(),
-      framework: sessionFramework,
-      package_manager: sessionPackageManager,
-      is_custom_command: sessionIsCustomCommand,
+      framework: session.framework,
+      package_manager: session.packageManager,
+      is_custom_command: session.isCustomCommand,
       first_session: isFirstSession,
-      adapters_detected: sessionAdapters,
-      request_count: requestCount,
+      adapters_detected: session.adapters,
+      request_count: session.requestCount,
       error_count: registry.get("error-store").getAll().length,
       query_count: registry.get("query-store").getAll().length,
       fetch_count: registry.get("fetch-store").getAll().length,
       insight_count: insights.length,
       finding_count: findings.length,
-      insight_types: [...insightTypes],
-      rules_triggered: [...rulesTriggered],
+      insight_types: [...session.insightTypes],
+      rules_triggered: [...session.rulesTriggered],
       endpoint_count: live.length,
       avg_duration_ms:
         totalRequests > 0 ? Math.round(totalDuration / totalRequests) : 0,
       slowest_endpoint_bucket: speedBucket(slowestP95),
-      tabs_viewed: [...tabsViewed],
-      dashboard_opened: dashboardOpened,
-      explain_used: explainUsed,
-      session_duration_s: Math.round((Date.now() - startTime) / 1000),
+      tabs_viewed: [...session.tabsViewed],
+      dashboard_opened: session.dashboardOpened,
+      explain_used: session.explainUsed,
+      session_duration_s: Math.round((Date.now() - session.startTime) / 1000),
       $lib: "brakit",
-      $ip: null,
+      $process_person_profile: false,
       $geoip_disable: true,
     },
   };
 
-  fetch(`${POSTHOG_HOST}/capture`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(5000),
-  }).catch(() => {});
+  // Fire-and-forget via child process so process.exit() doesn't kill the request.
+  try {
+    const body = JSON.stringify(payload);
+    const url = `${POSTHOG_HOST}${POSTHOG_CAPTURE_PATH}`;
+    spawnSync(
+      process.execPath,
+      [
+        "-e",
+        `fetch(${JSON.stringify(url)},{method:"POST",headers:{"content-type":"application/json"},body:${JSON.stringify(body)},signal:AbortSignal.timeout(${POSTHOG_REQUEST_TIMEOUT_MS})}).catch(()=>{})`,
+      ],
+      { timeout: POSTHOG_SPAWN_TIMEOUT_MS, stdio: "ignore" },
+    );
+  } catch {
+    /* non-critical */
+  }
 }
