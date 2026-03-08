@@ -4,8 +4,20 @@ export type Framework =
   | "nuxt"
   | "vite"
   | "astro"
+  | "flask"
+  | "fastapi"
+  | "django"
   | "custom"
   | "unknown";
+
+export type PythonPackageManager = "uv" | "poetry" | "pipenv" | "pip" | "unknown";
+
+export interface DetectedPythonProject {
+  framework: "flask" | "fastapi" | "django" | "unknown";
+  packageManager: PythonPackageManager;
+  entryFile: string | null;
+  defaultPort: number;
+}
 
 export interface DetectedProject {
   framework: Framework;

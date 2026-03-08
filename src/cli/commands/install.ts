@@ -1,10 +1,11 @@
 import { defineCommand } from "citty";
-import { resolve, join } from "node:path";
+import { resolve, join, dirname } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import pc from "picocolors";
 import { VERSION } from "../../index.js";
-import { detectProject } from "../../detect/project.js";
+import { scanForProjects } from "../../detect/project.js";
 import { fileExists } from "../../utils/fs.js";
 import { METRICS_DIR } from "../../constants/index.js";
 import type { Framework, DetectedProject } from "../../types/index.js";
@@ -26,69 +27,59 @@ export default defineCommand({
   },
   async run({ args }) {
     const rootDir = resolve(args.dir as string);
-    const pkgPath = join(rootDir, "package.json");
-
-    if (!(await fileExists(pkgPath))) {
-      console.error(pc.red("  No project found. Run this from your project directory."));
-      process.exit(1);
-    }
-
-    let pkg: { name?: unknown };
-    try {
-      pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
-    } catch {
-      console.error(pc.red("  Failed to read package.json."));
-      process.exit(1);
-    }
-
-    if (!pkg.name || typeof pkg.name !== "string") {
-      console.error(pc.red("  No project found. Run this from your project directory."));
-      process.exit(1);
-    }
-
-    let project: DetectedProject;
-    try {
-      project = await detectProject(rootDir);
-    } catch {
-      console.error(pc.red("  Failed to read package.json."));
-      process.exit(1);
-    }
 
     console.log();
     console.log(pc.bold("  ◆ brakit install"));
     console.log();
 
-    // 1. Install brakit as devDependency
-    const installed = await installPackage(rootDir, project.packageManager);
-    if (installed) {
-      console.log(pc.green("  ✓ Added brakit to devDependencies"));
-    } else {
-      console.log(pc.dim("  ✓ brakit already in dependencies"));
-    }
+    // Scan for projects
+    const projects = await scanForProjects(rootDir);
+    const nodeProjects = projects.filter((p) => p.type === "node");
+    const pythonProjects = projects.filter((p) => p.type === "python");
 
-    // 2. Create instrumentation file
-    const result = await setupInstrumentation(rootDir, project.framework);
-
-    if (result.action === "created") {
-      console.log(pc.green(`  ✓ Created ${result.file}`));
-      if (result.content) {
+    if (nodeProjects.length === 0) {
+      if (pythonProjects.length > 0) {
+        console.log(pc.dim("  Python project detected. To add brakit:"));
         console.log();
-        for (const line of result.content.split("\n")) {
-          console.log(pc.dim(`    ${line}`));
-        }
+        console.log(pc.bold("  pip install brakit"));
+        console.log(pc.dim("  Then add to the top of your entry file:"));
+        console.log(pc.bold("  import brakit  # noqa: F401"));
+        console.log();
+      } else {
+        console.error(pc.red("  No project found. Run this from your project directory."));
       }
-    } else if (result.action === "prepended") {
-      console.log(pc.green(`  ✓ Added import to ${result.file}`));
-    } else if (result.action === "exists") {
-      console.log(pc.dim(`  ✓ ${result.file} already has brakit import`));
-    } else {
-      printManualInstructions(project.framework);
+      process.exit(1);
     }
 
-    // 3. Ensure .brakit is gitignored
+    // Install Node.js projects
+    for (const p of nodeProjects) {
+      const node = p.node!;
+      const suffix = p.relDir === "." ? "" : ` in ${p.relDir}`;
+
+      const installed = await installPackage(p.dir, node.packageManager);
+      if (installed) {
+        console.log(pc.green(`  ✓ Added brakit to devDependencies${suffix}`));
+      } else {
+        console.log(pc.dim(`  ✓ brakit already in dependencies${suffix}`));
+      }
+
+      const result = await setupInstrumentation(p.dir, node.framework);
+      const prefix = p.relDir === "." ? "" : `${p.relDir}/`;
+      if (result.action === "created") {
+        console.log(pc.green(`  ✓ Created ${prefix}${result.file}`));
+      } else if (result.action === "prepended") {
+        console.log(pc.green(`  ✓ Added import to ${prefix}${result.file}`));
+      } else if (result.action === "exists") {
+        console.log(pc.dim(`  ✓ ${prefix}${result.file} already has brakit import`));
+      } else {
+        printManualInstructions(node.framework);
+      }
+    }
+
+    // Ensure .brakit is gitignored
     await ensureGitignoreEntry(rootDir, METRICS_DIR);
 
-    // 4. Configure MCP for Claude Code / Cursor
+    // Configure MCP for Claude Code / Cursor
     const mcpResult = await setupMcp(rootDir);
     if (mcpResult === "created" || mcpResult === "updated") {
       console.log(pc.green("  ✓ Configured MCP for Claude Code / Cursor"));
@@ -96,10 +87,30 @@ export default defineCommand({
       console.log(pc.dim("  ✓ MCP already configured"));
     }
 
-    // 5. Print next steps
+    // Also configure MCP at git root if different (so Claude Code finds it from parent dirs)
+    const gitRoot = findGitRoot(rootDir);
+    if (gitRoot && gitRoot !== rootDir) {
+      const parentMcpResult = await setupMcp(gitRoot);
+      if (parentMcpResult === "created" || parentMcpResult === "updated") {
+        console.log(pc.green("  ✓ Configured MCP at project root"));
+      }
+    }
+
+    // Print next steps
     console.log();
+    const port = nodeProjects[0]!.node?.defaultPort ?? 3000;
     console.log(pc.dim("  Start your app and visit:"));
-    console.log(pc.bold("  http://localhost:<port>/__brakit"));
+    console.log(pc.bold(`  http://localhost:${port}/__brakit`));
+
+    // Hint about detected Python projects
+    if (pythonProjects.length > 0) {
+      const pyLabel = pythonProjects.map((p) => p.relDir).join(", ");
+      console.log();
+      console.log(pc.dim(`  Python backend detected (${pyLabel}). To capture telemetry:`));
+      console.log(pc.bold("  pip install brakit"));
+      console.log(pc.dim("  Then add to the top of your entry file:"));
+      console.log(pc.bold("  import brakit  # noqa: F401"));
+    }
     console.log();
   },
 });
@@ -230,17 +241,17 @@ const MCP_CONFIG = {
   },
 };
 
-async function setupMcp(rootDir: string): Promise<"created" | "updated" | "exists"> {
+async function setupMcp(rootDir: string, config: { mcpServers: Record<string, unknown> } = MCP_CONFIG): Promise<"created" | "updated" | "exists"> {
   const mcpPath = join(rootDir, ".mcp.json");
 
   if (await fileExists(mcpPath)) {
     const raw = await readFile(mcpPath, "utf-8");
     try {
-      const config = JSON.parse(raw);
-      if (config?.mcpServers?.brakit) return "exists";
+      const existing = JSON.parse(raw);
+      if (existing?.mcpServers?.brakit) return "exists";
       // Merge brakit into existing config
-      config.mcpServers = { ...config.mcpServers, ...MCP_CONFIG.mcpServers };
-      await writeFile(mcpPath, JSON.stringify(config, null, 2) + "\n");
+      existing.mcpServers = { ...existing.mcpServers, ...config.mcpServers };
+      await writeFile(mcpPath, JSON.stringify(existing, null, 2) + "\n");
       await ensureGitignoreEntry(rootDir, ".mcp.json");
       return "updated";
     } catch {
@@ -248,7 +259,7 @@ async function setupMcp(rootDir: string): Promise<"created" | "updated" | "exist
     }
   }
 
-  await writeFile(mcpPath, JSON.stringify(MCP_CONFIG, null, 2) + "\n");
+  await writeFile(mcpPath, JSON.stringify(config, null, 2) + "\n");
   await ensureGitignoreEntry(rootDir, ".mcp.json");
   return "created";
 }
@@ -265,6 +276,16 @@ async function ensureGitignoreEntry(rootDir: string, entry: string): Promise<voi
     }
   } catch {
     // Non-critical
+  }
+}
+
+function findGitRoot(startDir: string): string | null {
+  let dir = resolve(startDir);
+  while (true) {
+    if (existsSync(join(dir, ".git"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
   }
 }
 

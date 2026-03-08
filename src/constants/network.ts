@@ -1,27 +1,16 @@
-/** IPv4/IPv6 loopback addresses used for localhost detection. */
-export const LOCALHOST_IPS = new Set([
-  "127.0.0.1",
-  "::1",
-  "::ffff:127.0.0.1",
-]);
-
-/** Hostnames considered local for CORS origin validation. */
-export const LOCALHOST_HOSTNAMES = new Set([
-  "localhost",
-  "127.0.0.1",
-  "::1",
-]);
-
-/** Environment variables indicating a cloud/CI environment (not local dev). */
 export const CLOUD_SIGNALS = [
-  "VERCEL", "VERCEL_ENV", "NETLIFY",
-  "AWS_LAMBDA_FUNCTION_NAME", "AWS_EXECUTION_ENV",
-  "GOOGLE_CLOUD_PROJECT", "GCP_PROJECT",
-  "AZURE_FUNCTIONS_ENVIRONMENT",
-  "FLY_APP_NAME", "RAILWAY_ENVIRONMENT",
-  "RENDER", "HEROKU", "CF_PAGES",
-  "KUBERNETES_SERVICE_HOST", "ECS_CONTAINER_METADATA_URI",
+  "VERCEL", "VERCEL_ENV", "NETLIFY", "AWS_LAMBDA_FUNCTION_NAME",
+  "AWS_EXECUTION_ENV", "ECS_CONTAINER_METADATA_URI", "GOOGLE_CLOUD_PROJECT",
+  "GCP_PROJECT", "K_SERVICE", "AZURE_FUNCTIONS_ENVIRONMENT",
+  "WEBSITE_SITE_NAME", "FLY_APP_NAME", "RAILWAY_ENVIRONMENT", "RENDER",
+  "HEROKU_APP_NAME", "DYNO", "CF_INSTANCE_GUID", "CF_PAGES",
+  "KUBERNETES_SERVICE_HOST",
 ] as const;
 
-/** Circuit breaker: disable brakit after this many errors. */
 export const MAX_HEALTH_ERRORS = 10;
+
+const LOCALHOST_IPS_TUPLE = ["127.0.0.1", "::1", "::ffff:127.0.0.1"] as const;
+const LOCALHOST_HOSTNAMES_TUPLE = ["localhost", "127.0.0.1", "::1"] as const;
+
+export const LOCALHOST_IPS: Set<string> = new Set(LOCALHOST_IPS_TUPLE);
+export const LOCALHOST_HOSTNAMES: Set<string> = new Set(LOCALHOST_HOSTNAMES_TUPLE);

@@ -5,7 +5,13 @@ export type {
   RequestListener,
 } from "./http.js";
 
-export type { Framework, DetectedProject, BrakitConfig } from "./config.js";
+export type {
+  Framework,
+  DetectedProject,
+  DetectedPythonProject,
+  PythonPackageManager,
+  BrakitConfig,
+} from "./config.js";
 
 export type {
   RequestCategory,

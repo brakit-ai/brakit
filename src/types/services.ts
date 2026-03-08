@@ -24,6 +24,7 @@ export interface TelemetryStoreInterface<T extends TelemetryEntry> {
 
 export interface RequestStoreInterface {
   capture(input: CaptureInput): TracedRequest;
+  add(entry: TracedRequest): void;
   getAll(): readonly TracedRequest[];
   clear(): void;
 }
