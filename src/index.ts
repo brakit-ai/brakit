@@ -24,7 +24,13 @@ export type { Insight, InsightContext } from "./analysis/insights.js";
 export type { InsightRule } from "./analysis/insights/rule.js";
 export { detectProject } from "./detect/project.js";
 export { AdapterRegistry } from "./instrument/adapter-registry.js";
-export { SecurityScanner, createDefaultScanner } from "./analysis/rules/index.js";
+export {
+  SecurityScanner,
+  createDefaultScanner,
+} from "./analysis/rules/index.js";
 export { AnalysisEngine } from "./analysis/engine.js";
 export { computeInsights } from "./analysis/insights.js";
-export { InsightRunner, createDefaultInsightRunner } from "./analysis/insights/index.js";
+export {
+  InsightRunner,
+  createDefaultInsightRunner,
+} from "./analysis/insights/index.js";

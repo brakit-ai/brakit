@@ -7,3 +7,15 @@ coverage/
 .env.*
 *.log
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+.eggs/
+build/
+*.so
+.venv/
+venv/

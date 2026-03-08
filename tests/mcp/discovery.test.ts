@@ -60,7 +60,7 @@ describe("discoverBrakitPort", () => {
     expect(result.port).toBe(5000);
   });
 
-  it("does not find port in an unrelated sibling project", () => {
+  it("finds port in a sibling project via parent walk-up", () => {
     const parent = resolve(tmpDir, "projects");
     const projectA = resolve(parent, "frontend");
     const projectB = resolve(parent, "backend");
@@ -68,8 +68,9 @@ describe("discoverBrakitPort", () => {
     mkdirSync(projectB, { recursive: true });
     writePort(projectB, "5000");
 
-    // Starting from projectA should NOT pick up projectB's port
-    expect(() => discoverBrakitPort(projectA)).toThrow("not running");
+    // Starting from projectA should find projectB's port via parent scan
+    const result = discoverBrakitPort(projectA);
+    expect(result.port).toBe(5000);
   });
 
   it("finds port file by walking up the directory tree", () => {

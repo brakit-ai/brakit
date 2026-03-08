@@ -87,6 +87,16 @@ export class RequestStore {
     return entry;
   }
 
+  add(entry: TracedRequest): void {
+    this.requests.push(entry);
+    if (this.requests.length > this.maxEntries) {
+      this.requests.shift();
+    }
+    for (const fn of this.listeners) {
+      fn(entry);
+    }
+  }
+
   getAll(): readonly TracedRequest[] {
     return this.requests;
   }

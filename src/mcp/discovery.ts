@@ -46,10 +46,10 @@ function searchForPort(startDir: string): number | null {
   const initial = portInDir(start) ?? portInChildren(start);
   if (initial) return initial;
 
-  // Walk up only — no sibling scanning at ancestor levels to avoid matching unrelated projects
+  // Walk up and check children at each level (handles parent-of-project case)
   let dir = dirname(start);
   for (let depth = 0; depth < MAX_DISCOVERY_DEPTH; depth++) {
-    const port = portInDir(dir);
+    const port = portInDir(dir) ?? portInChildren(dir);
     if (port) return port;
 
     const parent = dirname(dir);

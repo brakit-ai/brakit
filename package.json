@@ -22,7 +22,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && npx tsx scripts/export-dashboard.ts",
+    "build:dashboard": "npx tsx scripts/export-dashboard.ts",
     "dev": "tsup --watch",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",

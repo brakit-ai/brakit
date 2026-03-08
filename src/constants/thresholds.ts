@@ -3,8 +3,6 @@ export const SLOW_REQUEST_THRESHOLD_MS = 2_000;
 export const MIN_POLLING_SEQUENCE = 3;
 export const ENDPOINT_TRUNCATE_LENGTH = 12;
 export const SHUTDOWN_TIMEOUT_MS = 3_000;
-
-// Insight detection thresholds (shared with client-side constants)
 export const N1_QUERY_THRESHOLD = 5;
 export const ERROR_RATE_THRESHOLD_PCT = 20;
 export const SLOW_ENDPOINT_THRESHOLD_MS = 1_000;
@@ -20,23 +18,13 @@ export const OVERFETCH_MIN_REQUESTS = 2;
 export const OVERFETCH_MIN_FIELDS = 8;
 export const OVERFETCH_MIN_INTERNAL_IDS = 2;
 export const OVERFETCH_NULL_RATIO = 0.3;
-
 export const REGRESSION_PCT_THRESHOLD = 50;
 export const REGRESSION_MIN_INCREASE_MS = 200;
 export const REGRESSION_MIN_REQUESTS = 5;
 export const QUERY_COUNT_REGRESSION_RATIO = 1.5;
-
 export const OVERFETCH_MANY_FIELDS = 12;
 export const OVERFETCH_UNWRAP_MIN_SIZE = 3;
 export const MAX_DUPLICATE_INSIGHTS = 3;
-
 export const INSIGHT_WINDOW_PER_ENDPOINT = 2;
-
-/**
- * Consecutive recompute cycles an insight must be absent before resolving.
- * Hysteresis guard: prevents flickering from the sliding analysis window.
- */
 export const RESOLVE_AFTER_ABSENCES = 3;
-
-/** Remove resolved insights from tracking after 30 minutes. */
 export const RESOLVED_INSIGHT_TTL_MS = 1_800_000;

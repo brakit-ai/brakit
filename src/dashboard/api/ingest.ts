@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import type { ServiceRegistry } from "../../core/service-registry.js";
-import type { TelemetryBatch, TelemetryEvent } from "../../types/index.js";
+import type { TelemetryBatch, TelemetryEvent, HttpMethod } from "../../types/index.js";
 import type { NormalizedOp } from "../../types/index.js";
 import { MAX_INGEST_BYTES } from "../../constants/limits.js";
 import { sendJson } from "./shared.js";
@@ -23,7 +24,7 @@ interface SDKIngestPayload {
 }
 
 interface SDKEvent {
-  type: "db.query" | "fetch" | "log" | "error" | "auth.check";
+  type: "request" | "db.query" | "fetch" | "log" | "error" | "auth.check";
   requestId?: string;
   timestamp: number;
   data: Record<string, unknown>;
@@ -114,6 +115,25 @@ export function createIngestHandler(
           timestamp: ts,
         });
         break;
+      case "request": {
+        const url = (event.data.url as string) ?? "";
+        registry.get("request-store").add({
+          id: (event.data.id as string) ?? randomUUID(),
+          method: ((event.data.method as string) ?? "GET") as HttpMethod,
+          url,
+          path: url.split("?")[0],
+          headers: (event.data.headers as Record<string, string>) ?? {},
+          requestBody: (event.data.requestBody as string) ?? null,
+          statusCode: (event.data.statusCode as number) ?? 200,
+          responseHeaders: (event.data.responseHeaders as Record<string, string>) ?? {},
+          responseBody: (event.data.responseBody as string) ?? null,
+          startedAt: ts,
+          durationMs: (event.data.durationMs as number) ?? 0,
+          responseSize: (event.data.responseSize as number) ?? 0,
+          isStatic: (event.data.isStatic as boolean) ?? false,
+        });
+        break;
+      }
     }
   };
 
