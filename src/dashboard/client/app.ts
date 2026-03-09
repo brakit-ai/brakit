@@ -94,6 +94,7 @@ export function getApp(): string {
     events.addEventListener('insights', function(e) {
       state.insights = JSON.parse(e.data);
       if (state.activeView === 'overview') renderOverview();
+      if (state.activeView === 'security') renderSecurity();
       updateStats();
     });
 

@@ -6,13 +6,16 @@ import type {
   FindingState,
   FindingSource,
   FindingsData,
+  AiFixStatus,
 } from "../types/finding-lifecycle.js";
 import {
   METRICS_DIR,
   FINDINGS_FILE,
   FINDINGS_FLUSH_INTERVAL_MS,
 } from "../constants/index.js";
+import { FINDINGS_DATA_VERSION } from "../constants/limits.js";
 import { AtomicWriter } from "../utils/atomic-writer.js";
+import { brakitDebug } from "../utils/log.js";
 import { computeFindingId } from "./finding-id.js";
 
 export class FindingStore {
@@ -76,6 +79,8 @@ export class FindingStore {
       lastSeenAt: now,
       resolvedAt: null,
       occurrences: 1,
+      aiStatus: null,
+      aiNotes: null,
     };
     this.findings.set(id, stateful);
     this.dirty = true;
@@ -89,6 +94,21 @@ export class FindingStore {
     if (state === "resolved") {
       finding.resolvedAt = Date.now();
     }
+    this.dirty = true;
+    return true;
+  }
+
+  reportFix(findingId: string, status: AiFixStatus, notes: string): boolean {
+    const finding = this.findings.get(findingId);
+    if (!finding) return false;
+
+    finding.aiStatus = status;
+    finding.aiNotes = notes;
+
+    if (status === "fixed") {
+      finding.state = "fixing";
+    }
+
     this.dirty = true;
     return true;
   }
@@ -108,7 +128,7 @@ export class FindingStore {
     for (const [id, stateful] of this.findings) {
       if (
         stateful.source === "passive" &&
-        stateful.state === "open" &&
+        (stateful.state === "open" || stateful.state === "fixing") &&
         !currentIds.has(id)
       ) {
         stateful.state = "resolved";
@@ -140,14 +160,14 @@ export class FindingStore {
       if (existsSync(this.findingsPath)) {
         const raw = readFileSync(this.findingsPath, "utf-8");
         const parsed = JSON.parse(raw);
-        if (parsed?.version === 1 && Array.isArray(parsed.findings)) {
+        if (parsed?.version === FINDINGS_DATA_VERSION && Array.isArray(parsed.findings)) {
           for (const f of parsed.findings as StatefulFinding[]) {
             this.findings.set(f.findingId, f);
           }
         }
       }
-    } catch {
-      // Corrupt or missing file — start with empty store
+    } catch (err) {
+      brakitDebug(`FindingStore: could not load findings file, starting fresh: ${err}`);
     }
   }
 
@@ -165,7 +185,7 @@ export class FindingStore {
 
   private serialize(): string {
     const data: FindingsData = {
-      version: 1,
+      version: FINDINGS_DATA_VERSION,
       findings: [...this.findings.values()],
     };
     return JSON.stringify(data);

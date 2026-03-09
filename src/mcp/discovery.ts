@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { PORT_FILE, DASHBOARD_API_REQUESTS } from "../constants/index.js";
+import { brakitDebug } from "../utils/log.js";
 import {
   DISCOVERY_POLL_INTERVAL_MS,
   MAX_DISCOVERY_DEPTH,
@@ -29,13 +30,16 @@ function portInChildren(dir: string): number | null {
       const child = resolve(dir, entry);
       try {
         if (!statSync(child).isDirectory()) continue;
-      } catch {
+      } catch (err) {
+        brakitDebug(`discovery: stat failed for ${child}: ${err}`);
         continue;
       }
       const port = portInDir(child);
       if (port) return port;
     }
-  } catch {}
+  } catch (err) {
+    brakitDebug(`discovery: readdir failed for ${dir}: ${err}`);
+  }
   return null;
 }
 

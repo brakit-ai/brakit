@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ReadonlyTelemetryStore } from "../../store/index.js";
-import { LOCALHOST_HOSTNAMES, SENSITIVE_HEADER_NAMES } from "../../constants/index.js";
-import { SENSITIVE_MASK_MIN_LENGTH, SENSITIVE_MASK_VISIBLE_CHARS } from "../../constants/limits.js";
+import { LOCALHOST_HOSTNAMES, SENSITIVE_HEADER_NAMES, URL_PARSE_BASE } from "../../constants/index.js";
+import { SENSITIVE_MASK_MIN_LENGTH, SENSITIVE_MASK_VISIBLE_CHARS, MAX_JSON_BODY_BYTES, SENSITIVE_MASK_PLACEHOLDER } from "../../constants/limits.js";
 
 export function maskSensitiveHeaders(
   headers: Record<string, string>,
@@ -11,7 +11,7 @@ export function maskSensitiveHeaders(
     if (SENSITIVE_HEADER_NAMES.has(key.toLowerCase())) {
       const s = String(value);
       masked[key] = s.length <= SENSITIVE_MASK_MIN_LENGTH
-        ? "****"
+        ? SENSITIVE_MASK_PLACEHOLDER
         : s.slice(0, SENSITIVE_MASK_VISIBLE_CHARS) + "..." + s.slice(-SENSITIVE_MASK_VISIBLE_CHARS);
     } else {
       masked[key] = value;
@@ -20,7 +20,7 @@ export function maskSensitiveHeaders(
   return masked;
 }
 
-function getCorsOrigin(req: IncomingMessage): string {
+export function getCorsOrigin(req: IncomingMessage): string {
   const origin = req.headers.origin ?? "";
   try {
     const url = new URL(origin);
@@ -66,13 +66,47 @@ export function requireGet(
   return true;
 }
 
+export function parseRequestUrl(req: IncomingMessage): URL {
+  return new URL(req.url ?? "/", URL_PARSE_BASE);
+}
+
+export function readJsonBody(
+  req: IncomingMessage,
+  res: ServerResponse,
+  maxBytes: number = MAX_JSON_BODY_BYTES,
+): Promise<Record<string, unknown> | null> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        sendJson(req, res, 413, { error: "Payload too large" });
+        req.destroy();
+        resolve(null);
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      if (size > maxBytes) { resolve(null); return; }
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString()));
+      } catch {
+        sendJson(req, res, 400, { error: "Invalid JSON body" });
+        resolve(null);
+      }
+    });
+  });
+}
+
 export function handleTelemetryGet(
   req: IncomingMessage,
   res: ServerResponse,
   store: ReadonlyTelemetryStore,
 ): void {
   if (!requireGet(req, res)) return;
-  const url = new URL(req.url ?? "/", "http://localhost");
+  const url = parseRequestUrl(req);
   const requestId = url.searchParams.get("requestId");
   const entries = requestId
     ? store.getByRequest(requestId)

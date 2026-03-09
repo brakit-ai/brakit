@@ -49,6 +49,8 @@ export interface EnrichedFinding {
   hint: string;
   occurrences: number;
   context: string;
+  aiStatus: "fixed" | "wont_fix" | null;
+  aiNotes: string | null;
 }
 
 export interface EndpointSummary {

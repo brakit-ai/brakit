@@ -1,27 +1,16 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { getToolDefinitions, handleToolCall } from "../../src/mcp/tools/index.js";
-import type { BrakitClient } from "../../src/mcp/client.js";
+import { makeMockClient } from "../helpers/mcp-factories.js";
 
-function makeMockClient(): BrakitClient {
-  return {
-    getRequests: vi.fn(),
-    getSecurityFindings: vi.fn(),
-    getInsights: vi.fn(),
-    getQueries: vi.fn(),
-    getFetches: vi.fn(),
-    getErrors: vi.fn(),
-    getActivity: vi.fn(),
-    getLiveMetrics: vi.fn(),
-    getFindings: vi.fn(),
-    clearAll: vi.fn(),
-    isAlive: vi.fn(),
-  } as unknown as BrakitClient;
-}
+const EXPECTED_TOOL_NAMES = [
+  "get_findings", "get_endpoints", "get_request_detail",
+  "verify_fix", "get_report", "clear_findings", "report_fix",
+];
 
 describe("getToolDefinitions", () => {
-  it("returns all 6 tools", () => {
+  it("returns all registered tools", () => {
     const tools = getToolDefinitions();
-    expect(tools).toHaveLength(6);
+    expect(tools).toHaveLength(EXPECTED_TOOL_NAMES.length);
   });
 
   it("each tool has name, description, and inputSchema", () => {
@@ -36,12 +25,9 @@ describe("getToolDefinitions", () => {
 
   it("contains expected tool names", () => {
     const names = getToolDefinitions().map((t) => t.name);
-    expect(names).toContain("get_findings");
-    expect(names).toContain("get_endpoints");
-    expect(names).toContain("get_request_detail");
-    expect(names).toContain("verify_fix");
-    expect(names).toContain("get_report");
-    expect(names).toContain("clear_findings");
+    for (const name of EXPECTED_TOOL_NAMES) {
+      expect(names).toContain(name);
+    }
   });
 });
 

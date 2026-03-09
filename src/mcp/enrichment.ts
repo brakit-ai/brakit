@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { BrakitClient } from "./client.js";
 import type {
   EnrichedFinding,
@@ -8,17 +7,8 @@ import type {
 } from "./types.js";
 import type { TracedRequest } from "../types/index.js";
 import { ENRICHMENT_SEVERITY_FILTER } from "../constants/mcp.js";
-import { computeFindingId } from "../store/finding-id.js";
+import { computeInsightId } from "../store/finding-id.js";
 import { parseEndpointKey } from "../utils/endpoint.js";
-
-/**
- * Derive a stable ID for an insight (which lacks the `rule` field of SecurityFinding).
- * Uses the insight type as the rule equivalent.
- */
-function computeInsightId(type: string, endpoint: string, desc: string): string {
-  const key = `${type}:${endpoint}:${desc}`;
-  return createHash("sha256").update(key).digest("hex").slice(0, 16);
-}
 
 export async function enrichFindings(
   client: BrakitClient,
@@ -30,7 +20,8 @@ export async function enrichFindings(
 
   const enriched: EnrichedFinding[] = [];
 
-  for (const f of securityData.findings) {
+  for (const sf of securityData.findings) {
+    const f = sf.finding;
     let context = "";
     try {
       const { path } = parseEndpointKey(f.endpoint);
@@ -49,7 +40,7 @@ export async function enrichFindings(
     }
 
     enriched.push({
-      findingId: computeFindingId(f),
+      findingId: sf.findingId,
       severity: f.severity,
       title: f.title,
       endpoint: f.endpoint,
@@ -57,6 +48,8 @@ export async function enrichFindings(
       hint: f.hint,
       occurrences: f.count,
       context,
+      aiStatus: sf.aiStatus,
+      aiNotes: sf.aiNotes,
     });
   }
 
@@ -75,6 +68,8 @@ export async function enrichFindings(
       hint: i.hint,
       occurrences: 1,
       context: i.detail ?? "",
+      aiStatus: si.aiStatus,
+      aiNotes: si.aiNotes,
     });
   }
 

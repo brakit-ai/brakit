@@ -19,6 +19,7 @@ import {
   DASHBOARD_API_SECURITY,
   DASHBOARD_API_TAB,
   DASHBOARD_API_FINDINGS,
+  DASHBOARD_API_FINDINGS_REPORT,
   MAX_TAB_NAME_LENGTH,
   VALID_TABS,
 } from "../constants/index.js";
@@ -36,7 +37,7 @@ import {
   createActivityHandler,
 } from "./api/index.js";
 import { createInsightsHandler, createSecurityHandler } from "./api/insights.js";
-import { createFindingsHandler } from "./api/findings.js";
+import { createFindingsHandler, createFindingsReportHandler } from "./api/findings.js";
 import { createSSEHandler } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
 import { recordTabViewed, recordDashboardOpened, isTelemetryEnabled } from "../telemetry/index.js";
@@ -84,7 +85,9 @@ export function createDashboardHandler(
   }
 
   if (registry.has("finding-store")) {
-    routes[DASHBOARD_API_FINDINGS] = createFindingsHandler(registry.get("finding-store"));
+    const findingStore = registry.get("finding-store");
+    routes[DASHBOARD_API_FINDINGS] = createFindingsHandler(findingStore);
+    routes[DASHBOARD_API_FINDINGS_REPORT] = createFindingsReportHandler(findingStore, registry.get("event-bus"), analysisEngine);
   }
 
   routes[DASHBOARD_API_TAB] = (req, res) => {

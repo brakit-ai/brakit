@@ -9,8 +9,7 @@ export const CLOUD_SIGNALS = [
 
 export const MAX_HEALTH_ERRORS = 10;
 
-const LOCALHOST_IPS_TUPLE = ["127.0.0.1", "::1", "::ffff:127.0.0.1"] as const;
-const LOCALHOST_HOSTNAMES_TUPLE = ["localhost", "127.0.0.1", "::1"] as const;
+export const LOCALHOST_IPS: Set<string> = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+export const LOCALHOST_HOSTNAMES: Set<string> = new Set(["localhost", "127.0.0.1", "::1"]);
 
-export const LOCALHOST_IPS: Set<string> = new Set(LOCALHOST_IPS_TUPLE);
-export const LOCALHOST_HOSTNAMES: Set<string> = new Set(LOCALHOST_HOSTNAMES_TUPLE);
+export const URL_PARSE_BASE = "http://localhost";

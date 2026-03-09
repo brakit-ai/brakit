@@ -1,6 +1,7 @@
 import type { Insight } from "../analysis/insights/types.js";
+import type { AiFixStatus, FindingState } from "./finding-lifecycle.js";
 
-export type InsightState = "open" | "resolved";
+export type InsightState = FindingState;
 
 export interface StatefulInsight {
   key: string;
@@ -11,4 +12,6 @@ export interface StatefulInsight {
   resolvedAt: number | null;
   /** Consecutive recompute cycles where the insight was not detected. */
   consecutiveAbsences: number;
+  aiStatus: AiFixStatus | null;
+  aiNotes: string | null;
 }

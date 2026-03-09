@@ -190,6 +190,8 @@ export function makeStatefulInsight(
     lastSeenAt: Date.now(),
     resolvedAt: null,
     consecutiveAbsences: 0,
+    aiStatus: null,
+    aiNotes: null,
     ...stateOverrides,
   };
 }

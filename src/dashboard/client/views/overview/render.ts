@@ -36,7 +36,7 @@ export function getOverviewRender(): string {
     container.appendChild(summary);
 
     var all = state.insights || [];
-    var open = all.filter(function(si) { return si.state === 'open'; });
+    var open = all.filter(function(si) { return si.state === 'open' || si.state === 'fixing'; });
     var resolved = all.filter(function(si) { return si.state === 'resolved'; });
 
     if (open.length === 0 && resolved.length === 0) {
@@ -81,10 +81,17 @@ export function getOverviewRender(): string {
           if (insight.hint) expandHtml += '<div class="ov-card-hint">' + escHtml(insight.hint) + '</div>';
           expandHtml += '<span class="ov-card-link" data-nav="' + insight.nav + '">View in ' + (NAV_LABELS[insight.nav] || insight.nav) + ' \\u2192</span>';
 
+          var aiBadge = '';
+          if (si.state === 'fixing' && si.aiStatus === 'fixed') {
+            aiBadge = '<span class="sec-ai-badge sec-ai-fixing">AI fixed \\u2014 awaiting verification</span>';
+          } else if (si.aiStatus === 'wont_fix') {
+            aiBadge = '<span class="sec-ai-badge sec-ai-wontfix">AI: won\\u2019t fix</span>';
+          }
+
           card.innerHTML =
             '<span class="ov-card-icon ' + iconCls + '">' + iconChar + '</span>' +
             '<div class="ov-card-body">' +
-              '<div class="ov-card-title">' + escHtml(insight.title) + '</div>' +
+              '<div class="ov-card-title">' + escHtml(insight.title) + aiBadge + '</div>' +
               '<div class="ov-card-desc">' + insight.desc + '</div>' +
               '<div class="ov-card-expand">' + expandHtml + '</div>' +
             '</div>' +

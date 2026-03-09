@@ -1,20 +1,21 @@
 export const DASHBOARD_PREFIX = "/__brakit";
-export const DASHBOARD_API_REQUESTS = "/__brakit/api/requests";
-export const DASHBOARD_API_EVENTS = "/__brakit/api/events";
-export const DASHBOARD_API_FLOWS = "/__brakit/api/flows";
-export const DASHBOARD_API_CLEAR = "/__brakit/api/clear";
-export const DASHBOARD_API_LOGS = "/__brakit/api/logs";
-export const DASHBOARD_API_FETCHES = "/__brakit/api/fetches";
-export const DASHBOARD_API_ERRORS = "/__brakit/api/errors";
-export const DASHBOARD_API_QUERIES = "/__brakit/api/queries";
-export const DASHBOARD_API_INGEST = "/__brakit/api/ingest";
-export const DASHBOARD_API_METRICS = "/__brakit/api/metrics";
-export const DASHBOARD_API_ACTIVITY = "/__brakit/api/activity";
-export const DASHBOARD_API_METRICS_LIVE = "/__brakit/api/metrics/live";
-export const DASHBOARD_API_INSIGHTS = "/__brakit/api/insights";
-export const DASHBOARD_API_SECURITY = "/__brakit/api/security";
-export const DASHBOARD_API_TAB = "/__brakit/api/tab";
-export const DASHBOARD_API_FINDINGS = "/__brakit/api/findings";
+export const DASHBOARD_API_REQUESTS = `${DASHBOARD_PREFIX}/api/requests` as const;
+export const DASHBOARD_API_EVENTS = `${DASHBOARD_PREFIX}/api/events` as const;
+export const DASHBOARD_API_FLOWS = `${DASHBOARD_PREFIX}/api/flows` as const;
+export const DASHBOARD_API_CLEAR = `${DASHBOARD_PREFIX}/api/clear` as const;
+export const DASHBOARD_API_LOGS = `${DASHBOARD_PREFIX}/api/logs` as const;
+export const DASHBOARD_API_FETCHES = `${DASHBOARD_PREFIX}/api/fetches` as const;
+export const DASHBOARD_API_ERRORS = `${DASHBOARD_PREFIX}/api/errors` as const;
+export const DASHBOARD_API_QUERIES = `${DASHBOARD_PREFIX}/api/queries` as const;
+export const DASHBOARD_API_INGEST = `${DASHBOARD_PREFIX}/api/ingest` as const;
+export const DASHBOARD_API_METRICS = `${DASHBOARD_PREFIX}/api/metrics` as const;
+export const DASHBOARD_API_ACTIVITY = `${DASHBOARD_PREFIX}/api/activity` as const;
+export const DASHBOARD_API_METRICS_LIVE = `${DASHBOARD_PREFIX}/api/metrics/live` as const;
+export const DASHBOARD_API_INSIGHTS = `${DASHBOARD_PREFIX}/api/insights` as const;
+export const DASHBOARD_API_SECURITY = `${DASHBOARD_PREFIX}/api/security` as const;
+export const DASHBOARD_API_TAB = `${DASHBOARD_PREFIX}/api/tab` as const;
+export const DASHBOARD_API_FINDINGS = `${DASHBOARD_PREFIX}/api/findings` as const;
+export const DASHBOARD_API_FINDINGS_REPORT = `${DASHBOARD_PREFIX}/api/findings/report` as const;
 
 const VALID_TABS_TUPLE = [
   "overview", "actions", "requests", "fetches", "queries",
