@@ -9,3 +9,4 @@ export * from "./mcp.js";
 export * from "./encoding.js";
 export * from "./severity.js";
 export * from "./telemetry.js";
+export * from "./lifecycle.js";

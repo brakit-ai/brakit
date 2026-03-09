@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SecurityFinding } from "../types/index.js";
+import { FINDING_ID_HASH_LENGTH } from "../constants/limits.js";
 
 /**
  * Compute a stable finding ID by hashing rule + endpoint + description.
@@ -12,5 +13,14 @@ import type { SecurityFinding } from "../types/index.js";
  */
 export function computeFindingId(finding: SecurityFinding): string {
   const key = `${finding.rule}:${finding.endpoint}:${finding.desc}`;
-  return createHash("sha256").update(key).digest("hex").slice(0, 16);
+  return createHash("sha256").update(key).digest("hex").slice(0, FINDING_ID_HASH_LENGTH);
+}
+
+/**
+ * Compute a stable ID for an insight (which lacks the `rule` field).
+ * Uses the insight type as the rule equivalent.
+ */
+export function computeInsightId(type: string, endpoint: string, desc: string): string {
+  const key = `${type}:${endpoint}:${desc}`;
+  return createHash("sha256").update(key).digest("hex").slice(0, FINDING_ID_HASH_LENGTH);
 }

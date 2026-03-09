@@ -1,33 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
-import type { BrakitClient } from "../../src/mcp/client.js";
 import { getFindings } from "../../src/mcp/tools/get-findings.js";
 import { getEndpoints } from "../../src/mcp/tools/get-endpoints.js";
 import { getRequestDetail } from "../../src/mcp/tools/get-request-detail.js";
 import { verifyFix } from "../../src/mcp/tools/verify-fix.js";
 import { getReport } from "../../src/mcp/tools/get-report.js";
 import { clearFindings } from "../../src/mcp/tools/clear-findings.js";
-import { makeSecurityFinding, makeStatefulFinding } from "../helpers/mcp-factories.js";
+import { reportFix } from "../../src/mcp/tools/report-fix.js";
+import { makeSecurityFinding, makeStatefulFinding, makeMockClient } from "../helpers/mcp-factories.js";
 import { makeRequest, makeQuery, makeFetch } from "../helpers/factories.js";
-
-function makeMockClient(overrides: Partial<Record<keyof BrakitClient, unknown>> = {}): BrakitClient {
-  return {
-    getSecurityFindings: vi.fn().mockResolvedValue({ findings: [] }),
-    getInsights: vi.fn().mockResolvedValue({ insights: [] }),
-    getLiveMetrics: vi.fn().mockResolvedValue({ endpoints: [] }),
-    getRequests: vi.fn().mockResolvedValue({ total: 0, requests: [] }),
-    getActivity: vi.fn().mockResolvedValue({
-      requestId: "", total: 0, timeline: [],
-      counts: { fetches: 0, logs: 0, errors: 0, queries: 0 },
-    }),
-    getQueries: vi.fn().mockResolvedValue({ total: 0, entries: [] }),
-    getFetches: vi.fn().mockResolvedValue({ total: 0, entries: [] }),
-    getErrors: vi.fn().mockResolvedValue({ total: 0, entries: [] }),
-    getFindings: vi.fn().mockResolvedValue({ total: 0, findings: [] }),
-    clearAll: vi.fn().mockResolvedValue(true),
-    isAlive: vi.fn().mockResolvedValue(true),
-    ...overrides,
-  } as unknown as BrakitClient;
-}
 
 describe("get_findings", () => {
   it("returns healthy message when no findings", async () => {
@@ -38,8 +18,9 @@ describe("get_findings", () => {
 
   it("formats findings with severity and endpoint", async () => {
     const finding = makeSecurityFinding({ severity: "critical", title: "SQL Injection", endpoint: "POST /api/login" });
+    const stateful = makeStatefulFinding({ finding });
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [finding] }),
+      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [stateful] }),
     });
 
     const result = await getFindings.handler(client, {});
@@ -49,10 +30,10 @@ describe("get_findings", () => {
   });
 
   it("filters by severity", async () => {
-    const critical = makeSecurityFinding({ severity: "critical", rule: "r1" });
-    const warning = makeSecurityFinding({ severity: "warning", rule: "r2" });
+    const criticalStateful = makeStatefulFinding({ finding: makeSecurityFinding({ severity: "critical", rule: "r1" }) });
+    const warningStateful = makeStatefulFinding({ finding: makeSecurityFinding({ severity: "warning", rule: "r2" }) });
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [critical, warning] }),
+      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [criticalStateful, warningStateful] }),
     });
 
     const result = await getFindings.handler(client, { severity: "critical" });
@@ -64,7 +45,7 @@ describe("get_findings", () => {
     const finding = makeSecurityFinding();
     const stateful = makeStatefulFinding({ finding, state: "open" });
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [finding] }),
+      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [stateful] }),
       getFindings: vi.fn().mockResolvedValue({ total: 1, findings: [stateful] }),
     });
 
@@ -240,5 +221,56 @@ describe("clear_findings", () => {
     const client = makeMockClient({ clearAll: vi.fn().mockResolvedValue(false) });
     const result = await clearFindings.handler(client, {});
     expect(result.content[0].text).toContain("Failed");
+  });
+});
+
+describe("report_fix", () => {
+  it("requires finding_id", async () => {
+    const client = makeMockClient();
+    const result = await reportFix.handler(client, { status: "fixed", summary: "done" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("finding_id is required");
+  });
+
+  it("rejects empty finding_id", async () => {
+    const client = makeMockClient();
+    const result = await reportFix.handler(client, { finding_id: "  ", status: "fixed", summary: "done" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("finding_id is required");
+  });
+
+  it("rejects invalid status", async () => {
+    const client = makeMockClient();
+    const result = await reportFix.handler(client, { finding_id: "abc", status: "invalid", summary: "done" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("status must be");
+  });
+
+  it("requires summary", async () => {
+    const client = makeMockClient();
+    const result = await reportFix.handler(client, { finding_id: "abc", status: "fixed", summary: "" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("summary is required");
+  });
+
+  it("returns error when finding not found", async () => {
+    const client = makeMockClient({ reportFix: vi.fn().mockResolvedValue(false) });
+    const result = await reportFix.handler(client, { finding_id: "abc", status: "fixed", summary: "done" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not found");
+  });
+
+  it("confirms fixed status", async () => {
+    const client = makeMockClient({ reportFix: vi.fn().mockResolvedValue(true) });
+    const result = await reportFix.handler(client, { finding_id: "abc", status: "fixed", summary: "wrapped in useCallback" });
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("marked as fixed");
+  });
+
+  it("confirms wont_fix status", async () => {
+    const client = makeMockClient({ reportFix: vi.fn().mockResolvedValue(true) });
+    const result = await reportFix.handler(client, { finding_id: "abc", status: "wont_fix", summary: "third-party lib" });
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("won't fix");
   });
 });

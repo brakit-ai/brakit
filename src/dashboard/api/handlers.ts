@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { groupRequestsIntoFlows } from "../../analysis/group.js";
 import { DEFAULT_API_LIMIT } from "../../constants/index.js";
 import type { ServiceRegistry } from "../../core/service-registry.js";
-import { sendJson, requireGet, handleTelemetryGet, maskSensitiveHeaders } from "./shared.js";
+import { sendJson, requireGet, handleTelemetryGet, maskSensitiveHeaders, parseRequestUrl } from "./shared.js";
 import type { TracedRequest } from "../../types/index.js";
 
 function sanitizeRequest(r: TracedRequest): TracedRequest {
@@ -19,7 +19,7 @@ export function createRequestsHandler(
   return (req, res) => {
     if (!requireGet(req, res)) return;
 
-    const url = new URL(req.url ?? "/", "http://localhost");
+    const url = parseRequestUrl(req);
     const method = url.searchParams.get("method");
     const status = url.searchParams.get("status");
     const search = url.searchParams.get("search");
@@ -95,7 +95,7 @@ export function createClearHandler(
     registry.get("query-store").clear();
     registry.get("metrics-store").reset();
     if (registry.has("finding-store")) registry.get("finding-store").clear();
-    registry.get("event-bus").emit("store:cleared", undefined as never);
+    registry.get("event-bus").emit("store:cleared", undefined);
     sendJson(req, res, 200, { cleared: true });
   };
 }

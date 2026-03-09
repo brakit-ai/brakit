@@ -15,7 +15,7 @@ import type {
   OutgoingHttpHeaders,
 } from "node:http";
 import type { IncomingHttpHeaders } from "node:http";
-import { gunzipSync, brotliDecompressSync, inflateSync } from "node:zlib";
+import { gunzip, brotliDecompress, inflate } from "node:zlib";
 import type { RequestStoreInterface } from "../types/services.js";
 import {
   DEFAULT_MAX_BODY_CAPTURE,
@@ -41,15 +41,25 @@ function outgoingToIncoming(headers: OutgoingHttpHeaders): IncomingHttpHeaders {
   return result;
 }
 
-function decompress(body: Buffer<ArrayBuffer>, encoding: string): Buffer<ArrayBuffer> {
-  try {
-    if (encoding === CONTENT_ENCODING_GZIP) return gunzipSync(body);
-    if (encoding === CONTENT_ENCODING_BR) return brotliDecompressSync(body);
-    if (encoding === CONTENT_ENCODING_DEFLATE) return inflateSync(body);
-  } catch (e) {
-    brakitDebug(`decompress failed: ${(e as Error).message}`);
-  }
-  return body;
+function decompressAsync(body: Buffer<ArrayBuffer>, encoding: string): Promise<Buffer<ArrayBuffer>> {
+  const decompressor =
+    encoding === CONTENT_ENCODING_GZIP ? gunzip :
+    encoding === CONTENT_ENCODING_BR ? brotliDecompress :
+    encoding === CONTENT_ENCODING_DEFLATE ? inflate :
+    null;
+
+  if (!decompressor) return Promise.resolve(body);
+
+  return new Promise((resolve) => {
+    decompressor(body, (err, result) => {
+      if (err) {
+        brakitDebug(`decompress failed: ${err.message}`);
+        resolve(body);
+      } else {
+        resolve(result);
+      }
+    });
+  });
 }
 
 function toBuffer(chunk: unknown): Buffer | null {
@@ -105,30 +115,39 @@ export function captureInProcess(
     const result = (originalEnd as EndFn).apply(this, args as Parameters<EndFn>);
     const endTime = performance.now();
 
-    try {
-      const encoding = String(res.getHeader("content-encoding") ?? "").toLowerCase();
-      let body = resChunks.length > 0 ? Buffer.concat(resChunks) : null;
-      if (body && encoding) {
-        body = decompress(body, encoding);
-      }
+    // Snapshot headers synchronously before they can change, then
+    // defer decompression + store capture off the critical path.
+    const encoding = String(res.getHeader("content-encoding") ?? "").toLowerCase();
+    const statusCode = res.statusCode;
+    const responseHeaders = outgoingToIncoming(res.getHeaders());
+    const responseContentType = String(res.getHeader("content-type") ?? "");
 
-      requestStore.capture({
-        requestId,
-        method,
-        url: req.url ?? "/",
-        requestHeaders: req.headers,
-        requestBody: null,
-        statusCode: res.statusCode,
-        responseHeaders: outgoingToIncoming(res.getHeaders()),
-        responseBody: body,
-        responseContentType: String(res.getHeader("content-type") ?? ""),
-        startTime,
-        endTime,
-        config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
-      });
-    } catch (e) {
-      brakitDebug(`capture store: ${(e as Error).message}`);
-    }
+    const capturedChunks = resChunks.slice();
+    void (async () => {
+      try {
+        let body = capturedChunks.length > 0 ? Buffer.concat(capturedChunks) : null;
+        if (body && encoding) {
+          body = await decompressAsync(body, encoding);
+        }
+
+        requestStore.capture({
+          requestId,
+          method,
+          url: req.url ?? "/",
+          requestHeaders: req.headers,
+          requestBody: null,
+          statusCode,
+          responseHeaders,
+          responseBody: body,
+          responseContentType,
+          startTime,
+          endTime,
+          config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
+        });
+      } catch (e) {
+        brakitDebug(`capture store: ${(e as Error).message}`);
+      }
+    })();
 
     return result;
   } as typeof res.end;

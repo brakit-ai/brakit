@@ -15,7 +15,7 @@ import {
   INITIAL_DISCOVERY_TIMEOUT_MS,
   LAZY_DISCOVERY_TIMEOUT_MS,
 } from "../constants/mcp.js";
-import { PROMPTS, PROMPT_MESSAGES } from "./prompts.js";
+import { SERVER_INSTRUCTIONS, PROMPTS, PROMPT_MESSAGES } from "./prompts.js";
 
 export async function startMcpServer(): Promise<void> {
   let discovery;
@@ -29,7 +29,7 @@ export async function startMcpServer(): Promise<void> {
 
   const server = new Server(
     { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
-    { capabilities: { tools: {}, prompts: {} } },
+    { capabilities: { tools: {}, prompts: {} }, instructions: SERVER_INSTRUCTIONS },
   );
 
   server.setRequestHandler(ListPromptsRequestSchema, async () => ({

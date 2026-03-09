@@ -2,7 +2,6 @@ import type {
   TracedRequest,
   TracedQuery,
   TracedFetch,
-  SecurityFinding,
   LiveEndpointData,
 } from "./index.js";
 import type { StatefulInsight } from "./insight-lifecycle.js";
@@ -29,7 +28,7 @@ export interface InsightsResponse {
 }
 
 export interface SecurityFindingsResponse {
-  findings: SecurityFinding[];
+  findings: readonly StatefulFinding[];
 }
 
 export interface FindingsResponse {

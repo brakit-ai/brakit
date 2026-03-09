@@ -8,6 +8,7 @@ import {
   DASHBOARD_API_ACTIVITY,
   DASHBOARD_API_METRICS_LIVE,
   DASHBOARD_API_FINDINGS,
+  DASHBOARD_API_FINDINGS_REPORT,
   DASHBOARD_API_CLEAR,
 } from "../constants/routes.js";
 import { CLIENT_FETCH_TIMEOUT_MS, HEALTH_CHECK_TIMEOUT_MS } from "../constants/mcp.js";
@@ -79,6 +80,20 @@ export class BrakitClient {
     const url = new URL(`${this.baseUrl}${DASHBOARD_API_FINDINGS}`);
     if (state) url.searchParams.set("state", state);
     return this.fetchJson(url);
+  }
+
+  async reportFix(findingId: string, status: string, notes: string): Promise<boolean> {
+    const res = await fetch(`${this.baseUrl}${DASHBOARD_API_FINDINGS_REPORT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ findingId, status, notes }),
+      signal: AbortSignal.timeout(CLIENT_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return false;
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) return false;
+    const body = await res.json() as Record<string, unknown>;
+    return body.ok === true;
   }
 
   async clearAll(): Promise<boolean> {

@@ -8,7 +8,26 @@ export function getSecurityView(): string {
     container.innerHTML = '';
     var SEV = ${SEVERITY_MAP};
 
-    var all = state.findings || [];
+    var all = (state.findings || []).slice();
+    var insightsList = state.insights || [];
+    for (var ix = 0; ix < insightsList.length; ix++) {
+      var si = insightsList[ix];
+      all.push({
+        findingId: si.key,
+        state: si.state,
+        aiStatus: si.aiStatus,
+        aiNotes: si.aiNotes,
+        finding: {
+          severity: si.insight.severity,
+          rule: 'insight-' + si.insight.type,
+          title: si.insight.title,
+          desc: si.insight.desc,
+          hint: si.insight.hint,
+          endpoint: si.insight.nav || 'global',
+          count: 1
+        }
+      });
+    }
     var open = all.filter(function(f) { return f.state === 'open' || f.state === 'fixing'; });
     var resolved = all.filter(function(f) { return f.state === 'resolved'; });
 
@@ -56,12 +75,13 @@ export function getSecurityView(): string {
       var groups = {};
       var groupOrder = [];
       for (var gi = 0; gi < open.length; gi++) {
-        var f = open[gi].finding;
+        var sf = open[gi];
+        var f = sf.finding;
         if (!groups[f.rule]) {
           groups[f.rule] = { rule: f.rule, title: f.title, severity: f.severity, hint: f.hint, items: [] };
           groupOrder.push(f.rule);
         }
-        groups[f.rule].items.push(f);
+        groups[f.rule].items.push(sf);
       }
 
       groupOrder.sort(function(a, b) {
@@ -98,12 +118,21 @@ export function getSecurityView(): string {
         var list = document.createElement('div');
         list.className = 'sec-items';
         for (var ii = 0; ii < group.items.length; ii++) {
-          var item = group.items[ii];
+          var sf2 = group.items[ii];
+          var item = sf2.finding;
           var row = document.createElement('div');
           row.className = 'sec-item';
+          var aiBadge = '';
+          if (sf2.state === 'fixing' && sf2.aiStatus === 'fixed') {
+            aiBadge = '<span class="sec-ai-badge sec-ai-fixing">AI fixed \\u2014 awaiting verification</span>';
+          } else if (sf2.aiStatus === 'wont_fix') {
+            aiBadge = '<span class="sec-ai-badge sec-ai-wontfix">AI: won\\u2019t fix</span>';
+          }
+          var aiNotes = sf2.aiNotes ? '<div class="sec-ai-notes">' + escHtml(sf2.aiNotes) + '</div>' : '';
           row.innerHTML =
             '<div class="sec-item-desc">' + escHtml(item.desc) + '</div>' +
-            (item.count > 1 ? '<span class="sec-item-count">' + item.count + 'x</span>' : '');
+            (item.count > 1 ? '<span class="sec-item-count">' + item.count + 'x</span>' : '') +
+            aiBadge + aiNotes;
           list.appendChild(row);
         }
         section.appendChild(list);
@@ -122,12 +151,16 @@ export function getSecurityView(): string {
       var resolvedItems = document.createElement('div');
       resolvedItems.className = 'sec-items';
       for (var ri = 0; ri < resolved.length; ri++) {
-        var rf = resolved[ri].finding;
+        var rsf = resolved[ri];
+        var rf = rsf.finding;
         var rRow = document.createElement('div');
         rRow.className = 'sec-item sec-item-resolved';
+        var verifiedBadge = rsf.aiStatus === 'fixed' ? '<span class="sec-ai-badge sec-ai-verified">Verified fix</span>' : '';
+        var rNotes = rsf.aiNotes ? '<div class="sec-ai-notes">' + escHtml(rsf.aiNotes) + '</div>' : '';
         rRow.innerHTML =
           '<span class="sec-resolved-item-icon">\\u2713</span>' +
-          '<div class="sec-item-desc">' + escHtml(rf.title) + ' \\u2014 ' + escHtml(rf.endpoint) + '</div>';
+          '<div class="sec-item-desc">' + escHtml(rf.title) + ' \\u2014 ' + escHtml(rf.endpoint) + '</div>' +
+          verifiedBadge + rNotes;
         resolvedItems.appendChild(rRow);
       }
       resolvedGroup.appendChild(resolvedItems);

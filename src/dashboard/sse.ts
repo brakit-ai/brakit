@@ -2,17 +2,22 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ServiceRegistry } from "../core/service-registry.js";
 import { SubscriptionBag } from "../core/disposable.js";
 import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants/index.js";
+import { getCorsOrigin } from "./api/shared.js";
 
 export function createSSEHandler(
   registry: ServiceRegistry,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
-    res.writeHead(200, {
+    const headers: Record<string, string> = {
       "content-type": "text/event-stream",
       "cache-control": "no-cache",
       connection: "keep-alive",
-      "access-control-allow-origin": "*",
-    });
+    };
+    const corsOrigin = getCorsOrigin(req);
+    if (corsOrigin) {
+      headers["access-control-allow-origin"] = corsOrigin;
+    }
+    res.writeHead(200, headers);
 
     res.write(":ok\n\n");
 
@@ -36,6 +41,9 @@ export function createSSEHandler(
     subs.add(bus.on("analysis:updated", ({ statefulInsights, statefulFindings }) => {
       writeEvent("insights", JSON.stringify(statefulInsights));
       writeEvent("security", JSON.stringify(statefulFindings));
+    }));
+    subs.add(bus.on("findings:changed", (findings) => {
+      writeEvent("security", JSON.stringify(findings));
     }));
 
     const heartbeat = setInterval(() => {

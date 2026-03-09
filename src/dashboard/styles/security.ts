@@ -53,5 +53,13 @@ export function getSecurityStyles(): string {
 .sec-item-resolved{color:var(--text-muted)}
 .sec-item-resolved .sec-item-desc{text-decoration:line-through;text-decoration-color:var(--text-muted)}
 .sec-resolved-item-icon{color:var(--green);font-size:12px;flex-shrink:0;margin-right:8px}
+
+/* AI status badges */
+.sec-ai-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;margin-left:8px;white-space:nowrap}
+.sec-ai-fixing{background:rgba(217,119,6,.1);color:var(--amber)}
+.sec-ai-wontfix{background:rgba(107,114,128,.1);color:var(--text-muted)}
+.sec-ai-verified{background:rgba(22,163,74,.1);color:var(--green)}
+.sec-ai-notes{font-size:11px;color:var(--text-muted);font-style:italic;margin-top:2px;padding-left:0}
 `;
+
 }

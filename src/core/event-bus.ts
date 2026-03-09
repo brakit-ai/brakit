@@ -6,13 +6,14 @@ import type {
   TracedRequest,
   SecurityFinding,
 } from "../types/index.js";
+import { brakitDebug } from "../utils/log.js";
 import type { StatefulFinding } from "../types/finding-lifecycle.js";
 import type { StatefulInsight } from "../types/insight-lifecycle.js";
 import type { Insight } from "../analysis/insights.js";
 
 export interface AnalysisUpdate {
-  insights: Insight[];
-  findings: SecurityFinding[];
+  insights: readonly Insight[];
+  findings: readonly SecurityFinding[];
   statefulFindings: readonly StatefulFinding[];
   statefulInsights: readonly StatefulInsight[];
 }
@@ -24,13 +25,14 @@ export interface ChannelMap {
   "telemetry:error": Omit<TracedError, "id">;
   "request:completed": TracedRequest;
   "analysis:updated": AnalysisUpdate;
-  "store:cleared": void;
+  "findings:changed": readonly StatefulFinding[];
+  "store:cleared": undefined;
 }
 
 type Listener<T> = (data: T) => void;
 
 export class EventBus {
-  private listeners = new Map<string, Set<Function>>();
+  private listeners = new Map<string, Set<Listener<unknown>>>();
 
   emit<K extends keyof ChannelMap>(channel: K, data: ChannelMap[K]): void {
     const set = this.listeners.get(channel);
@@ -38,8 +40,8 @@ export class EventBus {
     for (const fn of set) {
       try {
         (fn as Listener<ChannelMap[K]>)(data);
-      } catch {
-        // Listener failure is non-fatal
+      } catch (err) {
+        brakitDebug(`EventBus listener threw on channel "${channel}": ${err}`);
       }
     }
   }
@@ -53,14 +55,14 @@ export class EventBus {
       set = new Set();
       this.listeners.set(channel, set);
     }
-    set.add(fn);
-    return () => set!.delete(fn);
+    set.add(fn as Listener<unknown>);
+    return () => set!.delete(fn as Listener<unknown>);
   }
 
   off<K extends keyof ChannelMap>(
     channel: K,
     fn: Listener<ChannelMap[K]>,
   ): void {
-    this.listeners.get(channel)?.delete(fn);
+    this.listeners.get(channel)?.delete(fn as Listener<unknown>);
   }
 }

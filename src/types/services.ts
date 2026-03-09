@@ -10,6 +10,7 @@ import type {
   StatefulFinding,
   FindingState,
   FindingSource,
+  AiFixStatus,
 } from "./finding-lifecycle.js";
 import type { StatefulInsight } from "./insight-lifecycle.js";
 import type { CaptureInput } from "../store/request-store.js";
@@ -42,6 +43,7 @@ export interface MetricsStoreInterface {
 export interface FindingStoreInterface {
   upsert(finding: SecurityFinding, source: FindingSource): StatefulFinding;
   transition(findingId: string, state: FindingState): boolean;
+  reportFix(findingId: string, status: AiFixStatus, notes: string): boolean;
   reconcilePassive(findings: readonly SecurityFinding[]): void;
   getAll(): readonly StatefulFinding[];
   getByState(state: FindingState): readonly StatefulFinding[];
@@ -59,4 +61,5 @@ export interface AnalysisEngineInterface {
   getFindings(): readonly SecurityFinding[];
   getStatefulInsights(): readonly StatefulInsight[];
   getStatefulFindings(): readonly StatefulFinding[];
+  reportInsightFix(enrichedId: string, status: AiFixStatus, notes: string): boolean;
 }

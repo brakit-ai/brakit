@@ -110,6 +110,42 @@ describe("FindingStore", () => {
     });
   });
 
+  describe("reportFix", () => {
+    it("sets aiStatus and aiNotes on existing finding", () => {
+      const finding = makeSecurityFinding();
+      const result = store.upsert(finding, "passive");
+
+      store.reportFix(result.findingId, "fixed", "wrapped in useCallback");
+
+      const updated = store.get(result.findingId)!;
+      expect(updated.aiStatus).toBe("fixed");
+      expect(updated.aiNotes).toBe("wrapped in useCallback");
+    });
+
+    it("transitions to 'fixing' state when status is 'fixed'", () => {
+      const finding = makeSecurityFinding();
+      const result = store.upsert(finding, "passive");
+
+      store.reportFix(result.findingId, "fixed", "applied fix");
+
+      expect(store.get(result.findingId)?.state).toBe("fixing");
+    });
+
+    it("keeps state unchanged when status is 'wont_fix'", () => {
+      const finding = makeSecurityFinding();
+      const result = store.upsert(finding, "passive");
+
+      store.reportFix(result.findingId, "wont_fix", "third-party issue");
+
+      expect(store.get(result.findingId)?.state).toBe("open");
+      expect(store.get(result.findingId)?.aiStatus).toBe("wont_fix");
+    });
+
+    it("returns false for unknown finding ID", () => {
+      expect(store.reportFix("nonexistent", "fixed", "done")).toBe(false);
+    });
+  });
+
   describe("reconcilePassive", () => {
     it("auto-resolves absent passive findings", () => {
       const a = makeSecurityFinding({ rule: "rule-a" });
@@ -121,6 +157,17 @@ describe("FindingStore", () => {
 
       const bId = computeFindingId(b);
       expect(store.get(bId)?.state).toBe("resolved");
+    });
+
+    it("auto-resolves findings in 'fixing' state when absent", () => {
+      const finding = makeSecurityFinding();
+      const result = store.upsert(finding, "passive");
+      store.reportFix(result.findingId, "fixed", "applied fix");
+      expect(store.get(result.findingId)?.state).toBe("fixing");
+
+      store.reconcilePassive([]);
+
+      expect(store.get(result.findingId)?.state).toBe("resolved");
     });
 
     it("does not resolve findings still in current set", () => {

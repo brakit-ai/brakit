@@ -5,7 +5,9 @@ import type {
   TracedFetch,
   SecurityFinding,
 } from "../types/index.js";
+import { ANALYSIS_DEBOUNCE_MS } from "../constants/limits.js";
 import type { StatefulFinding } from "../types/finding-lifecycle.js";
+import type { AiFixStatus } from "../types/finding-lifecycle.js";
 import type { StatefulInsight } from "../types/insight-lifecycle.js";
 import type { ServiceRegistry } from "../core/service-registry.js";
 import { SubscriptionBag } from "../core/disposable.js";
@@ -28,7 +30,7 @@ export class AnalysisEngine {
 
   constructor(
     private registry: ServiceRegistry,
-    private debounceMs = 300,
+    private debounceMs = ANALYSIS_DEBOUNCE_MS,
   ) {
     this.scanner = createDefaultScanner();
   }
@@ -64,7 +66,11 @@ export class AnalysisEngine {
   }
 
   getStatefulInsights(): readonly StatefulInsight[] {
-    return this.cachedStatefulInsights;
+    return this.insightTracker.getAll();
+  }
+
+  reportInsightFix(enrichedId: string, status: AiFixStatus, notes: string): boolean {
+    return this.insightTracker.reportFix(enrichedId, status, notes);
   }
 
   private scheduleRecompute(): void {

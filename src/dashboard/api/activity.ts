@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ServiceRegistry } from "../../core/service-registry.js";
 import type { TimelineEvent } from "../../types/api-contracts.js";
-import { sendJson, requireGet } from "./shared.js";
+import { sendJson, requireGet, parseRequestUrl } from "./shared.js";
 
 export function createActivityHandler(
   registry: ServiceRegistry,
@@ -10,7 +10,7 @@ export function createActivityHandler(
     if (!requireGet(req, res)) return;
 
     try {
-      const url = new URL(req.url ?? "/", "http://localhost");
+      const url = parseRequestUrl(req);
       const requestId = url.searchParams.get("requestId");
 
       if (!requestId) {

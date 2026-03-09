@@ -45,6 +45,7 @@ export type { Severity, SecuritySeverity, SecurityFinding } from "./security.js"
 export type {
   FindingState,
   FindingSource,
+  AiFixStatus,
   StatefulFinding,
   FindingsData,
 } from "./finding-lifecycle.js";
