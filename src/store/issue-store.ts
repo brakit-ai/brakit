@@ -6,6 +6,7 @@ import type { Issue, StatefulIssue, IssueState, IssueSource, IssueCategory, Issu
 import { ISSUES_FILE, ISSUES_FLUSH_INTERVAL_MS } from "../constants/metrics.js";
 import { ISSUES_DATA_VERSION } from "../constants/limits.js";
 import { CLEAN_HITS_FOR_RESOLUTION, STALE_ISSUE_TTL_MS } from "../constants/thresholds.js";
+import { ISSUE_PRUNE_TTL_MS } from "../constants/limits.js";
 import { AtomicWriter } from "../utils/atomic-writer.js";
 import { brakitDebug } from "../utils/log.js";
 import { validateIssuesData } from "../utils/type-guards.js";
@@ -112,6 +113,17 @@ export class IssueStore {
         this.dirty = true;
       }
       // Otherwise: endpoint not hit, no evidence → keep current state
+    }
+
+    // Prune issues that have been resolved or stale for longer than the TTL
+    for (const [id, stateful] of this.issues) {
+      if (stateful.state === "resolved" && stateful.resolvedAt && now - stateful.resolvedAt > ISSUE_PRUNE_TTL_MS) {
+        this.issues.delete(id);
+        this.dirty = true;
+      } else if (stateful.state === "stale" && now - stateful.lastSeenAt > STALE_ISSUE_TTL_MS + ISSUE_PRUNE_TTL_MS) {
+        this.issues.delete(id);
+        this.dirty = true;
+      }
     }
   }
 

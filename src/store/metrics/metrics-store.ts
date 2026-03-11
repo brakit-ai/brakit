@@ -12,6 +12,8 @@ import {
   METRICS_FLUSH_INTERVAL_MS,
   METRICS_MAX_SESSIONS,
   METRICS_MAX_DATA_POINTS,
+  MAX_UNIQUE_ENDPOINTS,
+  MAX_ACCUMULATOR_ENTRIES,
 } from "../../constants/index.js";
 import { percentile } from "../../utils/math.js";
 import { isErrorStatus } from "../../utils/http-status.js";
@@ -87,12 +89,17 @@ export class MetricsStore {
 
     let acc = this.accumulators.get(key);
     if (!acc) {
+      if (this.accumulators.size >= MAX_UNIQUE_ENDPOINTS) return;
       acc = createAccumulator();
       this.accumulators.set(key, acc);
     }
 
-    acc.durations.push(req.durationMs);
-    acc.queryCounts.push(metrics.queryCount);
+    if (acc.durations.length < MAX_ACCUMULATOR_ENTRIES) {
+      acc.durations.push(req.durationMs);
+    }
+    if (acc.queryCounts.length < MAX_ACCUMULATOR_ENTRIES) {
+      acc.queryCounts.push(metrics.queryCount);
+    }
     if (isErrorStatus(req.statusCode)) acc.errorCount++;
 
     acc.totalDurationSum += req.durationMs;
@@ -116,10 +123,13 @@ export class MetricsStore {
 
     let pending = this.pendingPoints.get(key);
     if (!pending) {
+      if (this.pendingPoints.size >= MAX_UNIQUE_ENDPOINTS) return;
       pending = [];
       this.pendingPoints.set(key, pending);
     }
-    pending.push(point);
+    if (pending.length < MAX_ACCUMULATOR_ENTRIES) {
+      pending.push(point);
+    }
   }
 
   getAll(): readonly EndpointMetrics[] {

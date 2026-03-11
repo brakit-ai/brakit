@@ -1,18 +1,19 @@
 import type { SecurityRule } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
 import { EMAIL_RE, INTERNAL_ID_KEYS, INTERNAL_ID_SUFFIX, RULE_HINTS } from "./patterns.js";
-import { tryParseJson, unwrapResponse } from "../../utils/response.js";
-import { PII_SCAN_ARRAY_LIMIT, FULL_RECORD_MIN_FIELDS, LIST_PII_MIN_ITEMS } from "../../constants/limits.js";
+import { unwrapResponse } from "../../utils/response.js";
+import { PII_SCAN_ARRAY_LIMIT, FULL_RECORD_MIN_FIELDS, LIST_PII_MIN_ITEMS, MAX_OBJECT_SCAN_DEPTH } from "../../constants/limits.js";
 import { isErrorStatus } from "../../utils/http-status.js";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH"]);
 
-function findEmails(obj: unknown): string[] {
+function findEmails(obj: unknown, depth = 0): string[] {
   const emails: string[] = [];
+  if (depth >= MAX_OBJECT_SCAN_DEPTH) return emails;
   if (!obj || typeof obj !== "object") return emails;
   if (Array.isArray(obj)) {
     for (let i = 0; i < Math.min(obj.length, PII_SCAN_ARRAY_LIMIT); i++) {
-      emails.push(...findEmails(obj[i]));
+      emails.push(...findEmails(obj[i], depth + 1));
     }
     return emails;
   }
@@ -20,7 +21,7 @@ function findEmails(obj: unknown): string[] {
     if (typeof v === "string" && EMAIL_RE.test(v)) {
       emails.push(v);
     } else if (typeof v === "object" && v !== null) {
-      emails.push(...findEmails(v));
+      emails.push(...findEmails(v, depth + 1));
     }
   }
   return emails;
@@ -133,9 +134,9 @@ export const responsePiiLeakRule: SecurityRule = {
 
     for (const r of ctx.requests) {
       if (isErrorStatus(r.statusCode)) continue;
-      const resJson = tryParseJson(r.responseBody);
+      const resJson = ctx.parsedBodies.response.get(r.id);
       if (!resJson) continue;
-      const reqJson = tryParseJson(r.requestBody);
+      const reqJson = ctx.parsedBodies.request.get(r.id) ?? null;
 
       const detection = detectPII(r.method, reqJson, resJson);
       if (!detection) continue;

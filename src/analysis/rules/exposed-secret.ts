@@ -1,16 +1,16 @@
 import type { SecurityRule } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
 import { SECRET_KEYS, MASKED_RE, RULE_HINTS } from "./patterns.js";
-import { SECRET_SCAN_ARRAY_LIMIT, MIN_SECRET_VALUE_LENGTH } from "../../constants/limits.js";
-import { tryParseJson } from "../../utils/response.js";
+import { SECRET_SCAN_ARRAY_LIMIT, MIN_SECRET_VALUE_LENGTH, MAX_OBJECT_SCAN_DEPTH } from "../../constants/limits.js";
 import { isErrorStatus } from "../../utils/http-status.js";
 
-function findSecretKeys(obj: unknown, prefix: string): string[] {
+function findSecretKeys(obj: unknown, prefix: string, depth = 0): string[] {
   const found: string[] = [];
+  if (depth >= MAX_OBJECT_SCAN_DEPTH) return found;
   if (!obj || typeof obj !== "object") return found;
   if (Array.isArray(obj)) {
     for (let i = 0; i < Math.min(obj.length, SECRET_SCAN_ARRAY_LIMIT); i++) {
-      found.push(...findSecretKeys(obj[i], prefix));
+      found.push(...findSecretKeys(obj[i], prefix, depth + 1));
     }
     return found;
   }
@@ -20,7 +20,7 @@ function findSecretKeys(obj: unknown, prefix: string): string[] {
       found.push(k);
     }
     if (typeof val === "object" && val !== null) {
-      found.push(...findSecretKeys(val, prefix + k + "."));
+      found.push(...findSecretKeys(val, prefix + k + ".", depth + 1));
     }
   }
   return found;
@@ -38,7 +38,7 @@ export const exposedSecretRule: SecurityRule = {
 
     for (const r of ctx.requests) {
       if (isErrorStatus(r.statusCode)) continue;
-      const parsed = tryParseJson(r.responseBody);
+      const parsed = ctx.parsedBodies.response.get(r.id);
       if (!parsed) continue;
       const keys = findSecretKeys(parsed, "");
       if (keys.length === 0) continue;
