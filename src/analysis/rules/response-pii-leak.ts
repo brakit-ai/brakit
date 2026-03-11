@@ -4,6 +4,8 @@ import { EMAIL_RE, INTERNAL_ID_KEYS, INTERNAL_ID_SUFFIX, RULE_HINTS } from "./pa
 import { unwrapResponse } from "../../utils/response.js";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH"]);
+// A response with this many top-level fields likely represents a full database
+// record (e.g. user profile) rather than a simple acknowledgment.
 const FULL_RECORD_MIN_FIELDS = 5;
 const LIST_PII_MIN_ITEMS = 2;
 
@@ -54,55 +56,70 @@ interface PIIDetection {
   emailCount: number;
 }
 
+// Echo detection: POST/PUT/PATCH that echoes back submitted email addresses
+// alongside internal IDs or many fields indicates the full record was returned
+// rather than a minimal acknowledgment — a common over-fetching PII leak.
+function detectEchoPII(method: string, reqBody: unknown, target: unknown): PIIDetection | null {
+  if (!WRITE_METHODS.has(method) || !reqBody || typeof reqBody !== "object") return null;
+
+  const reqEmails = findEmails(reqBody);
+  if (reqEmails.length === 0) return null;
+
+  const resEmails = findEmails(target);
+  const echoed = reqEmails.filter((e) => resEmails.includes(e));
+  if (echoed.length === 0) return null;
+
+  const inspectObj = Array.isArray(target) && target.length > 0 ? target[0] : target;
+  if (hasInternalIds(inspectObj) || topLevelFieldCount(inspectObj) >= FULL_RECORD_MIN_FIELDS) {
+    return { reason: "echo", emailCount: echoed.length };
+  }
+  return null;
+}
+
+// Full-record detection: a single object response with internal IDs (e.g. _id,
+// userId) and email addresses is likely an entire user/entity record exposed.
+function detectFullRecordPII(target: unknown): PIIDetection | null {
+  if (!target || typeof target !== "object" || Array.isArray(target)) return null;
+
+  const fields = topLevelFieldCount(target);
+  if (fields < FULL_RECORD_MIN_FIELDS || !hasInternalIds(target)) return null;
+
+  const emails = findEmails(target);
+  if (emails.length === 0) return null;
+
+  return { reason: "full-record", emailCount: emails.length };
+}
+
+// List detection: an array where multiple items contain email addresses and
+// look like full records signals a list endpoint leaking user PII.
+function detectListPII(target: unknown): PIIDetection | null {
+  if (!Array.isArray(target) || target.length < LIST_PII_MIN_ITEMS) return null;
+
+  let itemsWithEmail = 0;
+  for (let i = 0; i < Math.min(target.length, 10); i++) {
+    const item = target[i];
+    if (item && typeof item === "object" && findEmails(item).length > 0) {
+      itemsWithEmail++;
+    }
+  }
+  if (itemsWithEmail < LIST_PII_MIN_ITEMS) return null;
+
+  const first = target[0];
+  if (hasInternalIds(first) || topLevelFieldCount(first) >= FULL_RECORD_MIN_FIELDS) {
+    return { reason: "list-pii", emailCount: itemsWithEmail };
+  }
+  return null;
+}
+
 function detectPII(
   method: string,
   reqBody: unknown,
   resBody: unknown,
 ): PIIDetection | null {
   const target = unwrapResponse(resBody);
-
-  if (WRITE_METHODS.has(method) && reqBody && typeof reqBody === "object") {
-    const reqEmails = findEmails(reqBody);
-    if (reqEmails.length > 0) {
-      const resEmails = findEmails(target);
-      const echoed = reqEmails.filter((e) => resEmails.includes(e));
-      if (echoed.length > 0) {
-        const inspectObj = Array.isArray(target) && target.length > 0 ? target[0] : target;
-        if (hasInternalIds(inspectObj) || topLevelFieldCount(inspectObj) >= FULL_RECORD_MIN_FIELDS) {
-          return { reason: "echo", emailCount: echoed.length };
-        }
-      }
-    }
-  }
-
-  if (target && typeof target === "object" && !Array.isArray(target)) {
-    const fields = topLevelFieldCount(target);
-    if (fields >= FULL_RECORD_MIN_FIELDS && hasInternalIds(target)) {
-      const emails = findEmails(target);
-      if (emails.length > 0) {
-        return { reason: "full-record", emailCount: emails.length };
-      }
-    }
-  }
-
-  if (Array.isArray(target) && target.length >= LIST_PII_MIN_ITEMS) {
-    let itemsWithEmail = 0;
-    for (let i = 0; i < Math.min(target.length, 10); i++) {
-      const item = target[i];
-      if (item && typeof item === "object") {
-        const emails = findEmails(item);
-        if (emails.length > 0) itemsWithEmail++;
-      }
-    }
-    if (itemsWithEmail >= LIST_PII_MIN_ITEMS) {
-      const first = target[0];
-      if (hasInternalIds(first) || topLevelFieldCount(first) >= FULL_RECORD_MIN_FIELDS) {
-        return { reason: "list-pii", emailCount: itemsWithEmail };
-      }
-    }
-  }
-
-  return null;
+  return detectEchoPII(method, reqBody, target)
+    ?? detectFullRecordPII(target)
+    ?? detectListPII(target);
 }
 
 const REASON_LABELS: Record<PIIReason, string> = {

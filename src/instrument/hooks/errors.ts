@@ -21,11 +21,15 @@ function createCaptureError(emit: (event: TelemetryEvent) => void) {
 export function setupErrorHook(emit: (event: TelemetryEvent) => void): void {
   const captureError = createCaptureError(emit);
 
-  process.on("uncaughtException", (err) => {
+  const brakitExceptionHandler = (err: Error): void => {
     captureError(err);
-    process.removeAllListeners("uncaughtException");
+    // Remove ONLY brakit's handler to avoid infinite recursion,
+    // then re-throw so the host app's handlers (or default behavior) can run.
+    process.removeListener("uncaughtException", brakitExceptionHandler);
     throw err;
-  });
+  };
+
+  process.on("uncaughtException", brakitExceptionHandler);
 
   process.on("unhandledRejection", (reason) => {
     captureError(reason);

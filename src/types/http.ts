@@ -5,8 +5,7 @@ export type HttpMethod =
   | "PATCH"
   | "DELETE"
   | "HEAD"
-  | "OPTIONS"
-  | (string & {});
+  | "OPTIONS";
 
 export type FlatHeaders = Record<string, string>;
 

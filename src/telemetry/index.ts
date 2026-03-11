@@ -1,5 +1,5 @@
 import { platform, release, arch } from "node:os";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { VERSION } from "../index.js";
 import type { ServiceRegistry } from "../core/service-registry.js";
 import { readConfig, getOrCreateConfig, isTelemetryEnabled } from "./config.js";
@@ -7,7 +7,6 @@ import {
   POSTHOG_HOST,
   POSTHOG_CAPTURE_PATH,
   POSTHOG_REQUEST_TIMEOUT_MS,
-  POSTHOG_SPAWN_TIMEOUT_MS,
 } from "../constants/telemetry.js";
 
 export { isTelemetryEnabled, setTelemetryEnabled } from "./config.js";
@@ -147,18 +146,19 @@ export function trackSession(registry: ServiceRegistry): void {
     },
   };
 
-  // Fire-and-forget via child process so process.exit() doesn't kill the request.
+  // Fire-and-forget via detached child process — never blocks the host app.
   try {
     const body = JSON.stringify(payload);
     const url = `${POSTHOG_HOST}${POSTHOG_CAPTURE_PATH}`;
-    spawnSync(
+    const child = spawn(
       process.execPath,
       [
         "-e",
         `fetch(${JSON.stringify(url)},{method:"POST",headers:{"content-type":"application/json"},body:${JSON.stringify(body)},signal:AbortSignal.timeout(${POSTHOG_REQUEST_TIMEOUT_MS})}).catch(()=>{})`,
       ],
-      { timeout: POSTHOG_SPAWN_TIMEOUT_MS, stdio: "ignore" },
+      { detached: true, stdio: "ignore" },
     );
+    child.unref();
   } catch {
     /* non-critical */
   }

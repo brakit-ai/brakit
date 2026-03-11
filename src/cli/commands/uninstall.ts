@@ -10,7 +10,6 @@ import { METRICS_DIR } from "../../constants/index.js";
 import type { DetectedProject } from "../../types/index.js";
 import { isExactBrakitTemplate, IMPORT_LINE, CREATED_FILES, ENTRY_CANDIDATES } from "../templates.js";
 
-/** Files where brakit may have prepended an import line (Remix entries + shared candidates). */
 const PREPENDED_FILES = [
   "app/entry.server.tsx",
   "app/entry.server.ts",
@@ -46,7 +45,6 @@ export default defineCommand({
     // 1. Remove instrumentation file or import line
     let removed = false;
 
-    // Check files brakit may have created entirely
     for (const relPath of CREATED_FILES) {
       const absPath = join(rootDir, relPath);
       if (!(await fileExists(absPath))) continue;
@@ -54,14 +52,12 @@ export default defineCommand({
       if (!content.includes("brakit")) continue;
 
       if (isExactBrakitTemplate(content)) {
-        // File is exactly a brakit-generated template — safe to delete
         await unlink(absPath);
         console.log(pc.green(`  ✓ Removed ${relPath}`));
         removed = true;
         break;
       }
 
-      // File has brakit mixed with other content — remove only brakit lines
       const lines = content.split("\n");
       const cleaned = lines.filter(
         (line) => !line.includes('import("brakit")') && !line.includes('import "brakit"'),
@@ -74,9 +70,7 @@ export default defineCommand({
       }
     }
 
-    // Check files where brakit may have prepended a line
     if (!removed) {
-      // Also check package.json main
       const candidates = [...PREPENDED_FILES];
       try {
         const pkgRaw = await readFile(join(rootDir, "package.json"), "utf-8");

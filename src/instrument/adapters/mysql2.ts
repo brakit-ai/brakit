@@ -65,7 +65,7 @@ export const mysql2Adapter: BrakitAdapter = {
         // Promise-based
         if (result && typeof (result as { then?: unknown }).then === "function") {
           return (result as Promise<unknown>).then((res) => {
-            emitQuery();
+            try { emitQuery(); } catch { /* brakit telemetry must not affect host queries */ }
             return res;
           });
         }

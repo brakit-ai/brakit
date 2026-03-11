@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { groupRequestsIntoFlows } from "../../analysis/group.js";
 import { DEFAULT_API_LIMIT } from "../../constants/index.js";
+import { HTTP_OK, HTTP_METHOD_NOT_ALLOWED } from "../../constants/http.js";
 import type { ServiceRegistry } from "../../core/service-registry.js";
 import { sendJson, requireGet, handleTelemetryGet, maskSensitiveHeaders, parseRequestUrl } from "./shared.js";
 import type { TracedRequest } from "../../types/index.js";
@@ -61,7 +62,7 @@ export function createRequestsHandler(
     results = results.slice(offset, offset + limit);
 
     const sanitized = results.map(sanitizeRequest);
-    sendJson(req, res, 200, { total, requests: sanitized });
+    sendJson(req, res, HTTP_OK, { total, requests: sanitized });
   };
 }
 
@@ -76,7 +77,7 @@ export function createFlowsHandler(
         ...flow,
         requests: flow.requests.map(sanitizeRequest),
       }));
-    sendJson(req, res, 200, { total: flows.length, flows });
+    sendJson(req, res, HTTP_OK, { total: flows.length, flows });
   };
 }
 
@@ -85,7 +86,7 @@ export function createClearHandler(
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (req.method !== "POST") {
-      sendJson(req, res, 405, { error: "Method not allowed" });
+      sendJson(req, res, HTTP_METHOD_NOT_ALLOWED, { error: "Method not allowed" });
       return;
     }
     registry.get("request-store").clear();
@@ -96,7 +97,7 @@ export function createClearHandler(
     registry.get("metrics-store").reset();
     if (registry.has("finding-store")) registry.get("finding-store").clear();
     registry.get("event-bus").emit("store:cleared", undefined);
-    sendJson(req, res, 200, { cleared: true });
+    sendJson(req, res, HTTP_OK, { cleared: true });
   };
 }
 

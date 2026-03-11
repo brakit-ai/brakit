@@ -211,6 +211,7 @@ describe("FindingStore", () => {
       store.stop();
 
       const store2 = new FindingStore(tmpDir);
+      store2.loadSync();
       expect(store2.getAll()).toHaveLength(1);
       expect(store2.getAll()[0].findingId).toBe(computeFindingId(finding));
       store2.stop();
@@ -222,6 +223,7 @@ describe("FindingStore", () => {
       writeFileSync(findingsPath, "{{corrupt json");
 
       const store2 = new FindingStore(tmpDir);
+      store2.loadSync();
       expect(store2.getAll()).toHaveLength(0);
       store2.stop();
     });

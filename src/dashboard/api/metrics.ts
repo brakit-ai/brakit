@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { MetricsStoreInterface } from "../../types/services.js";
 import { sendJson, requireGet, parseRequestUrl } from "./shared.js";
+import { HTTP_OK } from "../../constants/http.js";
 
 export function createMetricsHandler(
   metricsStore: MetricsStoreInterface,
@@ -11,9 +12,9 @@ export function createMetricsHandler(
     const endpoint = url.searchParams.get("endpoint");
     if (endpoint) {
       const ep = metricsStore.getEndpoint(endpoint);
-      sendJson(req, res, 200, { endpoints: ep ? [ep] : [] });
+      sendJson(req, res, HTTP_OK, { endpoints: ep ? [ep] : [] });
       return;
     }
-    sendJson(req, res, 200, { endpoints: metricsStore.getAll() });
+    sendJson(req, res, HTTP_OK, { endpoints: metricsStore.getAll() });
   };
 }

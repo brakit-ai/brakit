@@ -1,12 +1,61 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ServiceRegistry } from "../core/service-registry.js";
-import { SubscriptionBag } from "../core/disposable.js";
 import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants/index.js";
+import { HTTP_OK } from "../constants/http.js";
+import {
+  SSE_EVENT_FETCH,
+  SSE_EVENT_LOG,
+  SSE_EVENT_ERROR,
+  SSE_EVENT_QUERY,
+  SSE_EVENT_INSIGHTS,
+  SSE_EVENT_SECURITY,
+} from "../constants/events.js";
 import { getCorsOrigin } from "./api/shared.js";
+
+interface SSEClient {
+  res: ServerResponse;
+  heartbeat: ReturnType<typeof setInterval>;
+}
 
 export function createSSEHandler(
   registry: ServiceRegistry,
 ): (req: IncomingMessage, res: ServerResponse) => void {
+  const clients = new Set<SSEClient>();
+
+  function broadcast(eventType: string | null, data: string): void {
+    if (clients.size === 0) return;
+    const frame = eventType
+      ? `event: ${eventType}\ndata: ${data}\n\n`
+      : `data: ${data}\n\n`;
+    for (const client of clients) {
+      if (client.res.destroyed) {
+        clients.delete(client);
+        continue;
+      }
+      try {
+        client.res.write(frame);
+      } catch {
+        clients.delete(client);
+      }
+    }
+  }
+
+  const bus = registry.get("event-bus");
+
+  // Register bus listeners once — stringify once per event, write to all clients.
+  bus.on("request:completed", (r) => broadcast(null, JSON.stringify(r)));
+  bus.on("telemetry:fetch", (e) => broadcast(SSE_EVENT_FETCH, JSON.stringify(e)));
+  bus.on("telemetry:log", (e) => broadcast(SSE_EVENT_LOG, JSON.stringify(e)));
+  bus.on("telemetry:error", (e) => broadcast(SSE_EVENT_ERROR, JSON.stringify(e)));
+  bus.on("telemetry:query", (e) => broadcast(SSE_EVENT_QUERY, JSON.stringify(e)));
+  bus.on("analysis:updated", ({ statefulInsights, statefulFindings }) => {
+    broadcast(SSE_EVENT_INSIGHTS, JSON.stringify(statefulInsights));
+    broadcast(SSE_EVENT_SECURITY, JSON.stringify(statefulFindings));
+  });
+  bus.on("findings:changed", (findings) => {
+    broadcast(SSE_EVENT_SECURITY, JSON.stringify(findings));
+  });
+
   return (req, res) => {
     const headers: Record<string, string> = {
       "content-type": "text/event-stream",
@@ -17,46 +66,31 @@ export function createSSEHandler(
     if (corsOrigin) {
       headers["access-control-allow-origin"] = corsOrigin;
     }
-    res.writeHead(200, headers);
+    res.writeHead(HTTP_OK, headers);
 
     res.write(":ok\n\n");
-
-    const writeEvent = (eventType: string | null, data: string) => {
-      if (res.destroyed) return;
-      if (eventType) {
-        res.write(`event: ${eventType}\ndata: ${data}\n\n`);
-      } else {
-        res.write(`data: ${data}\n\n`);
-      }
-    };
-
-    const bus = registry.get("event-bus");
-    const subs = new SubscriptionBag();
-
-    subs.add(bus.on("request:completed", (r) => writeEvent(null, JSON.stringify(r))));
-    subs.add(bus.on("telemetry:fetch", (e) => writeEvent("fetch", JSON.stringify(e))));
-    subs.add(bus.on("telemetry:log", (e) => writeEvent("log", JSON.stringify(e))));
-    subs.add(bus.on("telemetry:error", (e) => writeEvent("error_event", JSON.stringify(e))));
-    subs.add(bus.on("telemetry:query", (e) => writeEvent("query", JSON.stringify(e))));
-    subs.add(bus.on("analysis:updated", ({ statefulInsights, statefulFindings }) => {
-      writeEvent("insights", JSON.stringify(statefulInsights));
-      writeEvent("security", JSON.stringify(statefulFindings));
-    }));
-    subs.add(bus.on("findings:changed", (findings) => {
-      writeEvent("security", JSON.stringify(findings));
-    }));
 
     const heartbeat = setInterval(() => {
       if (res.destroyed) {
         clearInterval(heartbeat);
+        clients.delete(client);
         return;
       }
-      res.write(":heartbeat\n\n");
+      try {
+        res.write(":heartbeat\n\n");
+      } catch {
+        clearInterval(heartbeat);
+        clients.delete(client);
+      }
     }, SSE_HEARTBEAT_INTERVAL_MS);
+    heartbeat.unref();
+
+    const client: SSEClient = { res, heartbeat };
+    clients.add(client);
 
     req.on("close", () => {
       clearInterval(heartbeat);
-      subs.dispose();
+      clients.delete(client);
     });
   };
 }

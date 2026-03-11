@@ -24,6 +24,11 @@ import {
   VALID_TABS,
 } from "../constants/index.js";
 import {
+  HTTP_OK,
+  HTTP_NO_CONTENT,
+  SECURITY_HEADERS,
+} from "../constants/http.js";
+import {
   createRequestsHandler,
   createFlowsHandler,
   createClearHandler,
@@ -36,21 +41,23 @@ import {
   createLiveMetricsHandler,
   createActivityHandler,
 } from "./api/index.js";
-import { createInsightsHandler, createSecurityHandler } from "./api/insights.js";
-import { createFindingsHandler, createFindingsReportHandler } from "./api/findings.js";
+import {
+  createInsightsHandler,
+  createSecurityHandler,
+} from "./api/insights.js";
+import {
+  createFindingsHandler,
+  createFindingsReportHandler,
+} from "./api/findings.js";
 import { createSSEHandler } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
-import { recordTabViewed, recordDashboardOpened, isTelemetryEnabled } from "../telemetry/index.js";
+import {
+  recordTabViewed,
+  recordDashboardOpened,
+  isTelemetryEnabled,
+} from "../telemetry/index.js";
 
 type RouteHandler = (req: IncomingMessage, res: ServerResponse) => void;
-
-const SECURITY_HEADERS = {
-  "x-content-type-options": "nosniff",
-  "x-frame-options": "DENY",
-  "referrer-policy": "no-referrer",
-  "content-security-policy":
-    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:",
-} as const;
 
 export function isDashboardRequest(url: string): boolean {
   return url === DASHBOARD_PREFIX || url.startsWith(DASHBOARD_PREFIX + "/");
@@ -87,7 +94,11 @@ export function createDashboardHandler(
   if (registry.has("finding-store")) {
     const findingStore = registry.get("finding-store");
     routes[DASHBOARD_API_FINDINGS] = createFindingsHandler(findingStore);
-    routes[DASHBOARD_API_FINDINGS_REPORT] = createFindingsReportHandler(findingStore, registry.get("event-bus"), analysisEngine);
+    routes[DASHBOARD_API_FINDINGS_REPORT] = createFindingsReportHandler(
+      findingStore,
+      registry.get("event-bus"),
+      analysisEngine,
+    );
   }
 
   routes[DASHBOARD_API_TAB] = (req, res) => {
@@ -96,7 +107,7 @@ export function createDashboardHandler(
       const tab = decodeURIComponent(raw).slice(0, MAX_TAB_NAME_LENGTH);
       if (VALID_TABS.has(tab) && isTelemetryEnabled()) recordTabViewed(tab);
     }
-    res.writeHead(204);
+    res.writeHead(HTTP_NO_CONTENT);
     res.end();
   };
 
@@ -110,7 +121,7 @@ export function createDashboardHandler(
     }
 
     if (isTelemetryEnabled()) recordDashboardOpened();
-    res.writeHead(200, {
+    res.writeHead(HTTP_OK, {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-cache",
       ...SECURITY_HEADERS,

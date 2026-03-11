@@ -1,5 +1,3 @@
-// Security scanning patterns and rule hints.
-
 export const SECRET_KEYS = /^(password|passwd|secret|api_key|apiKey|api_secret|apiSecret|private_key|privateKey|client_secret|clientSecret)$/;
 export const TOKEN_PARAMS = /^(token|api_key|apiKey|secret|password|access_token|session_id|sessionId)$/;
 export const SAFE_PARAMS = /^(_rsc|__clerk_handshake|__clerk_db_jwt|callback|code|state|nonce|redirect_uri|utm_|fbclid|gclid)$/;

@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { FindingStoreInterface, AnalysisEngineInterface } from "../../types/services.js";
 import type { EventBus } from "../../core/event-bus.js";
-import type { AiFixStatus, FindingState } from "../../types/finding-lifecycle.js";
 import { sendJson, requireGet, parseRequestUrl, readJsonBody } from "./shared.js";
-import { VALID_FINDING_STATES, VALID_AI_FIX_STATUSES } from "../../constants/lifecycle.js";
+import { isValidFindingState, isValidAiFixStatus } from "../../utils/type-guards.js";
+import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_NOT_FOUND, HTTP_METHOD_NOT_ALLOWED } from "../../constants/http.js";
 
 export function createFindingsHandler(
   findingStore: FindingStoreInterface,
@@ -15,13 +15,13 @@ export function createFindingsHandler(
     const stateParam = url.searchParams.get("state");
 
     let findings;
-    if (stateParam && VALID_FINDING_STATES.has(stateParam as FindingState)) {
-      findings = findingStore.getByState(stateParam as FindingState);
+    if (stateParam && isValidFindingState(stateParam)) {
+      findings = findingStore.getByState(stateParam);
     } else {
       findings = findingStore.getAll();
     }
 
-    sendJson(req, res, 200, {
+    sendJson(req, res, HTTP_OK, {
       total: findings.length,
       findings,
     });
@@ -35,7 +35,7 @@ export function createFindingsReportHandler(
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return async (req, res) => {
     if (req.method !== "POST") {
-      sendJson(req, res, 405, { error: "Method not allowed" });
+      sendJson(req, res, HTTP_METHOD_NOT_ALLOWED, { error: "Method not allowed" });
       return;
     }
 
@@ -45,36 +45,36 @@ export function createFindingsReportHandler(
     const { findingId, status, notes } = body;
 
     if (!findingId || typeof findingId !== "string") {
-      sendJson(req, res, 400, { error: "findingId is required" });
+      sendJson(req, res, HTTP_BAD_REQUEST, { error: "findingId is required" });
       return;
     }
-    if (!VALID_AI_FIX_STATUSES.has(status as AiFixStatus)) {
-      sendJson(req, res, 400, { error: "status must be 'fixed' or 'wont_fix'" });
+    if (!isValidAiFixStatus(status)) {
+      sendJson(req, res, HTTP_BAD_REQUEST, { error: "status must be 'fixed' or 'wont_fix'" });
       return;
     }
     if (!notes || typeof notes !== "string") {
-      sendJson(req, res, 400, { error: "notes is required" });
+      sendJson(req, res, HTTP_BAD_REQUEST, { error: "notes is required" });
       return;
     }
 
-    const findingOk = findingStore.reportFix(findingId, status as AiFixStatus, notes);
+    const findingOk = findingStore.reportFix(findingId, status, notes);
     if (findingOk) {
       eventBus.emit("findings:changed", findingStore.getAll());
-      sendJson(req, res, 200, { ok: true });
+      sendJson(req, res, HTTP_OK, { ok: true });
       return;
     }
 
-    if (analysisEngine?.reportInsightFix(findingId, status as AiFixStatus, notes)) {
+    if (analysisEngine?.reportInsightFix(findingId, status, notes)) {
       eventBus.emit("analysis:updated", {
         insights: analysisEngine.getInsights(),
         findings: analysisEngine.getFindings(),
         statefulFindings: analysisEngine.getStatefulFindings(),
         statefulInsights: analysisEngine.getStatefulInsights(),
       });
-      sendJson(req, res, 200, { ok: true });
+      sendJson(req, res, HTTP_OK, { ok: true });
       return;
     }
 
-    sendJson(req, res, 404, { error: "Finding not found" });
+    sendJson(req, res, HTTP_NOT_FOUND, { error: "Finding not found" });
   };
 }

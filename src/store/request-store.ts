@@ -1,6 +1,7 @@
 import type { IncomingHttpHeaders } from "node:http";
 import type {
   TracedRequest,
+  HttpMethod,
   BrakitConfig,
   FlatHeaders,
   RequestListener,
@@ -61,7 +62,7 @@ export class RequestStore {
 
     const entry: TracedRequest = {
       id: input.requestId,
-      method: input.method,
+      method: input.method as HttpMethod,
       url,
       path,
       headers: flattenHeaders(input.requestHeaders),

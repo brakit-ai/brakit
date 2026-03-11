@@ -8,6 +8,10 @@ export const CLOUD_SIGNALS = [
 ] as const;
 
 export const MAX_HEALTH_ERRORS = 10;
+export const RECOVERY_WINDOW_MS = 5 * 60 * 1000;
+
+export const PORT_MIN = 1;
+export const PORT_MAX = 65535;
 
 export const LOCALHOST_IPS: Set<string> = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 export const LOCALHOST_HOSTNAMES: Set<string> = new Set(["localhost", "127.0.0.1", "::1"]);

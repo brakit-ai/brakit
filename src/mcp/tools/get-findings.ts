@@ -3,7 +3,8 @@ import type { McpTool } from "../types.js";
 import type { SecuritySeverity } from "../../types/security.js";
 import type { FindingState } from "../../types/finding-lifecycle.js";
 import { enrichFindings } from "../enrichment.js";
-import { VALID_SECURITY_SEVERITIES, VALID_FINDING_STATES } from "../../constants/lifecycle.js";
+import { VALID_SECURITY_SEVERITIES } from "../../constants/lifecycle.js";
+import { isValidFindingState } from "../../utils/type-guards.js";
 
 export const getFindings = {
   name: "get_findings",
@@ -33,7 +34,7 @@ export const getFindings = {
     if (severity && !VALID_SECURITY_SEVERITIES.has(severity as SecuritySeverity)) {
       return { content: [{ type: "text" as const, text: `Invalid severity "${severity}". Use: critical, warning.` }], isError: true };
     }
-    if (state && !VALID_FINDING_STATES.has(state as FindingState)) {
+    if (state && !isValidFindingState(state)) {
       return { content: [{ type: "text" as const, text: `Invalid state "${state}". Use: open, fixing, resolved.` }], isError: true };
     }
 

@@ -1,16 +1,12 @@
-/** Canonical brakit instrumentation constants, shared by install and uninstall. */
-
 export const IMPORT_LINE = `import "brakit";`;
 export const IMPORT_MARKER = "brakit";
 
-/** Files brakit install may create as standalone instrumentation files. */
 export const CREATED_FILES = [
   "src/instrumentation.ts",
   "instrumentation.ts",
   "server/plugins/brakit.ts",
 ] as const;
 
-/** Common entry-point files where brakit prepends an import line. */
 export const ENTRY_CANDIDATES = [
   "src/index.ts", "src/server.ts", "src/app.ts",
   "src/index.js", "src/server.js", "src/app.js",
@@ -19,7 +15,6 @@ export const ENTRY_CANDIDATES = [
 ] as const;
 
 export const BRAKIT_TEMPLATES = {
-  /** Next.js instrumentation.ts — standalone file created by install */
   nextjs: [
     `export async function register() {`,
     `  if (process.env.NODE_ENV !== "production") {`,
@@ -28,7 +23,6 @@ export const BRAKIT_TEMPLATES = {
     `}`,
   ].join("\n"),
 
-  /** Nuxt server/plugins/brakit.ts — standalone file created by install */
   nuxt: `import "brakit";`,
 } as const;
 

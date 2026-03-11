@@ -28,6 +28,10 @@ export function groupRequestsIntoFlows(
     const sourcePage = labeled.sourcePage;
     const gap = currentRequests.length > 0 ? req.startedAt - lastEndTime : 0;
 
+    // A new flow starts when any of three signals fire:
+    // 1. Page change — referer switched, indicating user navigated
+    // 2. Time gap — idle period exceeds FLOW_GAP_MS, suggesting a new action
+    // 3. Page load — HTML/navigation request marks a fresh page lifecycle
     const isNewPage =
       currentRequests.length > 0 &&
       sourcePage !== undefined &&

@@ -1,6 +1,6 @@
-import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
-import { PORT_FILE, DASHBOARD_API_REQUESTS } from "../constants/index.js";
+import { PORT_FILE, DASHBOARD_API_REQUESTS, PORT_MIN, PORT_MAX } from "../constants/index.js";
 import { brakitDebug } from "../utils/log.js";
 import {
   DISCOVERY_POLL_INTERVAL_MS,
@@ -12,29 +12,33 @@ export interface DiscoveryResult {
   baseUrl: string;
 }
 
-function readPort(portPath: string): number | null {
-  if (!existsSync(portPath)) return null;
-  const raw = readFileSync(portPath, "utf-8").trim();
-  const port = parseInt(raw, 10);
-  return isNaN(port) || port < 1 || port > 65535 ? null : port;
+async function readPort(portPath: string): Promise<number | null> {
+  try {
+    const raw = (await readFile(portPath, "utf-8")).trim();
+    const port = parseInt(raw, 10);
+    return isNaN(port) || port < PORT_MIN || port > PORT_MAX ? null : port;
+  } catch {
+    return null;
+  }
 }
 
-function portInDir(dir: string): number | null {
+async function portInDir(dir: string): Promise<number | null> {
   return readPort(resolve(dir, PORT_FILE));
 }
 
-function portInChildren(dir: string): number | null {
+async function portInChildren(dir: string): Promise<number | null> {
   try {
-    for (const entry of readdirSync(dir)) {
+    const entries = await readdir(dir);
+    for (const entry of entries) {
       if (entry.startsWith(".") || entry === "node_modules") continue;
       const child = resolve(dir, entry);
       try {
-        if (!statSync(child).isDirectory()) continue;
+        if (!(await stat(child)).isDirectory()) continue;
       } catch (err) {
         brakitDebug(`discovery: stat failed for ${child}: ${err}`);
         continue;
       }
-      const port = portInDir(child);
+      const port = await portInDir(child);
       if (port) return port;
     }
   } catch (err) {
@@ -43,17 +47,17 @@ function portInChildren(dir: string): number | null {
   return null;
 }
 
-function searchForPort(startDir: string): number | null {
+async function searchForPort(startDir: string): Promise<number | null> {
   const start = resolve(startDir);
 
   // Check cwd and its immediate children (handles monorepo root pointing to a sub-project)
-  const initial = portInDir(start) ?? portInChildren(start);
+  const initial = (await portInDir(start)) ?? (await portInChildren(start));
   if (initial) return initial;
 
   // Walk up and check children at each level (handles parent-of-project case)
   let dir = dirname(start);
   for (let depth = 0; depth < MAX_DISCOVERY_DEPTH; depth++) {
-    const port = portInDir(dir) ?? portInChildren(dir);
+    const port = (await portInDir(dir)) ?? (await portInChildren(dir));
     if (port) return port;
 
     const parent = dirname(dir);
@@ -64,8 +68,8 @@ function searchForPort(startDir: string): number | null {
   return null;
 }
 
-export function discoverBrakitPort(cwd?: string): DiscoveryResult {
-  const port = searchForPort(cwd ?? process.cwd());
+export async function discoverBrakitPort(cwd?: string): Promise<DiscoveryResult> {
+  const port = await searchForPort(cwd ?? process.cwd());
 
   if (!port) {
     throw new Error(
@@ -85,7 +89,7 @@ export async function waitForBrakit(
 
   while (Date.now() < deadline) {
     try {
-      const result = discoverBrakitPort(cwd);
+      const result = await discoverBrakitPort(cwd);
       const res = await fetch(`${result.baseUrl}${DASHBOARD_API_REQUESTS}?limit=1`);
       if (res.ok) return result;
     } catch {}
