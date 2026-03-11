@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { DIR_MODE_OWNER_ONLY, FILE_MODE_OWNER_ONLY } from "../constants/network.js";
 
 export interface TelemetryConfig {
   telemetry: boolean;
@@ -23,9 +24,9 @@ export function readConfig(): TelemetryConfig | null {
 export function writeConfig(config: TelemetryConfig): void {
   try {
     if (!existsSync(CONFIG_DIR))
-      mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
+      mkdirSync(CONFIG_DIR, { recursive: true, mode: DIR_MODE_OWNER_ONLY });
     writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n", {
-      mode: 0o600,
+      mode: FILE_MODE_OWNER_ONLY,
     });
   } catch {
     // non-critical

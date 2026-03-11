@@ -266,9 +266,9 @@ describe("crossEndpointRule", () => {
 
     // Need >= 3 endpoints, query on >= 3 of them (50%), >= 5 total occurrences
     const endpoints = [
-      { path: "/api/users", method: "GET" },
-      { path: "/api/posts", method: "GET" },
-      { path: "/api/comments", method: "GET" },
+      { path: "/api/users", method: "GET" as const },
+      { path: "/api/posts", method: "GET" as const },
+      { path: "/api/comments", method: "GET" as const },
     ];
 
     const requests = endpoints.map((ep, i) =>

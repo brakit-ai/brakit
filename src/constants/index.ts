@@ -35,6 +35,8 @@ export {
   FINDING_ID_HASH_LENGTH,
   FINDINGS_DATA_VERSION,
   SENSITIVE_MASK_PLACEHOLDER,
+  PROJECT_HASH_LENGTH,
+  SECRET_SCAN_ARRAY_LIMIT,
 } from "./limits.js";
 
 export {
@@ -103,6 +105,8 @@ export {
   LOCALHOST_IPS,
   LOCALHOST_HOSTNAMES,
   URL_PARSE_BASE,
+  DIR_MODE_OWNER_ONLY,
+  FILE_MODE_OWNER_ONLY,
 } from "./network.js";
 
 export {
@@ -137,6 +141,7 @@ export {
   POSTHOG_SPAWN_TIMEOUT_MS,
   SIGNAL_EXIT_SIGINT,
   SIGNAL_EXIT_SIGTERM,
+  SPEED_BUCKET_THRESHOLDS,
 } from "./telemetry.js";
 
 export {
@@ -144,3 +149,9 @@ export {
   VALID_AI_FIX_STATUSES,
   VALID_SECURITY_SEVERITIES,
 } from "./lifecycle.js";
+
+export {
+  SUPPORTED_SOURCE_EXTENSIONS,
+  BUILD_CACHE_DIRS,
+  FALLBACK_SCAN_DIRS,
+} from "./cli.js";

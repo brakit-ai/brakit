@@ -7,6 +7,7 @@ import {
   POSTHOG_HOST,
   POSTHOG_CAPTURE_PATH,
   POSTHOG_REQUEST_TIMEOUT_MS,
+  SPEED_BUCKET_THRESHOLDS,
 } from "../constants/telemetry.js";
 
 export { isTelemetryEnabled, setTelemetryEnabled } from "./config.js";
@@ -80,12 +81,12 @@ export function recordExplainUsed(): void {
 
 function speedBucket(ms: number): string {
   if (ms === 0) return "none";
-  if (ms < 200) return "<200ms";
-  if (ms < 500) return "200-500ms";
-  if (ms < 1000) return "500-1000ms";
-  if (ms < 2000) return "1000-2000ms";
-  if (ms < 5000) return "2000-5000ms";
-  return ">5000ms";
+  const t = SPEED_BUCKET_THRESHOLDS;
+  if (ms < t[0]) return `<${t[0]}ms`;
+  for (let i = 1; i < t.length; i++) {
+    if (ms < t[i]) return `${t[i - 1]}-${t[i]}ms`;
+  }
+  return `>${t[t.length - 1]}ms`;
 }
 
 export function trackSession(registry: ServiceRegistry): void {

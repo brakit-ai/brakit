@@ -1,6 +1,7 @@
 import type { SecurityRule } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
 import { SECRET_KEYS, MASKED_RE, RULE_HINTS } from "./patterns.js";
+import { SECRET_SCAN_ARRAY_LIMIT } from "../../constants/limits.js";
 
 function tryParseJson(body: string | null): unknown {
   if (!body) return null;
@@ -11,7 +12,7 @@ function findSecretKeys(obj: unknown, prefix: string): string[] {
   const found: string[] = [];
   if (!obj || typeof obj !== "object") return found;
   if (Array.isArray(obj)) {
-    for (let i = 0; i < Math.min(obj.length, 5); i++) {
+    for (let i = 0; i < Math.min(obj.length, SECRET_SCAN_ARRAY_LIMIT); i++) {
       found.push(...findSecretKeys(obj[i], prefix));
     }
     return found;

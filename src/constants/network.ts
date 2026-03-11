@@ -17,3 +17,8 @@ export const LOCALHOST_IPS: Set<string> = new Set(["127.0.0.1", "::1", "::ffff:1
 export const LOCALHOST_HOSTNAMES: Set<string> = new Set(["localhost", "127.0.0.1", "::1"]);
 
 export const URL_PARSE_BASE = "http://localhost";
+
+/** Directory permission mode for user-only access (rwx------). */
+export const DIR_MODE_OWNER_ONLY = 0o700;
+/** File permission mode for user-only access (rw-------). */
+export const FILE_MODE_OWNER_ONLY = 0o600;

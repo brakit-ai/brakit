@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, unlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileExists } from "../utils/fs.js";
 import type { SecurityFinding } from "../types/index.js";
@@ -11,13 +11,13 @@ import type {
   AiFixStatus,
 } from "../types/finding-lifecycle.js";
 import {
-  METRICS_DIR,
   FINDINGS_FILE,
   FINDINGS_FLUSH_INTERVAL_MS,
 } from "../constants/index.js";
 import { FINDINGS_DATA_VERSION } from "../constants/limits.js";
 import { AtomicWriter } from "../utils/atomic-writer.js";
 import { brakitDebug } from "../utils/log.js";
+import { validateFindingsData } from "../utils/type-guards.js";
 import { computeFindingId } from "./finding-id.js";
 
 export class FindingStore {
@@ -27,19 +27,17 @@ export class FindingStore {
   private readonly writer: AtomicWriter;
   private readonly findingsPath: string;
 
-  constructor(private rootDir: string) {
-    const metricsDir = resolve(rootDir, METRICS_DIR);
-    this.findingsPath = resolve(rootDir, FINDINGS_FILE);
+  constructor(private dataDir: string) {
+    this.findingsPath = resolve(dataDir, FINDINGS_FILE);
     this.writer = new AtomicWriter({
-      dir: metricsDir,
+      dir: dataDir,
       filePath: this.findingsPath,
-      gitignoreEntry: METRICS_DIR,
       label: "findings",
     });
   }
 
   start(): void {
-    this.loadAsync().catch(() => {});
+    this.loadAsync().catch((err) => brakitDebug(`FindingStore: async load failed: ${err}`));
     this.flushTimer = setInterval(
       () => this.flush(),
       FINDINGS_FLUSH_INTERVAL_MS,
@@ -107,6 +105,9 @@ export class FindingStore {
     finding.aiStatus = status;
     finding.aiNotes = notes;
 
+    // "fixed" → "fixing": the fix was applied but needs verification by the
+    // next analysis pass. reconcilePassive() transitions to "resolved" once
+    // the finding no longer appears in scan results.
     if (status === "fixed") {
       finding.state = "fixing";
     }
@@ -154,19 +155,19 @@ export class FindingStore {
 
   clear(): void {
     this.findings.clear();
-    this.dirty = true;
+    this.dirty = false;
+    try {
+      if (existsSync(this.findingsPath)) {
+        unlinkSync(this.findingsPath);
+      }
+    } catch { /* non-critical */ }
   }
 
   private async loadAsync(): Promise<void> {
     try {
       if (await fileExists(this.findingsPath)) {
         const raw = await readFile(this.findingsPath, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (parsed?.version === FINDINGS_DATA_VERSION && Array.isArray(parsed.findings)) {
-          for (const f of parsed.findings as StatefulFinding[]) {
-            this.findings.set(f.findingId, f);
-          }
-        }
+        this.hydrate(raw);
       }
     } catch (err) {
       brakitDebug(`FindingStore: could not load findings file, starting fresh: ${err}`);
@@ -178,15 +179,19 @@ export class FindingStore {
     try {
       if (existsSync(this.findingsPath)) {
         const raw = readFileSync(this.findingsPath, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (parsed?.version === FINDINGS_DATA_VERSION && Array.isArray(parsed.findings)) {
-          for (const f of parsed.findings as StatefulFinding[]) {
-            this.findings.set(f.findingId, f);
-          }
-        }
+        this.hydrate(raw);
       }
     } catch (err) {
       brakitDebug(`FindingStore: could not load findings file, starting fresh: ${err}`);
+    }
+  }
+
+  /** Parse and populate findings from a raw JSON string. */
+  private hydrate(raw: string): void {
+    const validated = validateFindingsData(JSON.parse(raw));
+    if (!validated) return;
+    for (const f of validated.findings) {
+      this.findings.set(f.findingId, f);
     }
   }
 
@@ -199,6 +204,8 @@ export class FindingStore {
   private flushSync(): void {
     if (!this.dirty) return;
     this.writer.writeSync(this.serialize());
+    // Clear after write — if writeSync throws before AtomicWriter catches,
+    // the next flush will correctly retry.
     this.dirty = false;
   }
 
