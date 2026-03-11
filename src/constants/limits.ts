@@ -36,3 +36,15 @@ export const LIST_PII_MIN_ITEMS = 2;
 
 /** Hard ceiling for the `limit` query parameter on API endpoints. */
 export const MAX_API_LIMIT = 500;
+
+/** Maximum nesting depth for recursive object traversal in security rules. */
+export const MAX_OBJECT_SCAN_DEPTH = 5;
+
+/** Maximum unique endpoints tracked by MetricsStore before refusing new entries. */
+export const MAX_UNIQUE_ENDPOINTS = 500;
+
+/** Maximum entries per accumulator array between flush intervals. */
+export const MAX_ACCUMULATOR_ENTRIES = 1_000;
+
+/** TTL in ms before resolved/stale issues are pruned from IssueStore. */
+export const ISSUE_PRUNE_TTL_MS = 10 * 60 * 1_000;

@@ -7,7 +7,8 @@ import type {
   TracedError,
   TelemetryEvent,
 } from "../../src/types/telemetry.js";
-import type { SecurityContext } from "../../src/analysis/rules/rule.js";
+import type { SecurityContext, ParsedBodyCache } from "../../src/analysis/rules/rule.js";
+import { tryParseJson } from "../../src/utils/response.js";
 import type { Insight, InsightContext } from "../../src/analysis/insights/types.js";
 import type { StatefulIssue, Issue } from "../../src/types/issue-lifecycle.js";
 import type { AnalysisUpdate } from "../../src/analysis/engine.js";
@@ -97,9 +98,23 @@ export function makeError(
 export function makeSecurityContext(
   overrides: Partial<SecurityContext> = {},
 ): SecurityContext {
+  const requests = overrides.requests ?? [];
+  const response = new Map<string, unknown>();
+  const request = new Map<string, unknown>();
+  for (const r of requests) {
+    if (r.responseBody) {
+      const parsed = tryParseJson(r.responseBody);
+      if (parsed != null) response.set(r.id, parsed);
+    }
+    if (r.requestBody) {
+      const parsed = tryParseJson(r.requestBody);
+      if (parsed != null) request.set(r.id, parsed);
+    }
+  }
   return {
-    requests: [],
+    requests,
     logs: [],
+    parsedBodies: { response, request },
     ...overrides,
   };
 }
