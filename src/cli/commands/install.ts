@@ -32,7 +32,6 @@ export default defineCommand({
     console.log(pc.bold("  ◆ brakit install"));
     console.log();
 
-    // Scan for projects
     const projects = await scanForProjects(rootDir);
     const nodeProjects = projects.filter((p) => p.type === "node");
     const pythonProjects = projects.filter((p) => p.type === "python");
@@ -76,7 +75,6 @@ export default defineCommand({
       }
     }
 
-    // Ensure .brakit is gitignored
     await ensureGitignoreEntry(rootDir, METRICS_DIR);
 
     // Configure MCP for Claude Code / Cursor
@@ -158,7 +156,6 @@ async function setupInstrumentation(rootDir: string, framework: Framework): Prom
 }
 
 async function setupNextjs(rootDir: string): Promise<InstrumentationSetup> {
-  // Next.js uses instrumentation.ts — check src/ first
   const hasSrc = await fileExists(join(rootDir, "src"));
   const relPath = hasSrc ? "src/instrumentation.ts" : "instrumentation.ts";
   const absPath = join(rootDir, relPath);
@@ -168,7 +165,6 @@ async function setupNextjs(rootDir: string): Promise<InstrumentationSetup> {
     if (content.includes(IMPORT_MARKER)) {
       return { action: "exists", file: relPath };
     }
-    // File exists without brakit — don't auto-merge
     return { action: "manual", file: relPath };
   }
 
@@ -215,7 +211,6 @@ async function setupPrepend(rootDir: string, ...candidates: string[]): Promise<I
 }
 
 async function setupGeneric(rootDir: string): Promise<InstrumentationSetup> {
-  // Check package.json main field first
   try {
     const pkgRaw = await readFile(join(rootDir, "package.json"), "utf-8");
     const pkg = JSON.parse(pkgRaw);
@@ -225,7 +220,6 @@ async function setupGeneric(rootDir: string): Promise<InstrumentationSetup> {
     }
   } catch { /* continue to candidates */ }
 
-  // Try common entry files
   const result = await setupPrepend(rootDir, ...ENTRY_CANDIDATES);
   if (result.action !== "manual") return result;
 

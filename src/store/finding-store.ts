@@ -1,5 +1,7 @@
+import { readFile } from "node:fs/promises";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileExists } from "../utils/fs.js";
 import type { SecurityFinding } from "../types/index.js";
 import type {
   StatefulFinding,
@@ -34,10 +36,10 @@ export class FindingStore {
       gitignoreEntry: METRICS_DIR,
       label: "findings",
     });
-    this.load();
   }
 
   start(): void {
+    this.loadAsync().catch(() => {});
     this.flushTimer = setInterval(
       () => this.flush(),
       FINDINGS_FLUSH_INTERVAL_MS,
@@ -155,7 +157,24 @@ export class FindingStore {
     this.dirty = true;
   }
 
-  private load(): void {
+  private async loadAsync(): Promise<void> {
+    try {
+      if (await fileExists(this.findingsPath)) {
+        const raw = await readFile(this.findingsPath, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed?.version === FINDINGS_DATA_VERSION && Array.isArray(parsed.findings)) {
+          for (const f of parsed.findings as StatefulFinding[]) {
+            this.findings.set(f.findingId, f);
+          }
+        }
+      }
+    } catch (err) {
+      brakitDebug(`FindingStore: could not load findings file, starting fresh: ${err}`);
+    }
+  }
+
+  /** Sync load for tests only — not used in production paths. */
+  loadSync(): void {
     try {
       if (existsSync(this.findingsPath)) {
         const raw = readFileSync(this.findingsPath, "utf-8");

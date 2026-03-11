@@ -1,10 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { randomUUID } from "node:crypto";
 import type { ServiceRegistry } from "../../core/service-registry.js";
-import type { TelemetryBatch, TelemetryEvent, HttpMethod } from "../../types/index.js";
-import type { NormalizedOp } from "../../types/index.js";
+import type { TelemetryBatch, TelemetryEvent, TracedRequest, TracedQuery, TracedFetch, TracedLog, TracedError } from "../../types/index.js";
+import type { SDKIngestPayload } from "../../types/api-contracts.js";
 import { MAX_INGEST_BYTES } from "../../constants/limits.js";
+import { HTTP_NO_CONTENT, HTTP_BAD_REQUEST, HTTP_METHOD_NOT_ALLOWED, HTTP_PAYLOAD_TOO_LARGE } from "../../constants/http.js";
 import { sendJson } from "./shared.js";
+import { routeSDKEvent } from "./sdk-event-parser.js";
 
 function isBrakitBatch(msg: unknown): msg is TelemetryBatch {
   return (
@@ -14,20 +15,6 @@ function isBrakitBatch(msg: unknown): msg is TelemetryBatch {
     (msg as TelemetryBatch)._brakit === true &&
     !("version" in msg)
   );
-}
-
-interface SDKIngestPayload {
-  _brakit: true;
-  version: number;
-  sdk?: string;
-  events: SDKEvent[];
-}
-
-interface SDKEvent {
-  type: "request" | "db.query" | "fetch" | "log" | "error" | "auth.check";
-  requestId?: string;
-  timestamp: number;
-  data: Record<string, unknown>;
 }
 
 function isSDKPayload(msg: unknown): msg is SDKIngestPayload {
@@ -60,86 +47,23 @@ export function createIngestHandler(
     }
   };
 
-  const routeSDKEvent = (event: SDKEvent): void => {
-    const ts = event.timestamp || Date.now();
-    const parentRequestId = event.requestId ?? null;
+  const queryStore = registry.get("query-store");
+  const fetchStore = registry.get("fetch-store");
+  const logStore = registry.get("log-store");
+  const errorStore = registry.get("error-store");
+  const requestStore = registry.get("request-store");
 
-    switch (event.type) {
-      case "db.query":
-        registry.get("query-store").add({
-          driver: (event.data.source as string) ?? "sdk",
-          source: (event.data.source as string) ?? "sdk",
-          sql: event.data.sql as string | undefined,
-          model: event.data.model as string | undefined,
-          operation: event.data.operation as string | undefined,
-          normalizedOp: (event.data.normalizedOp as NormalizedOp) ?? (event.data.operation as NormalizedOp) ?? "OTHER",
-          table: (event.data.table as string) ?? "",
-          durationMs: (event.data.duration as number) ?? (event.data.durationMs as number) ?? 0,
-          rowCount: event.data.rowCount as number | undefined,
-          parentRequestId,
-          timestamp: ts,
-        });
-        break;
-      case "fetch":
-        registry.get("fetch-store").add({
-          url: (event.data.url as string) ?? "",
-          method: (event.data.method as string) ?? "GET",
-          statusCode: (event.data.statusCode as number) ?? 0,
-          durationMs: (event.data.duration as number) ?? (event.data.durationMs as number) ?? 0,
-          parentRequestId,
-          timestamp: ts,
-        });
-        break;
-      case "log":
-        registry.get("log-store").add({
-          level: (event.data.level as "log" | "warn" | "error" | "info" | "debug") ?? "log",
-          message: (event.data.message as string) ?? "",
-          parentRequestId,
-          timestamp: ts,
-        });
-        break;
-      case "error":
-        registry.get("error-store").add({
-          name: (event.data.name as string) ?? "Error",
-          message: (event.data.message as string) ?? "",
-          stack: (event.data.stack as string) ?? "",
-          parentRequestId,
-          timestamp: ts,
-        });
-        break;
-      case "auth.check":
-        registry.get("log-store").add({
-          level: "info",
-          message: `[auth] ${(event.data.provider as string) ?? "unknown"}: ${(event.data.result as string) ?? "check"}`,
-          parentRequestId,
-          timestamp: ts,
-        });
-        break;
-      case "request": {
-        const url = (event.data.url as string) ?? "";
-        registry.get("request-store").add({
-          id: (event.data.id as string) ?? randomUUID(),
-          method: ((event.data.method as string) ?? "GET") as HttpMethod,
-          url,
-          path: url.split("?")[0],
-          headers: (event.data.headers as Record<string, string>) ?? {},
-          requestBody: (event.data.requestBody as string) ?? null,
-          statusCode: (event.data.statusCode as number) ?? 200,
-          responseHeaders: (event.data.responseHeaders as Record<string, string>) ?? {},
-          responseBody: (event.data.responseBody as string) ?? null,
-          startedAt: ts,
-          durationMs: (event.data.durationMs as number) ?? 0,
-          responseSize: (event.data.responseSize as number) ?? 0,
-          isStatic: (event.data.isStatic as boolean) ?? false,
-        });
-        break;
-      }
-    }
+  const stores = {
+    addQuery: (data: Omit<TracedQuery, "id">) => queryStore.add(data),
+    addFetch: (data: Omit<TracedFetch, "id">) => fetchStore.add(data),
+    addLog: (data: Omit<TracedLog, "id">) => logStore.add(data),
+    addError: (data: Omit<TracedError, "id">) => errorStore.add(data),
+    addRequest: (data: TracedRequest) => requestStore.add(data),
   };
 
   return (req, res) => {
     if (req.method !== "POST") {
-      sendJson(req, res, 405, { error: "Method not allowed" });
+      sendJson(req, res, HTTP_METHOD_NOT_ALLOWED, { error: "Method not allowed" });
       return;
     }
 
@@ -148,7 +72,7 @@ export function createIngestHandler(
     req.on("data", (chunk: Buffer) => {
       totalSize += chunk.length;
       if (totalSize > MAX_INGEST_BYTES) {
-        sendJson(req, res, 413, { error: "Payload too large" });
+        sendJson(req, res, HTTP_PAYLOAD_TOO_LARGE, { error: "Payload too large" });
         req.destroy();
         return;
       }
@@ -161,9 +85,9 @@ export function createIngestHandler(
 
         if (isSDKPayload(body)) {
           for (const event of body.events) {
-            routeSDKEvent(event);
+            routeSDKEvent(event, stores);
           }
-          res.writeHead(204);
+          res.writeHead(HTTP_NO_CONTENT);
           res.end();
           return;
         }
@@ -172,14 +96,20 @@ export function createIngestHandler(
           for (const event of body.events) {
             routeEvent(event);
           }
-          res.writeHead(204);
+          res.writeHead(HTTP_NO_CONTENT);
           res.end();
           return;
         }
 
-        sendJson(req, res, 400, { error: "Invalid batch" });
+        sendJson(req, res, HTTP_BAD_REQUEST, { error: "Invalid batch" });
       } catch {
-        sendJson(req, res, 400, { error: "Invalid JSON" });
+        sendJson(req, res, HTTP_BAD_REQUEST, { error: "Invalid JSON" });
+      }
+    });
+    req.on("error", () => {
+      if (!res.headersSent) {
+        res.writeHead(HTTP_BAD_REQUEST);
+        res.end();
       }
     });
   };

@@ -18,28 +18,33 @@ export async function enrichFindings(
     client.getInsights(),
   ]);
 
-  const enriched: EnrichedFinding[] = [];
-
-  for (const sf of securityData.findings) {
-    const f = sf.finding;
-    let context = "";
-    try {
-      const { path } = parseEndpointKey(f.endpoint);
-      const reqData = await client.getRequests({ search: path, limit: 1 });
-      if (reqData.requests.length > 0) {
-        const req = reqData.requests[0];
-        if (req.id) {
-          const activity = await client.getActivity(req.id);
-          const queryCount = activity.counts?.queries ?? 0;
-          const fetchCount = activity.counts?.fetches ?? 0;
-          context = `Request took ${req.durationMs}ms. ${queryCount} DB queries, ${fetchCount} fetches.`;
+  // Fetch context for all findings in parallel — each task does
+  // getRequests → getActivity sequentially (data dependency), but
+  // all findings run concurrently.
+  const contexts = await Promise.all(
+    securityData.findings.map(async (sf): Promise<string> => {
+      try {
+        const { path } = parseEndpointKey(sf.finding.endpoint);
+        const reqData = await client.getRequests({ search: path, limit: 1 });
+        if (reqData.requests.length > 0) {
+          const req = reqData.requests[0];
+          if (req.id) {
+            const activity = await client.getActivity(req.id);
+            const queryCount = activity.counts?.queries ?? 0;
+            const fetchCount = activity.counts?.fetches ?? 0;
+            return `Request took ${req.durationMs}ms. ${queryCount} DB queries, ${fetchCount} fetches.`;
+          }
         }
+      } catch {
+        return "(context unavailable)";
       }
-    } catch {
-      context = "(context unavailable)";
-    }
+      return "";
+    }),
+  );
 
-    enriched.push({
+  const enriched: EnrichedFinding[] = securityData.findings.map((sf, i) => {
+    const f = sf.finding;
+    return {
       findingId: sf.findingId,
       severity: f.severity,
       title: f.title,
@@ -47,11 +52,11 @@ export async function enrichFindings(
       description: f.desc,
       hint: f.hint,
       occurrences: f.count,
-      context,
+      context: contexts[i],
       aiStatus: sf.aiStatus,
       aiNotes: sf.aiNotes,
-    });
-  }
+    };
+  });
 
   for (const si of insightsData.insights) {
     if (si.state === "resolved") continue;

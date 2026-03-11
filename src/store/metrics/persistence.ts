@@ -1,12 +1,16 @@
+import { readFile } from "node:fs/promises";
 import { readFileSync, existsSync, unlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import type { MetricsData } from "../../types/index.js";
 import { METRICS_DIR, METRICS_FILE } from "../../constants/index.js";
 import { AtomicWriter } from "../../utils/atomic-writer.js";
+import { fileExists } from "../../utils/fs.js";
 import { brakitWarn } from "../../utils/log.js";
+import { getErrorMessage } from "../../utils/type-guards.js";
 
 export interface MetricsPersistence {
   load(): MetricsData;
+  loadAsync(): Promise<MetricsData>;
   save(data: MetricsData): void;
   saveSync(data: MetricsData): void;
   remove(): void;
@@ -36,7 +40,22 @@ export class FileMetricsPersistence implements MetricsPersistence {
         }
       }
     } catch (err) {
-      brakitWarn(`failed to load metrics: ${(err as Error).message}`);
+      brakitWarn(`failed to load metrics: ${getErrorMessage(err)}`);
+    }
+    return { version: 1, endpoints: [] };
+  }
+
+  async loadAsync(): Promise<MetricsData> {
+    try {
+      if (await fileExists(this.metricsPath)) {
+        const raw = await readFile(this.metricsPath, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed?.version === 1 && Array.isArray(parsed.endpoints)) {
+          return parsed as MetricsData;
+        }
+      }
+    } catch (err) {
+      brakitWarn(`failed to load metrics: ${getErrorMessage(err)}`);
     }
     return { version: 1, endpoints: [] };
   }

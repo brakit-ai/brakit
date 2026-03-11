@@ -73,7 +73,7 @@ export const pgAdapter: BrakitAdapter = {
       // Promise-based
       if (result && typeof (result as { then?: unknown }).then === "function") {
         return (result as Promise<{ rowCount?: number }>).then((res) => {
-          emitQuery(res?.rowCount ?? undefined);
+          try { emitQuery(res?.rowCount ?? undefined); } catch { /* brakit telemetry must not affect host queries */ }
           return res;
         });
       }

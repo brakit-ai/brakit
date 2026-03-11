@@ -3,7 +3,8 @@ import { setupConsoleHook } from "../instrument/hooks/console.js";
 import { setupErrorHook } from "../instrument/hooks/errors.js";
 import { createDefaultRegistry } from "../instrument/adapters/index.js";
 import { createDashboardHandler } from "../dashboard/router.js";
-import { writeFileSync, readFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { existsSync, unlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import { EventBus } from "../core/event-bus.js";
 import { ServiceRegistry } from "../core/service-registry.js";
@@ -18,7 +19,6 @@ import { AnalysisEngine } from "../analysis/engine.js";
 import { startTerminalInsights } from "../output/terminal.js";
 import { VERSION } from "../index.js";
 import { DASHBOARD_PREFIX, DEFAULT_MAX_BODY_CAPTURE, METRICS_DIR, PORT_FILE } from "../constants/index.js";
-import { SIGNAL_EXIT_SIGINT, SIGNAL_EXIT_SIGTERM } from "../constants/telemetry.js";
 import type { TelemetryEvent, BrakitConfig, Framework } from "../types/index.js";
 import type { ChannelMap } from "../core/event-bus.js";
 import { health } from "./health.js";
@@ -33,11 +33,15 @@ import {
   recordRulesTriggered,
 } from "../telemetry/index.js";
 
-let initialized = false;
+let initPromise: Promise<void> | null = null;
 
-export function setup(): void {
-  if (initialized) return;
-  initialized = true;
+export function setup(): Promise<void> {
+  if (initPromise) return initPromise;
+  initPromise = doSetup();
+  return initPromise;
+}
+
+async function doSetup(): Promise<void> {
 
   const bus = new EventBus();
   const registry = new ServiceRegistry();
@@ -78,7 +82,7 @@ export function setup(): void {
 
   let framework: Framework = "unknown";
   try {
-    const pkg = JSON.parse(readFileSync(resolve(cwd, "package.json"), "utf-8"));
+    const pkg = JSON.parse(await readFile(resolve(cwd, "package.json"), "utf-8"));
     const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
     framework = detectFrameworkFromDeps(allDeps);
   } catch { /* no package.json */ }
@@ -130,34 +134,47 @@ export function setup(): void {
     onFirstRequest(port) {
       setBrakitPort(port);
 
-      const dir = resolve(cwd, METRICS_DIR);
-      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      // Fire-and-forget: ensure dir + write port file asynchronously
+      // so the host app's first request is never blocked by file I/O.
+      void (async () => {
+        try {
+          const dir = resolve(cwd, METRICS_DIR);
+          await mkdir(dir, { recursive: true });
 
-      const portPath = resolve(cwd, PORT_FILE);
-      if (existsSync(portPath)) {
-        const old = readFileSync(portPath, "utf-8").trim();
-        if (old && old !== String(port)) {
-          brakitDebug(`Overwriting stale port file (was ${old}, now ${port})`);
+          const portPath = resolve(cwd, PORT_FILE);
+          try {
+            const old = await readFile(portPath, "utf-8");
+            if (old.trim() && old.trim() !== String(port)) {
+              brakitDebug(`Overwriting stale port file (was ${old.trim()}, now ${port})`);
+            }
+          } catch { /* no existing port file */ }
+          await writeFile(portPath, String(port));
+        } catch (err) {
+          brakitDebug(`port file write failed: ${(err as Error).message}`);
         }
-      }
-      writeFileSync(portPath, String(port));
+      })();
 
       terminalDispose = startTerminalInsights(registry, port);
       process.stdout.write(`  brakit v${VERSION} — http://localhost:${port}${DASHBOARD_PREFIX}\n`);
     },
   });
 
+  let telemetrySent = false;
+  const sendTelemetry = (): void => {
+    if (telemetrySent) return;
+    telemetrySent = true;
+    recordRequestCount(requestStore.getAll().length);
+    recordInsightTypes(analysisEngine.getInsights().map((i) => i.type));
+    recordRulesTriggered(analysisEngine.getFindings().map((f) => f.rule));
+    trackSession(registry);
+  };
+
   let teardownCalled = false;
   const runTeardown = (): void => {
     if (teardownCalled) return;
     teardownCalled = true;
 
-    // Collect final telemetry before sending
-    recordRequestCount(requestStore.getAll().length);
-    recordInsightTypes(analysisEngine.getInsights().map((i) => i.type));
-    recordRulesTriggered(analysisEngine.getFindings().map((f) => f.rule));
-    trackSession(registry);
-
+    sendTelemetry();
     uninstallInterceptor();
     terminalDispose?.();
     analysisEngine.stop();
@@ -172,6 +189,10 @@ export function setup(): void {
 
   health.setTeardown(runTeardown);
 
-  process.once("SIGINT", () => { runTeardown(); process.exit(SIGNAL_EXIT_SIGINT); });
-  process.once("SIGTERM", () => { runTeardown(); process.exit(SIGNAL_EXIT_SIGTERM); });
+  // Send telemetry while async operations still work (before 'exit').
+  process.on("beforeExit", () => { sendTelemetry(); });
+  // Run full teardown on exit — only sync code runs here, which is fine
+  // because runTeardown is fully synchronous. Do NOT call process.exit()
+  // — let the host app control its own shutdown lifecycle.
+  process.on("exit", () => { runTeardown(); });
 }

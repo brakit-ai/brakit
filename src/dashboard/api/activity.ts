@@ -2,6 +2,8 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ServiceRegistry } from "../../core/service-registry.js";
 import type { TimelineEvent } from "../../types/api-contracts.js";
 import { sendJson, requireGet, parseRequestUrl } from "./shared.js";
+import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_INTERNAL_ERROR } from "../../constants/http.js";
+import { brakitDebug } from "../../utils/log.js";
 
 export function createActivityHandler(
   registry: ServiceRegistry,
@@ -14,7 +16,7 @@ export function createActivityHandler(
       const requestId = url.searchParams.get("requestId");
 
       if (!requestId) {
-        sendJson(req, res, 400, { error: "requestId parameter required" });
+        sendJson(req, res, HTTP_BAD_REQUEST, { error: "requestId parameter required" });
         return;
       }
 
@@ -36,7 +38,7 @@ export function createActivityHandler(
 
       timeline.sort((a, b) => a.timestamp - b.timestamp);
 
-      sendJson(req, res, 200, {
+      sendJson(req, res, HTTP_OK, {
         requestId,
         total: timeline.length,
         timeline,
@@ -48,9 +50,9 @@ export function createActivityHandler(
         },
       });
     } catch (err) {
-      console.error("[brakit] activity handler error:", err);
+      brakitDebug(`activity handler error: ${err}`);
       if (!res.headersSent) {
-        sendJson(req, res, 500, { error: "Internal error" });
+        sendJson(req, res, HTTP_INTERNAL_ERROR, { error: "Internal error" });
       }
     }
   };

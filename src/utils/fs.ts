@@ -31,3 +31,19 @@ export function ensureGitignore(dir: string, entry: string): void {
     // Non-critical — skip silently
   }
 }
+
+/** Async variant of ensureGitignore — for use in non-blocking paths. */
+export async function ensureGitignoreAsync(dir: string, entry: string): Promise<void> {
+  try {
+    const gitignorePath = resolve(dir, "../.gitignore");
+    if (await fileExists(gitignorePath)) {
+      const content = await readFile(gitignorePath, "utf-8");
+      if (content.split("\n").some((l) => l.trim() === entry)) return;
+      await writeFile(gitignorePath, content.trimEnd() + "\n" + entry + "\n");
+    } else {
+      await writeFile(gitignorePath, entry + "\n");
+    }
+  } catch {
+    // Non-critical — skip silently
+  }
+}

@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ReadonlyTelemetryStore } from "../../store/index.js";
 import { LOCALHOST_HOSTNAMES, SENSITIVE_HEADER_NAMES, URL_PARSE_BASE } from "../../constants/index.js";
 import { SENSITIVE_MASK_MIN_LENGTH, SENSITIVE_MASK_VISIBLE_CHARS, MAX_JSON_BODY_BYTES, SENSITIVE_MASK_PLACEHOLDER } from "../../constants/limits.js";
+import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_METHOD_NOT_ALLOWED, HTTP_PAYLOAD_TOO_LARGE } from "../../constants/http.js";
 
 export function maskSensitiveHeaders(
   headers: Record<string, string>,
@@ -60,7 +61,7 @@ export function requireGet(
   res: ServerResponse,
 ): boolean {
   if (req.method !== "GET") {
-    sendJson(req, res, 405, { error: "Method not allowed" });
+    sendJson(req, res, HTTP_METHOD_NOT_ALLOWED, { error: "Method not allowed" });
     return false;
   }
   return true;
@@ -81,7 +82,7 @@ export function readJsonBody(
     req.on("data", (chunk: Buffer) => {
       size += chunk.length;
       if (size > maxBytes) {
-        sendJson(req, res, 413, { error: "Payload too large" });
+        sendJson(req, res, HTTP_PAYLOAD_TOO_LARGE, { error: "Payload too large" });
         req.destroy();
         resolve(null);
         return;
@@ -93,9 +94,12 @@ export function readJsonBody(
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString()));
       } catch {
-        sendJson(req, res, 400, { error: "Invalid JSON body" });
+        sendJson(req, res, HTTP_BAD_REQUEST, { error: "Invalid JSON body" });
         resolve(null);
       }
+    });
+    req.on("error", () => {
+      resolve(null);
     });
   });
 }
@@ -111,5 +115,5 @@ export function handleTelemetryGet(
   const entries = requestId
     ? store.getByRequest(requestId)
     : [...store.getAll()];
-  sendJson(req, res, 200, { total: entries.length, entries: entries.reverse() });
+  sendJson(req, res, HTTP_OK, { total: entries.length, entries: entries.reverse() });
 }

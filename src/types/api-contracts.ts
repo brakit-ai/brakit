@@ -60,3 +60,19 @@ export interface MetricsResponse {
 export interface LiveMetricsResponse {
   endpoints: LiveEndpointData[];
 }
+
+export type SDKEventType = "request" | "db.query" | "fetch" | "log" | "error" | "auth.check";
+
+export interface SDKEvent {
+  type: SDKEventType;
+  requestId?: string;
+  timestamp: number;
+  data: Record<string, unknown>;
+}
+
+export interface SDKIngestPayload {
+  _brakit: true;
+  version: number;
+  sdk?: string;
+  events: SDKEvent[];
+}

@@ -22,6 +22,7 @@ import { isLocalRequest } from "./guard.js";
 import { captureInProcess } from "./capture.js";
 import type { BrakitConfig } from "../types/index.js";
 import type { RequestStoreInterface } from "../types/services.js";
+import { HTTP_NOT_FOUND } from "../constants/http.js";
 
 export interface InterceptorDeps {
   handleDashboard: (req: http.IncomingMessage, res: http.ServerResponse, config: BrakitConfig) => void;
@@ -66,7 +67,7 @@ export function installInterceptor(deps: InterceptorDeps): void {
 
       if (isDashboardRequest(url)) {
         if (!isLocalRequest(req)) {
-          res.writeHead(404);
+          res.writeHead(HTTP_NOT_FOUND);
           res.end("Not Found");
           return true;
         }

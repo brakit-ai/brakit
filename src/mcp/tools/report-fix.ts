@@ -1,7 +1,6 @@
 import type { BrakitClient } from "../client.js";
 import type { McpTool } from "../types.js";
-import type { AiFixStatus } from "../../types/finding-lifecycle.js";
-import { VALID_AI_FIX_STATUSES } from "../../constants/lifecycle.js";
+import { isNonEmptyString, isValidAiFixStatus } from "../../utils/type-guards.js";
 
 export const reportFix = {
   name: "report_fix",
@@ -29,32 +28,30 @@ export const reportFix = {
     required: ["finding_id", "status", "summary"] as const,
   },
   async handler(client: BrakitClient, args: Record<string, unknown>) {
-    const findingId = args.finding_id as string | undefined;
-    const status = args.status as string | undefined;
-    const summary = args.summary as string | undefined;
+    const { finding_id, status, summary } = args;
 
-    if (!findingId || findingId.trim() === "") {
+    if (!isNonEmptyString(finding_id)) {
       return { content: [{ type: "text" as const, text: "finding_id is required." }], isError: true };
     }
-    if (!status || !VALID_AI_FIX_STATUSES.has(status as AiFixStatus)) {
+    if (!isValidAiFixStatus(status)) {
       return { content: [{ type: "text" as const, text: "status must be 'fixed' or 'wont_fix'." }], isError: true };
     }
-    if (!summary || summary.trim() === "") {
+    if (!isNonEmptyString(summary)) {
       return { content: [{ type: "text" as const, text: "summary is required." }], isError: true };
     }
 
-    const ok = await client.reportFix(findingId, status, summary);
+    const ok = await client.reportFix(finding_id, status, summary);
 
     if (!ok) {
       return {
-        content: [{ type: "text" as const, text: `Finding ${findingId} not found. It may have already been resolved.` }],
+        content: [{ type: "text" as const, text: `Finding ${finding_id} not found. It may have already been resolved.` }],
         isError: true,
       };
     }
 
     const label = status === "fixed" ? "marked as fixed (awaiting verification)" : "marked as won't fix";
     return {
-      content: [{ type: "text" as const, text: `Finding ${findingId} ${label}. Dashboard updated.` }],
+      content: [{ type: "text" as const, text: `Finding ${finding_id} ${label}. Dashboard updated.` }],
     };
   },
 } satisfies McpTool;

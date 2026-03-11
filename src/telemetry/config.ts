@@ -42,14 +42,22 @@ export function getOrCreateConfig(): TelemetryConfig {
   return config;
 }
 
+let cachedEnabled: boolean | null = null;
+
 export function isTelemetryEnabled(): boolean {
+  if (cachedEnabled !== null) return cachedEnabled;
   const env = process.env.BRAKIT_TELEMETRY;
-  if (env !== undefined) return env !== "false" && env !== "0" && env !== "off";
-  return readConfig()?.telemetry ?? true;
+  if (env !== undefined) {
+    cachedEnabled = env !== "false" && env !== "0" && env !== "off";
+    return cachedEnabled;
+  }
+  cachedEnabled = readConfig()?.telemetry ?? true;
+  return cachedEnabled;
 }
 
 export function setTelemetryEnabled(enabled: boolean): void {
   const config = getOrCreateConfig();
   config.telemetry = enabled;
   writeConfig(config);
+  cachedEnabled = enabled;
 }

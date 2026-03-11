@@ -53,13 +53,16 @@ export class MetricsStore {
   private pendingPoints = new Map<string, LiveRequestPoint[]>();
 
   constructor(private persistence: MetricsPersistence) {
-    this.data = persistence.load();
-    for (const ep of this.data.endpoints) {
-      this.endpointIndex.set(ep.endpoint, ep);
-    }
+    this.data = { version: 1, endpoints: [] };
   }
 
   start(): void {
+    this.persistence.loadAsync().then((data) => {
+      this.data = data;
+      for (const ep of this.data.endpoints) {
+        this.endpointIndex.set(ep.endpoint, ep);
+      }
+    }).catch(() => {});
     this.flushTimer = setInterval(
       () => this.flush(),
       METRICS_FLUSH_INTERVAL_MS,

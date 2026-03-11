@@ -25,7 +25,7 @@ export interface TracedError extends TelemetryEntry {
 export type NormalizedOp = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
 
 export interface TracedQuery extends TelemetryEntry {
-  driver: "pg" | "mysql2" | "prisma" | string;
+  driver: "pg" | "mysql2" | "prisma" | "sdk";
   sql?: string;
   model?: string;
   operation?: string;

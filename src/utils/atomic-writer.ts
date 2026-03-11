@@ -13,8 +13,9 @@ import {
   renameSync,
 } from "node:fs";
 import { writeFile, mkdir, rename } from "node:fs/promises";
-import { ensureGitignore } from "./fs.js";
+import { ensureGitignore, ensureGitignoreAsync, fileExists } from "./fs.js";
 import { brakitWarn } from "./log.js";
+import { getErrorMessage } from "./type-guards.js";
 
 export interface AtomicWriterOptions {
   dir: string;
@@ -38,7 +39,7 @@ export class AtomicWriter {
       writeFileSync(this.tmpPath, content);
       renameSync(this.tmpPath, this.opts.filePath);
     } catch (err) {
-      brakitWarn(`failed to save ${this.opts.label}: ${(err as Error).message}`);
+      brakitWarn(`failed to save ${this.opts.label}: ${getErrorMessage(err)}`);
     }
   }
 
@@ -53,13 +54,13 @@ export class AtomicWriter {
       await writeFile(this.tmpPath, content);
       await rename(this.tmpPath, this.opts.filePath);
     } catch (err) {
-      brakitWarn(`failed to save ${this.opts.label}: ${(err as Error).message}`);
+      brakitWarn(`failed to save ${this.opts.label}: ${getErrorMessage(err)}`);
     } finally {
       this.writing = false;
       if (this.pendingContent !== null) {
         const next = this.pendingContent;
         this.pendingContent = null;
-        this.writeAsync(next);
+        this.writeAsync(next).catch(() => {});
       }
     }
   }
@@ -74,10 +75,10 @@ export class AtomicWriter {
   }
 
   private async ensureDirAsync(): Promise<void> {
-    if (!existsSync(this.opts.dir)) {
+    if (!(await fileExists(this.opts.dir))) {
       await mkdir(this.opts.dir, { recursive: true });
       if (this.opts.gitignoreEntry) {
-        ensureGitignore(this.opts.dir, this.opts.gitignoreEntry);
+        await ensureGitignoreAsync(this.opts.dir, this.opts.gitignoreEntry);
       }
     }
   }
