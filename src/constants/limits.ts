@@ -12,3 +12,9 @@ export const ANALYSIS_DEBOUNCE_MS = 300;
 export const FINDING_ID_HASH_LENGTH = 16;
 export const FINDINGS_DATA_VERSION = 1;
 export const SENSITIVE_MASK_PLACEHOLDER = "****";
+
+/** Length of the hex prefix used to hash project paths for data directories. */
+export const PROJECT_HASH_LENGTH = 8;
+
+/** Maximum array elements to scan in the exposed-secret rule. */
+export const SECRET_SCAN_ARRAY_LIMIT = 5;

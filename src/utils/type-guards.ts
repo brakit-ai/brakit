@@ -1,5 +1,7 @@
-import type { FindingState, AiFixStatus } from "../types/finding-lifecycle.js";
+import type { FindingState, AiFixStatus, FindingsData } from "../types/finding-lifecycle.js";
+import type { MetricsData } from "../types/metrics.js";
 import { VALID_FINDING_STATES, VALID_AI_FIX_STATUSES } from "../constants/lifecycle.js";
+import { FINDINGS_DATA_VERSION } from "../constants/limits.js";
 
 export function isString(val: unknown): val is string {
   return typeof val === "string";
@@ -29,4 +31,38 @@ export function isValidFindingState(val: unknown): val is FindingState {
 
 export function isValidAiFixStatus(val: unknown): val is AiFixStatus {
   return typeof val === "string" && VALID_AI_FIX_STATUSES.has(val as AiFixStatus);
+}
+
+/**
+ * Validates that a parsed JSON value conforms to the FindingsData envelope.
+ * Checks version and array structure; individual findings are trusted since
+ * they were serialized by this same application.
+ */
+export function validateFindingsData(parsed: unknown): FindingsData | null {
+  if (
+    parsed != null &&
+    typeof parsed === "object" &&
+    !Array.isArray(parsed) &&
+    (parsed as Record<string, unknown>).version === FINDINGS_DATA_VERSION &&
+    Array.isArray((parsed as Record<string, unknown>).findings)
+  ) {
+    return parsed as FindingsData;
+  }
+  return null;
+}
+
+/**
+ * Validates that a parsed JSON value conforms to the MetricsData envelope.
+ */
+export function validateMetricsData(parsed: unknown): MetricsData | null {
+  if (
+    parsed != null &&
+    typeof parsed === "object" &&
+    !Array.isArray(parsed) &&
+    (parsed as Record<string, unknown>).version === 1 &&
+    Array.isArray((parsed as Record<string, unknown>).endpoints)
+  ) {
+    return parsed as MetricsData;
+  }
+  return null;
 }

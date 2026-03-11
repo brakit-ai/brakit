@@ -2,11 +2,13 @@ import { readFile } from "node:fs/promises";
 import { readFileSync, existsSync, unlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import type { MetricsData } from "../../types/index.js";
-import { METRICS_DIR, METRICS_FILE } from "../../constants/index.js";
+import { METRICS_FILE } from "../../constants/index.js";
 import { AtomicWriter } from "../../utils/atomic-writer.js";
 import { fileExists } from "../../utils/fs.js";
-import { brakitWarn } from "../../utils/log.js";
-import { getErrorMessage } from "../../utils/type-guards.js";
+import { brakitWarn, brakitDebug } from "../../utils/log.js";
+import { getErrorMessage, validateMetricsData } from "../../utils/type-guards.js";
+
+const DEFAULT_METRICS: MetricsData = { version: 1, endpoints: [] };
 
 export interface MetricsPersistence {
   load(): MetricsData;
@@ -20,12 +22,11 @@ export class FileMetricsPersistence implements MetricsPersistence {
   private readonly metricsPath: string;
   private readonly writer: AtomicWriter;
 
-  constructor(rootDir: string) {
-    this.metricsPath = resolve(rootDir, METRICS_FILE);
+  constructor(dataDir: string) {
+    this.metricsPath = resolve(dataDir, METRICS_FILE);
     this.writer = new AtomicWriter({
-      dir: resolve(rootDir, METRICS_DIR),
+      dir: dataDir,
       filePath: this.metricsPath,
-      gitignoreEntry: METRICS_DIR,
       label: "metrics",
     });
   }
@@ -33,31 +34,28 @@ export class FileMetricsPersistence implements MetricsPersistence {
   load(): MetricsData {
     try {
       if (existsSync(this.metricsPath)) {
-        const raw = readFileSync(this.metricsPath, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (parsed?.version === 1 && Array.isArray(parsed.endpoints)) {
-          return parsed as MetricsData;
-        }
+        return this.parseMetrics(readFileSync(this.metricsPath, "utf-8"));
       }
     } catch (err) {
-      brakitWarn(`failed to load metrics: ${getErrorMessage(err)}`);
+      brakitWarn(`failed to load ${this.metricsPath}: ${getErrorMessage(err)}`);
     }
-    return { version: 1, endpoints: [] };
+    return { ...DEFAULT_METRICS };
   }
 
   async loadAsync(): Promise<MetricsData> {
     try {
       if (await fileExists(this.metricsPath)) {
-        const raw = await readFile(this.metricsPath, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (parsed?.version === 1 && Array.isArray(parsed.endpoints)) {
-          return parsed as MetricsData;
-        }
+        return this.parseMetrics(await readFile(this.metricsPath, "utf-8"));
       }
     } catch (err) {
-      brakitWarn(`failed to load metrics: ${getErrorMessage(err)}`);
+      brakitWarn(`failed to load ${this.metricsPath}: ${getErrorMessage(err)}`);
     }
-    return { version: 1, endpoints: [] };
+    return { ...DEFAULT_METRICS };
+  }
+
+  /** Parse and validate metrics JSON, returning default empty data on invalid input. */
+  private parseMetrics(raw: string): MetricsData {
+    return validateMetricsData(JSON.parse(raw)) ?? { ...DEFAULT_METRICS };
   }
 
   save(data: MetricsData): void {
@@ -73,6 +71,6 @@ export class FileMetricsPersistence implements MetricsPersistence {
       if (existsSync(this.metricsPath)) {
         unlinkSync(this.metricsPath);
       }
-    } catch {}
+    } catch (err) { brakitDebug(`failed to remove metrics file: ${getErrorMessage(err)}`); }
   }
 }

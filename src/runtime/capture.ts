@@ -24,6 +24,7 @@ import {
   CONTENT_ENCODING_DEFLATE,
 } from "../constants/index.js";
 import { brakitDebug } from "../utils/log.js";
+import { getErrorMessage } from "../utils/type-guards.js";
 
 type WriteFn = ServerResponse["write"];
 type EndFn = ServerResponse["end"];
@@ -52,12 +53,7 @@ function decompressAsync(body: Buffer<ArrayBuffer>, encoding: string): Promise<B
 
   return new Promise((resolve) => {
     decompressor(body, (err, result) => {
-      if (err) {
-        brakitDebug(`decompress failed: ${err.message}`);
-        resolve(body);
-      } else {
-        resolve(result);
-      }
+      resolve(err ? body : result);
     });
   });
 }
@@ -83,18 +79,24 @@ export function captureInProcess(
   const originalWrite: WriteFn = res.write;
   const originalEnd: EndFn = res.end;
 
+  let truncated = false;
+
   res.write = function (this: ServerResponse, ...args: unknown[]): boolean {
     try {
       const chunk = args[0];
-      if (chunk != null && typeof chunk !== "function" && resSize < DEFAULT_MAX_BODY_CAPTURE) {
-        const buf = toBuffer(chunk);
-        if (buf) {
-          resChunks.push(buf);
-          resSize += buf.length;
+      if (chunk != null && typeof chunk !== "function") {
+        if (resSize < DEFAULT_MAX_BODY_CAPTURE) {
+          const buf = toBuffer(chunk);
+          if (buf) {
+            resChunks.push(buf);
+            resSize += buf.length;
+          }
+        } else {
+          truncated = true;
         }
       }
     } catch (e) {
-      brakitDebug(`capture write: ${(e as Error).message}`);
+      brakitDebug(`capture write: ${getErrorMessage(e)}`);
     }
     return (originalWrite as WriteFn).apply(this, args as Parameters<WriteFn>);
   } as typeof res.write;
@@ -109,7 +111,7 @@ export function captureInProcess(
         }
       }
     } catch (e) {
-      brakitDebug(`capture end: ${(e as Error).message}`);
+      brakitDebug(`capture end: ${getErrorMessage(e)}`);
     }
 
     const result = (originalEnd as EndFn).apply(this, args as Parameters<EndFn>);
@@ -126,7 +128,7 @@ export function captureInProcess(
     void (async () => {
       try {
         let body = capturedChunks.length > 0 ? Buffer.concat(capturedChunks) : null;
-        if (body && encoding) {
+        if (body && encoding && !truncated) {
           body = await decompressAsync(body, encoding);
         }
 
@@ -145,7 +147,7 @@ export function captureInProcess(
           config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
         });
       } catch (e) {
-        brakitDebug(`capture store: ${(e as Error).message}`);
+        brakitDebug(`capture store: ${getErrorMessage(e)}`);
       }
     })();
 

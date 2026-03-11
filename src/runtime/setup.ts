@@ -18,13 +18,27 @@ import { FindingStore } from "../store/finding-store.js";
 import { AnalysisEngine } from "../analysis/engine.js";
 import { startTerminalInsights } from "../output/terminal.js";
 import { VERSION } from "../index.js";
-import { DASHBOARD_PREFIX, DEFAULT_MAX_BODY_CAPTURE, METRICS_DIR, PORT_FILE } from "../constants/index.js";
-import type { TelemetryEvent, BrakitConfig, Framework } from "../types/index.js";
+import {
+  DASHBOARD_PREFIX,
+  DEFAULT_MAX_BODY_CAPTURE,
+  METRICS_DIR,
+  PORT_FILE,
+} from "../constants/index.js";
+import type {
+  TelemetryEvent,
+  BrakitConfig,
+  Framework,
+} from "../types/index.js";
 import type { ChannelMap } from "../core/event-bus.js";
 import { health } from "./health.js";
 import { installInterceptor, uninstallInterceptor } from "./interceptor.js";
 import { brakitDebug } from "../utils/log.js";
-import { detectFrameworkFromDeps, detectPackageManagerSync } from "../detect/project.js";
+import { getErrorMessage } from "../utils/type-guards.js";
+import { getProjectDataDir } from "../utils/fs.js";
+import {
+  detectFrameworkFromDeps,
+  detectPackageManagerSync,
+} from "../detect/project.js";
 import {
   initSession,
   trackSession,
@@ -42,6 +56,7 @@ export function setup(): Promise<void> {
 }
 
 async function doSetup(): Promise<void> {
+  brakitDebug(`[setup] doSetup called at ${new Date().toISOString()}`);
 
   const bus = new EventBus();
   const registry = new ServiceRegistry();
@@ -82,10 +97,14 @@ async function doSetup(): Promise<void> {
 
   let framework: Framework = "unknown";
   try {
-    const pkg = JSON.parse(await readFile(resolve(cwd, "package.json"), "utf-8"));
+    const pkg = JSON.parse(
+      await readFile(resolve(cwd, "package.json"), "utf-8"),
+    );
     const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
     framework = detectFrameworkFromDeps(allDeps);
-  } catch { /* no package.json */ }
+  } catch {
+    /* no package.json */
+  }
 
   initSession(
     framework,
@@ -94,11 +113,13 @@ async function doSetup(): Promise<void> {
     adapterRegistry.getActive().map((a) => a.name),
   );
 
-  const metricsStore = new MetricsStore(new FileMetricsPersistence(cwd));
+  const dataDir = getProjectDataDir(cwd);
+
+  const metricsStore = new MetricsStore(new FileMetricsPersistence(dataDir));
   metricsStore.start();
   registry.register("metrics-store", metricsStore);
 
-  const findingStore = new FindingStore(cwd);
+  const findingStore = new FindingStore(dataDir);
   findingStore.start();
   registry.register("finding-store", findingStore);
 
@@ -134,8 +155,8 @@ async function doSetup(): Promise<void> {
     onFirstRequest(port) {
       setBrakitPort(port);
 
-      // Fire-and-forget: ensure dir + write port file asynchronously
-      // so the host app's first request is never blocked by file I/O.
+      brakitDebug(`[setup] onFirstRequest fired, port=${port}`);
+
       void (async () => {
         try {
           const dir = resolve(cwd, METRICS_DIR);
@@ -144,18 +165,29 @@ async function doSetup(): Promise<void> {
           const portPath = resolve(cwd, PORT_FILE);
           try {
             const old = await readFile(portPath, "utf-8");
-            if (old.trim() && old.trim() !== String(port)) {
-              brakitDebug(`Overwriting stale port file (was ${old.trim()}, now ${port})`);
+            if (old.trim() === String(port)) {
+              brakitDebug(`[setup] port file already correct, skipping write`);
+              return;
             }
-          } catch { /* no existing port file */ }
+            if (old.trim()) {
+              brakitDebug(
+                `Overwriting stale port file (was ${old.trim()}, now ${port})`,
+              );
+            }
+          } catch {
+            brakitDebug(`[setup] no existing port file, will create`);
+          }
           await writeFile(portPath, String(port));
+          brakitDebug(`[setup] wrote port file: ${portPath}`);
         } catch (err) {
-          brakitDebug(`port file write failed: ${(err as Error).message}`);
+          brakitDebug(`port file write failed: ${getErrorMessage(err)}`);
         }
       })();
 
       terminalDispose = startTerminalInsights(registry, port);
-      process.stdout.write(`  brakit v${VERSION} — http://localhost:${port}${DASHBOARD_PREFIX}\n`);
+      process.stdout.write(
+        `  brakit v${VERSION} — http://localhost:${port}${DASHBOARD_PREFIX}\n`,
+      );
     },
   });
 
@@ -184,15 +216,21 @@ async function doSetup(): Promise<void> {
     try {
       const portPath = resolve(cwd, PORT_FILE);
       if (existsSync(portPath)) unlinkSync(portPath);
-    } catch { /* non-critical */ }
+    } catch (err) {
+      brakitDebug(`[setup] port file cleanup failed: ${getErrorMessage(err)}`);
+    }
   };
 
   health.setTeardown(runTeardown);
 
   // Send telemetry while async operations still work (before 'exit').
-  process.on("beforeExit", () => { sendTelemetry(); });
+  process.on("beforeExit", () => {
+    sendTelemetry();
+  });
   // Run full teardown on exit — only sync code runs here, which is fine
   // because runTeardown is fully synchronous. Do NOT call process.exit()
   // — let the host app control its own shutdown lifecycle.
-  process.on("exit", () => { runTeardown(); });
+  process.on("exit", () => {
+    runTeardown();
+  });
 }

@@ -49,6 +49,7 @@ export class MetricsStore {
   private sessionId = randomUUID();
   private sessionStart = Date.now();
   private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private dirty = false;
   private accumulators = new Map<string, Accumulator>();
   private pendingPoints = new Map<string, LiveRequestPoint[]>();
 
@@ -80,6 +81,7 @@ export class MetricsStore {
 
   recordRequest(req: TracedRequest, metrics: RequestMetrics): void {
     if (req.isStatic) return;
+    this.dirty = true;
     const key = getEndpointKey(req.method, req.path);
 
     let acc = this.accumulators.get(key);
@@ -181,6 +183,7 @@ export class MetricsStore {
     this.endpointIndex.clear();
     this.accumulators.clear();
     this.pendingPoints.clear();
+    this.dirty = false;
     this.persistence.remove();
   }
 
@@ -230,11 +233,14 @@ export class MetricsStore {
     }
     this.pendingPoints.clear();
 
+    if (!this.dirty) return;
+
     if (sync) {
       this.persistence.saveSync(this.data);
     } else {
       this.persistence.save(this.data);
     }
+    this.dirty = false;
   }
 
   private getOrCreateEndpoint(endpoint: string): EndpointMetrics {

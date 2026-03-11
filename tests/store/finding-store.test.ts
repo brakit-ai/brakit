@@ -217,10 +217,60 @@ describe("FindingStore", () => {
       store2.stop();
     });
 
+    it("clear deletes the persistence file", () => {
+      store.upsert(makeSecurityFinding(), "passive");
+      store.stop(); // flush to disk
+
+      const findingsPath = resolve(tmpDir, "findings.json");
+      expect(existsSync(findingsPath)).toBe(true);
+
+      store = new FindingStore(tmpDir);
+      store.loadSync();
+      expect(store.getAll()).toHaveLength(1);
+
+      store.clear();
+      expect(store.getAll()).toHaveLength(0);
+      expect(existsSync(findingsPath)).toBe(false);
+    });
+
+    it("clear prevents stale data from reloading", () => {
+      store.upsert(makeSecurityFinding(), "passive");
+      store.stop(); // flush to disk
+
+      store = new FindingStore(tmpDir);
+      store.loadSync();
+      store.clear();
+
+      // Simulate reload: new store should find no file
+      const store2 = new FindingStore(tmpDir);
+      store2.loadSync();
+      expect(store2.getAll()).toHaveLength(0);
+      store2.stop();
+    });
+
     it("starts fresh if file is corrupt", () => {
-      const findingsPath = resolve(tmpDir, ".brakit/findings.json");
-      mkdirSync(resolve(tmpDir, ".brakit"), { recursive: true });
+      const findingsPath = resolve(tmpDir, "findings.json");
       writeFileSync(findingsPath, "{{corrupt json");
+
+      const store2 = new FindingStore(tmpDir);
+      store2.loadSync();
+      expect(store2.getAll()).toHaveLength(0);
+      store2.stop();
+    });
+
+    it("starts fresh if file has wrong version", () => {
+      const findingsPath = resolve(tmpDir, "findings.json");
+      writeFileSync(findingsPath, JSON.stringify({ version: 999, findings: [] }));
+
+      const store2 = new FindingStore(tmpDir);
+      store2.loadSync();
+      expect(store2.getAll()).toHaveLength(0);
+      store2.stop();
+    });
+
+    it("starts fresh if findings array is missing", () => {
+      const findingsPath = resolve(tmpDir, "findings.json");
+      writeFileSync(findingsPath, JSON.stringify({ version: 1 }));
 
       const store2 = new FindingStore(tmpDir);
       store2.loadSync();
