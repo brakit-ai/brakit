@@ -41,7 +41,7 @@
 <p align="center">
   <img width="700" src="docs/images/vscode.png" alt="Claude reading Brakit findings in VS Code" />
   <br />
-  <sub>Claude reads findings via MCP and fixes your code</sub>
+  <sub>Claude reads issues via MCP and fixes your code</sub>
 </p>
 
 ## Quick Start
@@ -56,7 +56,7 @@ That's it. Brakit detects your framework, adds itself as a devDependency, and cr
 npm run dev
 ```
 
-Dashboard at `http://localhost:<port>/__brakit`. Insights in the terminal.
+Dashboard at `http://localhost:<port>/__brakit`. Issues in the terminal.
 
 > **Requirements:** Node.js >= 18 and a project with `package.json`.
 
@@ -74,7 +74,7 @@ Dashboard at `http://localhost:<port>/__brakit`. Insights in the terminal.
 - **Full server tracing** — fetch calls, DB queries, console logs, errors — zero code changes
 - **Response overfetch** — large JSON responses with many fields your client doesn't use
 - **Performance tracking** — health grades and p95 trends across dev sessions
-- **AI-native via MCP** — Claude Code and Cursor can query findings, inspect endpoints, and verify fixes directly
+- **AI-native via MCP** — Claude Code and Cursor can query issues, inspect endpoints, and verify fixes directly
 
 ---
 

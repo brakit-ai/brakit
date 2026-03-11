@@ -240,7 +240,7 @@ required. Each store holds up to 1,000 entries and evicts the oldest when full.
 | LogStore     | Console output                                                                           |
 | ErrorStore   | Uncaught exceptions and unhandled rejections                                             |
 | MetricsStore | Per-endpoint session statistics, persisted to `.brakit/metrics.json`                     |
-| FindingStore | Stateful security findings with lifecycle tracking, persisted to `.brakit/findings.json` |
+| IssueStore   | Stateful issue tracking with lifecycle (open/fixing/resolved/stale/regressed), persisted to `.brakit/issues.json`    |
 
 Stores are registered in a typed ServiceRegistry and accessed through it —
 no module-level singletons. The EventBus delivers new entries to all
@@ -349,8 +349,8 @@ traceable.
 **Why bounded in-memory stores, not a database?** Brakit is a zero-config dev
 tool. Requiring a database (even SQLite) adds setup friction. Bounded arrays
 with oldest-eviction give predictable memory usage without configuration. The
-MetricsStore and FindingStore persist to JSON files for cross-session features
-(regression detection, finding lifecycle) — everything else is ephemeral.
+MetricsStore and IssueStore persist to JSON files for cross-session features
+(regression detection, issue lifecycle): everything else is ephemeral.
 
 **Why debounced analysis, not real-time?** A single request can generate 20+
 telemetry events (queries, fetches, logs). Recomputing insights on every event

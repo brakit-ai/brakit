@@ -13,7 +13,7 @@ to add new ones.
 - [What is MCP?](#what-is-mcp)
 - [How it connects](#how-it-connects)
 - [The tools](#the-tools)
-- [Finding lifecycle](#finding-lifecycle)
+- [Issue lifecycle](#issue-lifecycle)
 - [Architecture](#architecture)
 - [Adding a new MCP tool](#adding-a-new-mcp-tool)
 - [Constants](#constants)
@@ -65,26 +65,28 @@ it waits 2 seconds and tries again.
 
 ## The tools
 
-The MCP server exposes 6 tools. Each tool is a single function the AI can
+The MCP server exposes 7 tools. Each tool is a single function the AI can
 call.
 
 | Tool | What it does | Parameters |
 |------|-------------|------------|
-| `get_findings` | Lists security issues and performance problems | `severity` (optional), `state` (optional) |
+| `get_findings` | Lists all open issues (security and performance) | `severity` (optional), `state` (optional) |
 | `get_endpoints` | Shows all observed API endpoints with performance stats | `sort_by` (optional: `p95`, `error_rate`, `query_count`, `requests`) |
-| `get_request_detail` | Deep-dives into a specific request — queries, fetches, timeline | `request_id` or `endpoint` |
+| `get_request_detail` | Deep-dives into a specific request: queries, fetches, timeline | `request_id` or `endpoint` |
 | `verify_fix` | Checks whether a previously reported issue is resolved | `finding_id` or `endpoint` |
-| `get_report` | Full status report — open/resolved counts, top issues, endpoint health | none |
-| `clear_findings` | Resets all stored findings (fresh start) | none |
+| `get_report` | Full status report: open/resolved counts, top issues, endpoint health | none |
+| `clear_findings` | Resets all stored issues (fresh start) | none |
+| `report_fix` | Records the result of an AI fix attempt on an issue | `finding_id`, `status` (`fixed` or `wont_fix`), `summary` |
 
 ### How a typical AI conversation goes
 
-1. AI calls `get_findings` — sees 3 security issues.
+1. AI calls `get_findings` — sees 3 open issues.
 2. AI calls `get_request_detail` on the worst one — sees the exact SQL query
    that's vulnerable.
 3. AI fixes the code.
-4. User re-triggers the endpoint.
-5. AI calls `verify_fix` — confirms the issue is gone.
+4. AI calls `report_fix` — records what was done and marks the issue as fixing.
+5. User re-triggers the endpoint.
+6. AI calls `verify_fix` — confirms the issue is gone.
 
 ### Prompts
 
@@ -100,51 +102,55 @@ point:
 
 ---
 
-## Finding lifecycle
+## Issue lifecycle
 
-Brakit doesn't just detect issues — it tracks them over time. Every finding
+Brakit doesn't just detect issues — it tracks them over time. Every issue
 goes through a lifecycle (see also [Analysis Engine](analysis-engine.md) for
-how findings are generated):
+how issues are generated):
 
 ```
   new issue detected
          |
          v
-      [ open ] ──── user starts fixing ───> [ fixing ]
-         ^                                       |
-         |                                       v
-    re-detected                             [ resolved ]
-         |                                       |
-         +───────── issue comes back ────────────+
+      [ open ] ---- AI starts fixing ---> [ fixing ]
+         ^                                     |
+         |                                     v
+    re-detected                          [ resolved ]
+         |                                     |
+         +-------- issue comes back -------> [ regressed ]
+
+      [ open ] ---- endpoint goes quiet ---> [ stale ]
 ```
 
 ### States
 
 | State | Meaning |
 |-------|---------|
-| `open` | The issue was detected and hasn't been fixed |
-| `fixing` | Someone is working on it (set by the AI or user) |
+| `open` | The issue was detected and has not been fixed |
+| `fixing` | An AI assistant (via `report_fix`) is working on it |
 | `resolved` | The issue is no longer detected in live traffic |
+| `stale` | The endpoint has not been hit recently — no evidence to confirm or deny |
+| `regressed` | Was resolved, but the issue reappeared in new traffic |
 
-### Stable finding IDs
+### Stable issue IDs
 
-Each finding gets a deterministic ID based on three things: the rule that
+Each issue gets a deterministic ID based on three things: the rule that
 caught it, the endpoint it was found on, and the description. Brakit hashes
 these with SHA-256 and truncates to 16 hex characters. This means:
 
 - The same issue always gets the same ID, even across restarts.
-- The AI can refer to a finding by ID and it won't change.
+- The AI can refer to an issue by ID and it won't change.
 - Different issues on the same endpoint get different IDs.
 
 ### Auto-resolution
 
 When brakit re-scans your traffic and a previously-detected issue is no
 longer present, it automatically moves to `resolved`. If the issue reappears
-later, it moves back to `open` — so you know a fix didn't stick.
+later, it moves to `regressed` — so you know a fix didn't stick.
 
 ### Persistence
 
-Findings are saved to `.brakit/findings.json` and survive app restarts. The
+Issues are saved to `.brakit/issues.json` and survive app restarts. The
 store flushes periodically and does an atomic write (write to temp file, then
 rename) to avoid corruption.
 
@@ -170,17 +176,18 @@ src/mcp/
     verify-fix.ts
     get-report.ts
     clear-findings.ts
+    report-fix.ts
 ```
 
 Supporting files in other directories:
 
 ```
 src/store/
-  finding-store.ts   Stateful finding storage with lifecycle transitions
-  finding-id.ts      Stable finding ID computation (SHA-256)
+  issue-store.ts   Stateful issue storage with lifecycle transitions
+  issue-id.ts      Stable issue ID computation (SHA-256)
 
 src/types/
-  finding-lifecycle.ts   FindingState, StatefulFinding, FindingsData types
+  issue-lifecycle.ts   IssueState, StatefulIssue, IssuesData types
 
 src/constants/
   mcp.ts   Timeouts, limits, and configuration for the MCP server
@@ -332,12 +339,12 @@ MCP tests live in `tests/mcp/` and `tests/store/`:
 
 | File | What it tests |
 |------|--------------|
-| `tests/mcp/tools.test.ts` | All 6 tool handlers — happy paths, edge cases, input validation |
+| `tests/mcp/tools.test.ts` | All 7 tool handlers: happy paths, edge cases, input validation |
 | `tests/mcp/tool-registry.test.ts` | Tool registration, dispatch, unknown tool handling |
-| `tests/mcp/enrichment.test.ts` | Data enrichment — finding mapping, endpoint sorting, context |
-| `tests/mcp/discovery.test.ts` | Port file discovery — reading, validation, error cases |
-| `tests/store/finding-store.test.ts` | Finding lifecycle — upsert, transitions, persistence, reconciliation |
+| `tests/mcp/enrichment.test.ts` | Data enrichment: issue mapping, endpoint sorting, context |
+| `tests/mcp/discovery.test.ts` | Port file discovery: reading, validation, error cases |
+| `tests/store/issue-store.test.ts` | Issue lifecycle: upsert, transitions, persistence, reconciliation |
 
 Test helpers in `tests/helpers/mcp-factories.ts` provide factory functions:
-`makeSecurityFinding()`, `makeStatefulFinding()`, `makeEnrichedFinding()`,
+`makeSecurityFinding()`, `makeStatefulIssue()`, `makeEnrichedFinding()`,
 `makeEndpointSummary()`.

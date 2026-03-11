@@ -52,7 +52,15 @@ interface ChannelMap {
   "telemetry:error": Omit<TracedError, "id">;
   "request:completed": TracedRequest;
   "analysis:updated": AnalysisUpdate;
-  "store:cleared": void;
+  "issues:changed": readonly StatefulIssue[];
+  "store:cleared": undefined;
+}
+
+// AnalysisUpdate carries the full computed state after each recompute cycle:
+interface AnalysisUpdate {
+  insights: readonly Insight[];
+  findings: readonly SecurityFinding[];
+  issues: readonly StatefulIssue[];
 }
 ```
 
@@ -69,6 +77,7 @@ Channels follow a `domain:event` convention:
 | `telemetry:*` | Raw telemetry from hooks and SDKs | `telemetry:fetch`, `telemetry:query` |
 | `request:*`   | HTTP request lifecycle            | `request:completed`                  |
 | `analysis:*`  | Computed insights and findings    | `analysis:updated`                   |
+| `issues:*`    | Issue lifecycle state changes     | `issues:changed`                     |
 | `store:*`     | Store-level operations            | `store:cleared`                      |
 
 Prefer this convention when adding new channels. It keeps the bus scannable and groups related events.
@@ -143,10 +152,9 @@ The analysis engine emits computed results after recompute:
 
 ```typescript
 bus.emit("analysis:updated", {
-  insights,
-  findings,
-  statefulFindings,
-  statefulInsights,
+  insights,    // Insight[] from performance rules
+  findings,    // SecurityFinding[] from security rules
+  issues,      // StatefulIssue[] with full lifecycle state
 });
 ```
 
@@ -171,8 +179,9 @@ subs.add(
 );
 subs.add(
   bus.on("analysis:updated", (u) => {
-    writeEvent("insights", JSON.stringify(u.statefulInsights));
-    writeEvent("security", JSON.stringify(u.statefulFindings));
+    writeEvent("issues", JSON.stringify(u.issues));
+    writeEvent("insights", JSON.stringify(u.insights));
+    writeEvent("security", JSON.stringify(u.findings));
   }),
 );
 
@@ -202,7 +211,7 @@ subs.add(bus.on("telemetry:log", handler2));
 subs.dispose();
 ```
 
-`bus.on()` returns a dispose function. `SubscriptionBag.add()` accepts it. This is the only way to manage subscriptions — never call `bus.off()` directly.
+`bus.on()` returns a dispose function. `SubscriptionBag.add()` accepts it. `bus.off(channel, fn)` also exists as a direct unsubscribe, but prefer `SubscriptionBag` for any code that manages multiple subscriptions — it avoids the error-prone manual pairing of every `on` with an `off`.
 
 Used by:
 

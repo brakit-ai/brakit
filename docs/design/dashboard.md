@@ -1,6 +1,6 @@
 # Dashboard
 
-Brakit serves a live dashboard at `/__brakit` that shows requests, queries, errors, performance insights, and security findings in real time. This document covers how it's built.
+Brakit serves a live dashboard at `/__brakit` that shows requests, queries, errors, performance issues, and security issues in real time. This document covers how it's built.
 
 ## Table of contents
 
@@ -39,12 +39,12 @@ Brakit serves a live dashboard at `/__brakit` that shows requests, queries, erro
 │  │  SSE handler   ──▶ EventBus ──▶ Subscribe to channels   │     │
 │  └─────────────────────────────────────────────────────────┘     │
 │                                                                  │
-│  ┌──────────┐  ┌──────────┐  ┌────────────┐  ┌──────────────┐  │
-│  │ EventBus │  │  Stores  │  │  Analysis  │  │ MCP Server   │  │
-│  │ (channels│  │ (7 total)│  │  Engine    │  │ (separate    │  │
-│  │  + subs) │  │          │  │            │  │  process,    │  │
-│  └──────────┘  └──────────┘  └────────────┘  │  same API)   │  │
-│                                               └──────────────┘  │
+│  ┌──────────┐  ┌──────────┐  ┌────────────┐  ┌──────────────┐    │
+│  │ EventBus │  │  Stores  │  │  Analysis  │  │ MCP Server   │    │
+│  │ (channels│  │ (8 total)│  │  Engine    │  │ (separate    │    │
+│  │  + subs) │  │          │  │            │  │  process,    │    │
+│  └──────────┘  └──────────┘  └────────────┘  │  same API)   │    │
+│                                              └──────────────┘    │
 └──────────────────────────────────────────────────────────────────┘
          │ SSE stream                      │ REST API
          ▼                                 ▼
@@ -65,24 +65,26 @@ Real-time updates use Server-Sent Events. When brakit captures a new request or 
 
 `src/dashboard/router.ts` creates a route table mapping URL paths to handler functions:
 
-| Path | Handler | Purpose |
-|------|---------|---------|
-| `/__brakit` | HTML page | Serves the dashboard |
-| `/__brakit/api/requests` | `createRequestsHandler` | List captured requests |
-| `/__brakit/api/flows` | `createFlowsHandler` | List request flows (user actions) |
-| `/__brakit/api/events` | `createSSEHandler` | SSE stream for real-time updates |
-| `/__brakit/api/logs` | `createLogsHandler` | List captured console logs |
-| `/__brakit/api/fetches` | `createFetchesHandler` | List outgoing fetch calls |
-| `/__brakit/api/errors` | `createErrorsHandler` | List captured errors |
-| `/__brakit/api/queries` | `createQueriesHandler` | List database queries |
-| `/__brakit/api/metrics` | `createMetricsHandler` | Per-endpoint session metrics |
-| `/__brakit/api/metrics/live` | `createLiveMetricsHandler` | Current session live metrics |
-| `/__brakit/api/activity` | `createActivityHandler` | Timeline of events for a request |
-| `/__brakit/api/insights` | `createInsightsHandler` | Performance insights |
-| `/__brakit/api/security` | `createSecurityHandler` | Security findings |
-| `/__brakit/api/findings` | `createFindingsHandler` | Stateful findings with lifecycle |
-| `/__brakit/api/ingest` | `createIngestHandler` | External SDK event ingestion |
-| `/__brakit/api/clear` | `createClearHandler` | Clear all stores |
+| Path                            | Handler                       | Purpose                                          |
+| ------------------------------- | ----------------------------- | ------------------------------------------------ |
+| `/__brakit`                     | HTML page                     | Serves the dashboard                             |
+| `/__brakit/api/requests`        | `createRequestsHandler`       | List captured requests                           |
+| `/__brakit/api/flows`           | `createFlowsHandler`          | List request flows (user actions)                |
+| `/__brakit/api/events`          | `createSSEHandler`            | SSE stream for real-time updates                 |
+| `/__brakit/api/logs`            | `createLogsHandler`           | List captured console logs                       |
+| `/__brakit/api/fetches`         | `createFetchesHandler`        | List outgoing fetch calls                        |
+| `/__brakit/api/errors`          | `createErrorsHandler`         | List captured errors                             |
+| `/__brakit/api/queries`         | `createQueriesHandler`        | List database queries                            |
+| `/__brakit/api/metrics`         | `createMetricsHandler`        | Per-endpoint session metrics                     |
+| `/__brakit/api/metrics/live`    | `createLiveMetricsHandler`    | Current session live metrics                     |
+| `/__brakit/api/activity`        | `createActivityHandler`       | Timeline of events for a request                 |
+| `/__brakit/api/insights`        | `createInsightsHandler`       | Performance and reliability issues               |
+| `/__brakit/api/security`        | `createSecurityHandler`       | Security issues                                  |
+| `/__brakit/api/findings`        | `createFindingsHandler`       | All stateful issues with lifecycle (used by MCP) |
+| `/__brakit/api/findings/report` | `createFindingsReportHandler` | Record AI fix result (POST)                      |
+| `/__brakit/api/tab`             | `createTabHandler`            | Track active dashboard tab                       |
+| `/__brakit/api/ingest`          | `createIngestHandler`         | External SDK event ingestion                     |
+| `/__brakit/api/clear`           | `createClearHandler`          | Clear all stores                                 |
 
 Every handler is a factory function that receives the `ServiceRegistry`. No global imports, no singletons.
 
@@ -113,16 +115,16 @@ Response shapes are defined in `src/types/api-contracts.ts` and shared between t
 4. Send heartbeat comments every 30 seconds to keep the connection alive
 5. On disconnect, call `subs.dispose()` to clean up all subscriptions
 
-| Bus channel | SSE event type | What it carries |
-|-------------|---------------|-----------------|
-| `request:completed` | (default) | Completed request record |
-| `telemetry:fetch` | `fetch` | Outgoing fetch call |
-| `telemetry:log` | `log` | Console log entry |
-| `telemetry:error` | `error_event` | Uncaught error |
-| `telemetry:query` | `query` | Database query |
-| `analysis:updated` | `insights` + `security` | Computed insights and findings |
+| Bus channel         | SSE event type                     | What it carries                                      |
+| ------------------- | ---------------------------------- | ---------------------------------------------------- |
+| `request:completed` | (default)                          | Completed request record                             |
+| `telemetry:fetch`   | `fetch`                            | Outgoing fetch call                                  |
+| `telemetry:log`     | `log`                              | Console log entry                                    |
+| `telemetry:error`   | `error_event`                      | Uncaught error                                       |
+| `telemetry:query`   | `query`                            | Database query                                       |
+| `analysis:updated`  | `issues` + `insights` + `security` | Computed issues, raw insights, and security findings |
 
-The `analysis:updated` channel emits two SSE events — one for insights, one for security findings — so the client can update each section independently.
+The `analysis:updated` channel emits three SSE events: `issues` (the unified StatefulIssue list with lifecycle state), `insights` (raw Insight objects from performance rules), and `security` (raw SecurityFinding objects). The client can update each section independently.
 
 ---
 
@@ -149,6 +151,7 @@ The dashboard enforces several security measures:
 **Localhost-only access.** The interceptor only serves dashboard routes to localhost connections. Non-local IPs get a 404.
 
 **Content Security Policy.** Every response includes a strict CSP header:
+
 ```
 default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:
 ```
