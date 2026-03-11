@@ -5,6 +5,7 @@ import type {
 } from "../types/index.js";
 import { ENDPOINT_TRUNCATE_LENGTH } from "../constants/index.js";
 import { detectCategory, getEffectivePath } from "./categorize.js";
+import { isErrorStatus } from "../utils/http-status.js";
 
 export function extractSourcePage(req: TracedRequest): string | undefined {
   const referer = req.headers["referer"] ?? req.headers["Referer"];
@@ -30,7 +31,7 @@ function generateHumanLabel(
 ): string {
   const effectivePath = getEffectivePath(req);
   const endpointName = getEndpointName(effectivePath);
-  const failed = req.statusCode >= 400;
+  const failed = isErrorStatus(req.statusCode);
 
   switch (category) {
     case "auth-handshake":

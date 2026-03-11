@@ -4,8 +4,7 @@ import type { TracedQuery, TracedFetch } from "../types/index.js";
 export type {
   TimelineEvent,
   RequestsResponse,
-  SecurityFindingsResponse,
-  InsightsResponse,
+  IssuesResponse,
   TelemetryEntriesResponse,
   ActivityResponse,
   LiveMetricsResponse,

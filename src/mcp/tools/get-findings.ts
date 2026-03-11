@@ -1,10 +1,10 @@
 import type { BrakitClient } from "../client.js";
 import type { McpTool } from "../types.js";
 import type { SecuritySeverity } from "../../types/security.js";
-import type { FindingState } from "../../types/finding-lifecycle.js";
+import type { IssueState } from "../../types/issue-lifecycle.js";
 import { enrichFindings } from "../enrichment.js";
 import { VALID_SECURITY_SEVERITIES } from "../../constants/lifecycle.js";
-import { isValidFindingState } from "../../utils/type-guards.js";
+import { isValidIssueState } from "../../utils/type-guards.js";
 
 export const getFindings = {
   name: "get_findings",
@@ -22,8 +22,8 @@ export const getFindings = {
       },
       state: {
         type: "string",
-        enum: ["open", "fixing", "resolved"] satisfies FindingState[],
-        description: "Filter by finding state (from finding lifecycle)",
+        enum: ["open", "fixing", "resolved", "stale", "regressed"] satisfies IssueState[],
+        description: "Filter by issue state",
       },
     },
   },
@@ -34,8 +34,8 @@ export const getFindings = {
     if (severity && !VALID_SECURITY_SEVERITIES.has(severity as SecuritySeverity)) {
       return { content: [{ type: "text" as const, text: `Invalid severity "${severity}". Use: critical, warning.` }], isError: true };
     }
-    if (state && !isValidFindingState(state)) {
-      return { content: [{ type: "text" as const, text: `Invalid state "${state}". Use: open, fixing, resolved.` }], isError: true };
+    if (state && !isValidIssueState(state)) {
+      return { content: [{ type: "text" as const, text: `Invalid state "${state}". Use: open, fixing, resolved, stale, regressed.` }], isError: true };
     }
 
     let findings = await enrichFindings(client);
@@ -45,9 +45,9 @@ export const getFindings = {
     }
 
     if (state) {
-      const stateful = await client.getFindings(state);
-      const statefulIds = new Set(stateful.findings.map((f) => f.findingId));
-      findings = findings.filter((f) => statefulIds.has(f.findingId));
+      const issuesData = await client.getIssues({ state });
+      const issueIds = new Set(issuesData.issues.map((i) => i.issueId));
+      findings = findings.filter((f) => issueIds.has(f.findingId));
     }
 
     if (findings.length === 0) {

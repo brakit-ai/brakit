@@ -7,24 +7,23 @@ import type {
 } from "./types.js";
 import type { TracedRequest } from "../types/index.js";
 import { ENRICHMENT_SEVERITY_FILTER } from "../constants/mcp.js";
-import { computeInsightId } from "../store/finding-id.js";
 import { parseEndpointKey } from "../utils/endpoint.js";
 
 export async function enrichFindings(
   client: BrakitClient,
 ): Promise<EnrichedFinding[]> {
-  const [securityData, insightsData] = await Promise.all([
-    client.getSecurityFindings(),
-    client.getInsights(),
-  ]);
+  const issuesData = await client.getIssues();
+  const issues = issuesData.issues.filter(
+    (si) => si.state !== "resolved" && si.state !== "stale",
+  );
 
-  // Fetch context for all findings in parallel — each task does
-  // getRequests → getActivity sequentially (data dependency), but
-  // all findings run concurrently.
+  // Fetch context for issues with endpoints in parallel
   const contexts = await Promise.all(
-    securityData.findings.map(async (sf): Promise<string> => {
+    issues.map(async (si): Promise<string> => {
+      const endpoint = si.issue.endpoint;
+      if (!endpoint) return si.issue.detail ?? "";
       try {
-        const { path } = parseEndpointKey(sf.finding.endpoint);
+        const { path } = parseEndpointKey(endpoint);
         const reqData = await client.getRequests({ search: path, limit: 1 });
         if (reqData.requests.length > 0) {
           const req = reqData.requests[0];
@@ -38,41 +37,25 @@ export async function enrichFindings(
       } catch {
         return "(context unavailable)";
       }
-      return "";
+      return si.issue.detail ?? "";
     }),
   );
 
-  const enriched: EnrichedFinding[] = securityData.findings.map((sf, i) => {
-    const f = sf.finding;
-    return {
-      findingId: sf.findingId,
-      severity: f.severity,
-      title: f.title,
-      endpoint: f.endpoint,
-      description: f.desc,
-      hint: f.hint,
-      occurrences: f.count,
-      context: contexts[i],
-      aiStatus: sf.aiStatus,
-      aiNotes: sf.aiNotes,
-    };
-  });
+  const enriched: EnrichedFinding[] = [];
 
-  for (const si of insightsData.insights) {
-    if (si.state === "resolved") continue;
-    const i = si.insight;
-    if (!ENRICHMENT_SEVERITY_FILTER.includes(i.severity)) continue;
+  for (let i = 0; i < issues.length; i++) {
+    const si = issues[i];
+    if (!ENRICHMENT_SEVERITY_FILTER.includes(si.issue.severity)) continue;
 
-    const endpoint = i.nav ?? "global";
     enriched.push({
-      findingId: computeInsightId(i.type, endpoint, i.desc),
-      severity: i.severity,
-      title: i.title,
-      endpoint,
-      description: i.desc,
-      hint: i.hint,
-      occurrences: 1,
-      context: i.detail ?? "",
+      findingId: si.issueId,
+      severity: si.issue.severity,
+      title: si.issue.title,
+      endpoint: si.issue.endpoint ?? "global",
+      description: si.issue.desc,
+      hint: si.issue.hint,
+      occurrences: si.occurrences,
+      context: contexts[i],
       aiStatus: si.aiStatus,
       aiNotes: si.aiNotes,
     });

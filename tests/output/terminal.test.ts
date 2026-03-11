@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { printBanner, startTerminalInsights } from "../../src/output/terminal.js";
-import { makeInsight, makeAnalysisUpdate } from "../helpers/factories.js";
+import { makeInsight, makeStatefulIssue, makeAnalysisUpdate } from "../helpers/factories.js";
 import { EventBus } from "../../src/core/event-bus.js";
 import { ServiceRegistry } from "../../src/core/service-registry.js";
 
@@ -46,38 +46,41 @@ describe("startTerminalInsights", () => {
     return spy.mock.calls.map((c: unknown[]) => c[0]).join("");
   }
 
-  it("prints warning and critical insights to stdout", () => {
+  it("prints warning and critical issues to stdout", () => {
     const dispose = startTerminalInsights(registry, 3000);
-    bus.emit("analysis:updated", makeAnalysisUpdate([makeInsight({ severity: "warning", title: "Slow Endpoint" })]));
+    const issues = [makeStatefulIssue({ severity: "warning", title: "Slow Endpoint" })];
+    bus.emit("analysis:updated", makeAnalysisUpdate([makeInsight({ severity: "warning", title: "Slow Endpoint" })], [], issues));
     const output = getOutput();
     expect(output).toContain("Slow Endpoint");
     dispose();
   });
 
-  it("skips info-severity insights", () => {
+  it("skips info-severity issues", () => {
     const dispose = startTerminalInsights(registry, 3000);
-    bus.emit("analysis:updated", makeAnalysisUpdate([makeInsight({ severity: "info", title: "Info Insight" })]));
+    const issues = [makeStatefulIssue({ severity: "info", title: "Info Issue", rule: "info-rule" })];
+    bus.emit("analysis:updated", makeAnalysisUpdate([makeInsight({ severity: "info", title: "Info Issue" })], [], issues));
     expect(getOutput()).toBe("");
     dispose();
   });
 
-  it("deduplicates same insight type and endpoint across calls", () => {
+  it("deduplicates same issue across calls", () => {
     const dispose = startTerminalInsights(registry, 3000);
-    const insight = makeInsight();
+    const issues = [makeStatefulIssue()];
+    const update = makeAnalysisUpdate([makeInsight()], [], issues);
 
-    bus.emit("analysis:updated", makeAnalysisUpdate([insight]));
+    bus.emit("analysis:updated", update);
     const firstOutput = getOutput();
     expect(firstOutput).toContain("Slow Endpoint");
 
     spy.mockClear();
-    bus.emit("analysis:updated", makeAnalysisUpdate([insight]));
+    bus.emit("analysis:updated", update);
     expect(getOutput()).toBe("");
     dispose();
   });
 
-  it("prints nothing for empty insights array", () => {
+  it("prints nothing for empty issues array", () => {
     const dispose = startTerminalInsights(registry, 3000);
-    bus.emit("analysis:updated", makeAnalysisUpdate([]));
+    bus.emit("analysis:updated", makeAnalysisUpdate([], [], []));
     expect(getOutput()).toBe("");
     dispose();
   });

@@ -14,6 +14,7 @@ import {
   METRICS_MAX_DATA_POINTS,
 } from "../../constants/index.js";
 import { percentile } from "../../utils/math.js";
+import { isErrorStatus } from "../../utils/http-status.js";
 import { getEndpointKey } from "../../utils/endpoint.js";
 import type { MetricsPersistence } from "./persistence.js";
 
@@ -92,14 +93,14 @@ export class MetricsStore {
 
     acc.durations.push(req.durationMs);
     acc.queryCounts.push(metrics.queryCount);
-    if (req.statusCode >= 400) acc.errorCount++;
+    if (isErrorStatus(req.statusCode)) acc.errorCount++;
 
     acc.totalDurationSum += req.durationMs;
     acc.totalRequestCount++;
     acc.totalQuerySum += metrics.queryCount;
     acc.totalQueryTimeMs += metrics.queryTimeMs;
     acc.totalFetchTimeMs += metrics.fetchTimeMs;
-    if (req.statusCode >= 400) acc.totalErrorCount++;
+    if (isErrorStatus(req.statusCode)) acc.totalErrorCount++;
 
     const timestamp = Math.round(
       Date.now() - (performance.now() - req.startedAt),
@@ -149,7 +150,7 @@ export class MetricsStore {
       if (requests.length === 0) continue;
 
       const durations = requests.map((r) => r.durationMs);
-      const errors = requests.filter((r) => r.statusCode >= 400).length;
+      const errors = requests.filter((r) => isErrorStatus(r.statusCode)).length;
       const totalQueries = requests.reduce((s, r) => s + r.queryCount, 0);
       const totalQueryTime = requests.reduce((s, r) => s + (r.queryTimeMs ?? 0), 0);
       const totalFetchTime = requests.reduce((s, r) => s + (r.fetchTimeMs ?? 0), 0);

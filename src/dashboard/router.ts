@@ -42,13 +42,10 @@ import {
   createActivityHandler,
 } from "./api/index.js";
 import {
-  createInsightsHandler,
-  createSecurityHandler,
-} from "./api/insights.js";
-import {
+  createIssuesHandler,
   createFindingsHandler,
-  createFindingsReportHandler,
-} from "./api/findings.js";
+  createIssuesReportHandler,
+} from "./api/issues.js";
 import { createSSEHandler } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
 import {
@@ -67,9 +64,6 @@ export function createDashboardHandler(
   registry: ServiceRegistry,
 ): (req: IncomingMessage, res: ServerResponse, config: BrakitConfig) => void {
   const metricsStore = registry.get("metrics-store");
-  const analysisEngine = registry.has("analysis-engine")
-    ? registry.get("analysis-engine")
-    : undefined;
 
   const routes: Record<string, RouteHandler> = {
     [DASHBOARD_API_REQUESTS]: createRequestsHandler(registry),
@@ -86,18 +80,14 @@ export function createDashboardHandler(
     [DASHBOARD_API_ACTIVITY]: createActivityHandler(registry),
   };
 
-  if (analysisEngine) {
-    routes[DASHBOARD_API_INSIGHTS] = createInsightsHandler(analysisEngine);
-    routes[DASHBOARD_API_SECURITY] = createSecurityHandler(analysisEngine);
-  }
-
-  if (registry.has("finding-store")) {
-    const findingStore = registry.get("finding-store");
-    routes[DASHBOARD_API_FINDINGS] = createFindingsHandler(findingStore);
-    routes[DASHBOARD_API_FINDINGS_REPORT] = createFindingsReportHandler(
-      findingStore,
+  if (registry.has("issue-store")) {
+    const issueStore = registry.get("issue-store");
+    routes[DASHBOARD_API_INSIGHTS] = createIssuesHandler(issueStore);
+    routes[DASHBOARD_API_SECURITY] = createIssuesHandler(issueStore);
+    routes[DASHBOARD_API_FINDINGS] = createFindingsHandler(issueStore);
+    routes[DASHBOARD_API_FINDINGS_REPORT] = createIssuesReportHandler(
+      issueStore,
       registry.get("event-bus"),
-      analysisEngine,
     );
   }
 

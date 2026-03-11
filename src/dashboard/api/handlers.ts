@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { groupRequestsIntoFlows } from "../../analysis/group.js";
-import { DEFAULT_API_LIMIT } from "../../constants/index.js";
+import { DEFAULT_API_LIMIT, MAX_API_LIMIT } from "../../constants/index.js";
 import { HTTP_OK, HTTP_METHOD_NOT_ALLOWED } from "../../constants/http.js";
 import type { ServiceRegistry } from "../../core/service-registry.js";
 import { sendJson, requireGet, handleTelemetryGet, maskSensitiveHeaders, parseRequestUrl } from "./shared.js";
@@ -24,11 +24,9 @@ export function createRequestsHandler(
     const method = url.searchParams.get("method");
     const status = url.searchParams.get("status");
     const search = url.searchParams.get("search");
-    const limit = parseInt(
-      url.searchParams.get("limit") ?? String(DEFAULT_API_LIMIT),
-      10,
-    );
-    const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
+    const rawLimit = parseInt(url.searchParams.get("limit") ?? String(DEFAULT_API_LIMIT), 10);
+    const limit = Math.min(Math.max(rawLimit || DEFAULT_API_LIMIT, 1), MAX_API_LIMIT);
+    const offset = Math.max(parseInt(url.searchParams.get("offset") ?? "0", 10) || 0, 0);
 
     let results = [...registry.get("request-store").getAll()].reverse();
 
@@ -95,7 +93,7 @@ export function createClearHandler(
     registry.get("error-store").clear();
     registry.get("query-store").clear();
     registry.get("metrics-store").reset();
-    if (registry.has("finding-store")) registry.get("finding-store").clear();
+    if (registry.has("issue-store")) registry.get("issue-store").clear();
     registry.get("event-bus").emit("store:cleared", undefined);
     sendJson(req, res, HTTP_OK, { cleared: true });
   };

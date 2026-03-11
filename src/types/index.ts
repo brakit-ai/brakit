@@ -43,11 +43,11 @@ export type {
 export type { Severity, SecuritySeverity, SecurityFinding } from "./security.js";
 
 export type {
-  FindingState,
-  FindingSource,
+  IssueState,
+  IssueSource,
+  IssueCategory,
   AiFixStatus,
-  StatefulFinding,
-  FindingsData,
-} from "./finding-lifecycle.js";
-
-export type { InsightState, StatefulInsight } from "./insight-lifecycle.js";
+  Issue,
+  StatefulIssue,
+  IssuesData,
+} from "./issue-lifecycle.js";

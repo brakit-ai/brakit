@@ -2,6 +2,7 @@ import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
 import { getEndpointKey } from "../../../utils/endpoint.js";
 import { unwrapResponse } from "../../../utils/response.js";
+import { isErrorStatus } from "../../../utils/http-status.js";
 import { INTERNAL_ID_SUFFIX } from "../../rules/patterns.js";
 import {
   OVERFETCH_MIN_FIELDS,
@@ -17,7 +18,7 @@ export const responseOverfetchRule: InsightRule = {
     const seen = new Set<string>();
 
     for (const r of ctx.nonStatic) {
-      if (r.statusCode >= 400 || !r.responseBody) continue;
+      if (isErrorStatus(r.statusCode) || !r.responseBody) continue;
       const ep = getEndpointKey(r.method, r.path);
       if (seen.has(ep)) continue;
 

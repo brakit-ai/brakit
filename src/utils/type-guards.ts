@@ -1,7 +1,7 @@
-import type { FindingState, AiFixStatus, FindingsData } from "../types/finding-lifecycle.js";
+import type { IssueState, IssueCategory, AiFixStatus, IssuesData } from "../types/issue-lifecycle.js";
 import type { MetricsData } from "../types/metrics.js";
-import { VALID_FINDING_STATES, VALID_AI_FIX_STATUSES } from "../constants/lifecycle.js";
-import { FINDINGS_DATA_VERSION } from "../constants/limits.js";
+import { VALID_ISSUE_STATES, VALID_ISSUE_CATEGORIES, VALID_AI_FIX_STATUSES } from "../constants/lifecycle.js";
+import { ISSUES_DATA_VERSION } from "../constants/limits.js";
 
 export function isString(val: unknown): val is string {
   return typeof val === "string";
@@ -25,8 +25,12 @@ export function getErrorMessage(err: unknown): string {
   return String(err);
 }
 
-export function isValidFindingState(val: unknown): val is FindingState {
-  return typeof val === "string" && VALID_FINDING_STATES.has(val as FindingState);
+export function isValidIssueState(val: unknown): val is IssueState {
+  return typeof val === "string" && VALID_ISSUE_STATES.has(val as IssueState);
+}
+
+export function isValidIssueCategory(val: unknown): val is IssueCategory {
+  return typeof val === "string" && VALID_ISSUE_CATEGORIES.has(val as IssueCategory);
 }
 
 export function isValidAiFixStatus(val: unknown): val is AiFixStatus {
@@ -34,19 +38,19 @@ export function isValidAiFixStatus(val: unknown): val is AiFixStatus {
 }
 
 /**
- * Validates that a parsed JSON value conforms to the FindingsData envelope.
- * Checks version and array structure; individual findings are trusted since
+ * Validates that a parsed JSON value conforms to the IssuesData envelope.
+ * Checks version and array structure; individual issues are trusted since
  * they were serialized by this same application.
  */
-export function validateFindingsData(parsed: unknown): FindingsData | null {
+export function validateIssuesData(parsed: unknown): IssuesData | null {
   if (
     parsed != null &&
     typeof parsed === "object" &&
     !Array.isArray(parsed) &&
-    (parsed as Record<string, unknown>).version === FINDINGS_DATA_VERSION &&
-    Array.isArray((parsed as Record<string, unknown>).findings)
+    (parsed as Record<string, unknown>).version === ISSUES_DATA_VERSION &&
+    Array.isArray((parsed as Record<string, unknown>).issues)
   ) {
-    return parsed as FindingsData;
+    return parsed as IssuesData;
   }
   return null;
 }

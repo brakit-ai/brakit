@@ -3,6 +3,7 @@ import type { InsightContext, PreparedInsightContext, EndpointGroup } from "./ty
 import { groupBy } from "../../utils/collections.js";
 import { getEndpointKey } from "../../utils/endpoint.js";
 import { DASHBOARD_PREFIX } from "../../constants/index.js";
+import { isErrorStatus } from "../../utils/http-status.js";
 import { INSIGHT_WINDOW_PER_ENDPOINT } from "../../constants/thresholds.js";
 import { getQueryShape, getQueryInfo } from "./query-helpers.js";
 
@@ -19,7 +20,7 @@ function createEndpointGroup(): EndpointGroup {
   };
 }
 
-function windowByEndpoint(requests: readonly TracedRequest[]): TracedRequest[] {
+export function windowByEndpoint(requests: readonly TracedRequest[]): TracedRequest[] {
   const byEndpoint = new Map<string, TracedRequest[]>();
   for (const r of requests) {
     const ep = getEndpointKey(r.method, r.path);
@@ -32,6 +33,21 @@ function windowByEndpoint(requests: readonly TracedRequest[]): TracedRequest[] {
     windowed.push(...reqs.slice(-INSIGHT_WINDOW_PER_ENDPOINT));
   }
   return windowed;
+}
+
+/**
+ * Extract the set of endpoint keys that appear in the given requests.
+ * Used by AnalysisEngine to determine which endpoints were active
+ * during a recompute cycle for evidence-based issue resolution.
+ */
+export function extractActiveEndpoints(requests: readonly TracedRequest[]): Set<string> {
+  const endpoints = new Set<string>();
+  for (const r of requests) {
+    if (!r.isStatic && (!r.path || !r.path.startsWith(DASHBOARD_PREFIX))) {
+      endpoints.add(getEndpointKey(r.method, r.path));
+    }
+  }
+  return endpoints;
 }
 
 export function prepareContext(ctx: InsightContext): PreparedInsightContext {
@@ -51,7 +67,7 @@ export function prepareContext(ctx: InsightContext): PreparedInsightContext {
     let g = endpointGroups.get(ep);
     if (!g) { g = createEndpointGroup(); endpointGroups.set(ep, g); }
     g.total++;
-    if (r.statusCode >= 400) g.errors++;
+    if (isErrorStatus(r.statusCode)) g.errors++;
     g.totalDuration += r.durationMs;
     g.totalSize += r.responseSize ?? 0;
 

@@ -5,7 +5,6 @@ import {
   DASHBOARD_API_EVENTS,
   DASHBOARD_API_CLEAR,
   DASHBOARD_API_INSIGHTS,
-  DASHBOARD_API_SECURITY,
   DASHBOARD_API_TAB,
   MAX_TELEMETRY_ENTRIES,
 } from "../../constants/index.js";
@@ -46,13 +45,7 @@ export function getApp(): string {
     try {
       var res3 = await fetch('${DASHBOARD_API_INSIGHTS}');
       var data3 = await res3.json();
-      state.insights = data3.insights || [];
-    } catch(e) { console.warn('[brakit]', e); }
-
-    try {
-      var res4 = await fetch('${DASHBOARD_API_SECURITY}');
-      var data4 = await res4.json();
-      state.findings = data4.findings || [];
+      state.issues = data3.issues || [];
     } catch(e) { console.warn('[brakit]', e); }
 
     updateStats();
@@ -91,15 +84,9 @@ export function getApp(): string {
     registerTelemetryListener('error_event', 'errors', prependErrorRow);
     registerTelemetryListener('query', 'queries', prependQueryRow);
 
-    events.addEventListener('insights', function(e) {
-      state.insights = JSON.parse(e.data);
+    events.addEventListener('issues', function(e) {
+      state.issues = JSON.parse(e.data);
       if (state.activeView === 'overview') renderOverview();
-      if (state.activeView === 'security') renderSecurity();
-      updateStats();
-    });
-
-    events.addEventListener('security', function(e) {
-      state.findings = JSON.parse(e.data);
       if (state.activeView === 'security') renderSecurity();
       updateStats();
     });
@@ -182,9 +169,9 @@ export function getApp(): string {
     if (queryCount) queryCount.textContent = state.queries.length;
     var secCount = document.getElementById('sidebar-count-security');
     if (secCount) {
-      var numFindings = (state.findings || []).filter(function(f) { return f.state !== 'resolved'; }).length;
-      secCount.textContent = numFindings;
-      secCount.style.display = numFindings > 0 ? '' : 'none';
+      var numIssues = (state.issues || []).filter(function(f) { return f.state !== 'resolved' && f.state !== 'stale'; }).length;
+      secCount.textContent = numIssues;
+      secCount.style.display = numIssues > 0 ? '' : 'none';
     }
   }
 
@@ -202,7 +189,7 @@ export function getApp(): string {
     if (!confirm('This will clear all data including performance metrics history. Continue?')) return;
     await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
     state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = []; state.queries = [];
-    state.insights = []; state.findings = [];
+    state.issues = [];
     graphData = []; selectedEndpoint = ${ALL_ENDPOINTS_SELECTOR}; timelineCache = {};
     renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); renderOverview(); renderSecurity(); updateStats();
     showToast('Cleared');

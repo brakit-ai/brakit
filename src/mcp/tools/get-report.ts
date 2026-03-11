@@ -12,50 +12,51 @@ export const getReport = {
     properties: {},
   },
   async handler(client: BrakitClient, _args: Record<string, unknown>) {
-    const [findingsData, securityData, insightsData, metricsData] = await Promise.all([
-      client.getFindings(),
-      client.getSecurityFindings(),
-      client.getInsights(),
+    const [issuesData, metricsData] = await Promise.all([
+      client.getIssues(),
       client.getLiveMetrics(),
     ]);
 
-    const findings = findingsData.findings;
-    const open = findings.filter((f) => f.state === "open");
-    const resolved = findings.filter((f) => f.state === "resolved");
-    const fixing = findings.filter((f) => f.state === "fixing");
+    const issues = issuesData.issues;
+    const open = issues.filter((f) => f.state === "open" || f.state === "regressed");
+    const resolved = issues.filter((f) => f.state === "resolved");
+    const fixing = issues.filter((f) => f.state === "fixing");
+    const stale = issues.filter((f) => f.state === "stale");
 
-    const criticalOpen = open.filter((f) => f.finding.severity === "critical");
-    const warningOpen = open.filter((f) => f.finding.severity === "warning");
+    const criticalOpen = open.filter((f) => f.issue.severity === "critical");
+    const warningOpen = open.filter((f) => f.issue.severity === "warning");
+
+    const securityIssues = issues.filter((f) => f.category === "security");
+    const perfIssues = issues.filter((f) => f.category === "performance");
 
     const totalRequests = metricsData.endpoints.reduce(
       (s, ep) => s + ep.summary.totalRequests,
       0,
     );
 
-    const openInsightCount = insightsData.insights.filter((si) => si.state === "open").length;
-
     const lines: string[] = [
       "=== Brakit Report ===",
       "",
       `Endpoints observed: ${metricsData.endpoints.length}`,
       `Total requests captured: ${totalRequests}`,
-      `Active security rules: ${securityData.findings.length} finding(s)`,
-      `Performance insights: ${openInsightCount} open, ${insightsData.insights.length - openInsightCount} resolved`,
+      `Security issues: ${securityIssues.length}`,
+      `Performance issues: ${perfIssues.length}`,
       "",
-      "--- Finding Summary ---",
-      `Total: ${findings.length}`,
+      "--- Issue Summary ---",
+      `Total: ${issues.length}`,
       `  Open: ${open.length} (${criticalOpen.length} critical, ${warningOpen.length} warning)`,
       `  In progress: ${fixing.length}`,
       `  Resolved: ${resolved.length}`,
+      `  Stale: ${stale.length}`,
     ];
 
     if (criticalOpen.length > 0) {
       lines.push("");
       lines.push("--- Critical Issues (fix first) ---");
       for (const f of criticalOpen) {
-        lines.push(`  [CRITICAL] ${f.finding.title} — ${f.finding.endpoint}`);
-        lines.push(`    ${f.finding.desc}`);
-        lines.push(`    Fix: ${f.finding.hint}`);
+        lines.push(`  [CRITICAL] ${f.issue.title} — ${f.issue.endpoint ?? "global"}`);
+        lines.push(`    ${f.issue.desc}`);
+        lines.push(`    Fix: ${f.issue.hint}`);
       }
     }
 
@@ -63,7 +64,7 @@ export const getReport = {
       lines.push("");
       lines.push("--- Recently Resolved ---");
       for (const f of resolved.slice(0, MAX_RESOLVED_DISPLAY)) {
-        lines.push(`  ✓ ${f.finding.title} — ${f.finding.endpoint}`);
+        lines.push(`  ✓ ${f.issue.title} — ${f.issue.endpoint ?? "global"}`);
       }
       if (resolved.length > MAX_RESOLVED_DISPLAY) {
         lines.push(`  ... and ${resolved.length - MAX_RESOLVED_DISPLAY} more`);

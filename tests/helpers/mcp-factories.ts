@@ -1,9 +1,9 @@
 import { vi } from "vitest";
 import type { SecurityFinding } from "../../src/types/security.js";
-import type { StatefulFinding, FindingState, FindingSource } from "../../src/types/finding-lifecycle.js";
+import type { StatefulIssue, Issue, IssueState, IssueSource } from "../../src/types/issue-lifecycle.js";
 import type { EnrichedFinding, EndpointSummary } from "../../src/mcp/types.js";
 import type { BrakitClient } from "../../src/mcp/client.js";
-import { computeFindingId } from "../../src/store/finding-id.js";
+import { computeIssueId } from "../../src/utils/issue-id.js";
 
 export function makeSecurityFinding(
   overrides: Partial<SecurityFinding> = {},
@@ -20,19 +20,36 @@ export function makeSecurityFinding(
   };
 }
 
-export function makeStatefulFinding(
-  overrides: Partial<StatefulFinding> = {},
-): StatefulFinding {
-  const finding = overrides.finding ?? makeSecurityFinding();
+export function makeIssueFromFinding(
+  overrides: Partial<SecurityFinding> = {},
+): Issue {
+  const finding = makeSecurityFinding(overrides);
   return {
-    findingId: computeFindingId(finding),
-    state: "open" as FindingState,
-    source: "passive" as FindingSource,
-    finding,
+    category: "security",
+    rule: finding.rule,
+    severity: finding.severity,
+    title: finding.title,
+    desc: finding.desc,
+    hint: finding.hint,
+    endpoint: finding.endpoint,
+  };
+}
+
+export function makeStatefulIssue(
+  overrides: Partial<StatefulIssue> = {},
+): StatefulIssue {
+  const issue = overrides.issue ?? makeIssueFromFinding();
+  return {
+    issueId: computeIssueId(issue),
+    state: "open" as IssueState,
+    source: "passive" as IssueSource,
+    category: issue.category,
+    issue,
     firstSeenAt: Date.now(),
     lastSeenAt: Date.now(),
     resolvedAt: null,
     occurrences: 1,
+    cleanHitsSinceLastSeen: 0,
     aiStatus: null,
     aiNotes: null,
     ...overrides,
@@ -42,9 +59,9 @@ export function makeStatefulFinding(
 export function makeEnrichedFinding(
   overrides: Partial<EnrichedFinding> = {},
 ): EnrichedFinding {
-  const base = makeSecurityFinding();
+  const issue = makeIssueFromFinding();
   return {
-    findingId: computeFindingId(base),
+    findingId: computeIssueId(issue),
     severity: "warning",
     title: "Test Finding",
     endpoint: "GET /api/test",
@@ -78,8 +95,7 @@ export function makeMockClient(
   overrides: Partial<Record<keyof BrakitClient, unknown>> = {},
 ): BrakitClient {
   return {
-    getSecurityFindings: vi.fn().mockResolvedValue({ findings: [] }),
-    getInsights: vi.fn().mockResolvedValue({ insights: [] }),
+    getIssues: vi.fn().mockResolvedValue({ issues: [] }),
     getLiveMetrics: vi.fn().mockResolvedValue({ endpoints: [] }),
     getRequests: vi.fn().mockResolvedValue({ total: 0, requests: [] }),
     getActivity: vi.fn().mockResolvedValue({

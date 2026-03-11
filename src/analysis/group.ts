@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 import type { TracedRequest, LabeledRequest, RequestFlow } from "../types/index.js";
 import { FLOW_GAP_MS, DASHBOARD_PREFIX } from "../constants/index.js";
+import { isErrorStatus } from "../utils/http-status.js";
 import { labelRequest, prettifyEndpoint, prettifyPageName, capitalize, deriveActionVerb } from "./label.js";
 import { getEffectivePath } from "./categorize.js";
 import { markDuplicates, collapsePolling, detectWarnings } from "./transforms.js";
@@ -84,7 +85,7 @@ function buildFlow(rawRequests: LabeledRequest[]): RequestFlow {
     requests,
     startTime,
     totalDurationMs: Math.round(endTime - startTime),
-    hasErrors: requests.some((r) => r.statusCode >= 400),
+    hasErrors: requests.some((r) => isErrorStatus(r.statusCode)),
     warnings: detectWarnings(rawRequests),
     sourcePage,
     redundancyPct,

@@ -1,24 +1,17 @@
 import type { SecurityRule } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
 import { EMAIL_RE, INTERNAL_ID_KEYS, INTERNAL_ID_SUFFIX, RULE_HINTS } from "./patterns.js";
-import { unwrapResponse } from "../../utils/response.js";
+import { tryParseJson, unwrapResponse } from "../../utils/response.js";
+import { PII_SCAN_ARRAY_LIMIT, FULL_RECORD_MIN_FIELDS, LIST_PII_MIN_ITEMS } from "../../constants/limits.js";
+import { isErrorStatus } from "../../utils/http-status.js";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH"]);
-// A response with this many top-level fields likely represents a full database
-// record (e.g. user profile) rather than a simple acknowledgment.
-const FULL_RECORD_MIN_FIELDS = 5;
-const LIST_PII_MIN_ITEMS = 2;
-
-function tryParseJson(body: string | null): unknown {
-  if (!body) return null;
-  try { return JSON.parse(body); } catch { return null; }
-}
 
 function findEmails(obj: unknown): string[] {
   const emails: string[] = [];
   if (!obj || typeof obj !== "object") return emails;
   if (Array.isArray(obj)) {
-    for (let i = 0; i < Math.min(obj.length, 10); i++) {
+    for (let i = 0; i < Math.min(obj.length, PII_SCAN_ARRAY_LIMIT); i++) {
       emails.push(...findEmails(obj[i]));
     }
     return emails;
@@ -96,7 +89,7 @@ function detectListPII(target: unknown): PIIDetection | null {
   if (!Array.isArray(target) || target.length < LIST_PII_MIN_ITEMS) return null;
 
   let itemsWithEmail = 0;
-  for (let i = 0; i < Math.min(target.length, 10); i++) {
+  for (let i = 0; i < Math.min(target.length, PII_SCAN_ARRAY_LIMIT); i++) {
     const item = target[i];
     if (item && typeof item === "object" && findEmails(item).length > 0) {
       itemsWithEmail++;
@@ -139,7 +132,7 @@ export const responsePiiLeakRule: SecurityRule = {
     const seen = new Map<string, SecurityFinding>();
 
     for (const r of ctx.requests) {
-      if (r.statusCode >= 400) continue;
+      if (isErrorStatus(r.statusCode)) continue;
       const resJson = tryParseJson(r.responseBody);
       if (!resJson) continue;
       const reqJson = tryParseJson(r.requestBody);

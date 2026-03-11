@@ -6,8 +6,8 @@ import { verifyFix } from "../../src/mcp/tools/verify-fix.js";
 import { getReport } from "../../src/mcp/tools/get-report.js";
 import { clearFindings } from "../../src/mcp/tools/clear-findings.js";
 import { reportFix } from "../../src/mcp/tools/report-fix.js";
-import { makeSecurityFinding, makeStatefulFinding, makeMockClient } from "../helpers/mcp-factories.js";
-import { makeRequest, makeQuery, makeFetch } from "../helpers/factories.js";
+import { makeStatefulIssue, makeMockClient } from "../helpers/mcp-factories.js";
+import { makeRequest, makeQuery } from "../helpers/factories.js";
 
 describe("get_findings", () => {
   it("returns healthy message when no findings", async () => {
@@ -17,10 +17,19 @@ describe("get_findings", () => {
   });
 
   it("formats findings with severity and endpoint", async () => {
-    const finding = makeSecurityFinding({ severity: "critical", title: "SQL Injection", endpoint: "POST /api/login" });
-    const stateful = makeStatefulFinding({ finding });
+    const stateful = makeStatefulIssue({
+      issue: {
+        category: "security",
+        rule: "sql-injection",
+        severity: "critical",
+        title: "SQL Injection",
+        desc: "User input in query",
+        hint: "Use parameterized queries",
+        endpoint: "POST /api/login",
+      },
+    });
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [stateful] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [stateful] }),
     });
 
     const result = await getFindings.handler(client, {});
@@ -30,10 +39,30 @@ describe("get_findings", () => {
   });
 
   it("filters by severity", async () => {
-    const criticalStateful = makeStatefulFinding({ finding: makeSecurityFinding({ severity: "critical", rule: "r1" }) });
-    const warningStateful = makeStatefulFinding({ finding: makeSecurityFinding({ severity: "warning", rule: "r2" }) });
+    const criticalIssue = makeStatefulIssue({
+      issue: {
+        category: "security",
+        rule: "r1",
+        severity: "critical",
+        title: "Critical Issue",
+        desc: "critical desc",
+        hint: "fix",
+        endpoint: "GET /api/a",
+      },
+    });
+    const warningIssue = makeStatefulIssue({
+      issue: {
+        category: "security",
+        rule: "r2",
+        severity: "warning",
+        title: "Warning Issue",
+        desc: "warning desc",
+        hint: "fix",
+        endpoint: "GET /api/b",
+      },
+    });
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [criticalStateful, warningStateful] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [criticalIssue, warningIssue] }),
     });
 
     const result = await getFindings.handler(client, { severity: "critical" });
@@ -41,12 +70,10 @@ describe("get_findings", () => {
     expect(result.content[0].text).not.toContain("[WARNING]");
   });
 
-  it("filters by state using findingId matching", async () => {
-    const finding = makeSecurityFinding();
-    const stateful = makeStatefulFinding({ finding, state: "open" });
+  it("filters by state using issueId matching", async () => {
+    const stateful = makeStatefulIssue({ state: "open" });
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [stateful] }),
-      getFindings: vi.fn().mockResolvedValue({ total: 1, findings: [stateful] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [stateful] }),
     });
 
     const result = await getFindings.handler(client, { state: "open" });
@@ -133,24 +160,44 @@ describe("get_request_detail", () => {
 
 describe("verify_fix", () => {
   it("reports resolved finding", async () => {
-    const finding = makeSecurityFinding({ title: "SQL Injection" });
-    const stateful = makeStatefulFinding({ finding, state: "resolved" });
+    const stateful = makeStatefulIssue({
+      state: "resolved",
+      issue: {
+        category: "security",
+        rule: "sql-injection",
+        severity: "warning",
+        title: "SQL Injection",
+        desc: "test",
+        hint: "fix",
+        endpoint: "GET /api/test",
+      },
+    });
     const client = makeMockClient({
       getFindings: vi.fn().mockResolvedValue({ total: 1, findings: [stateful] }),
     });
 
-    const result = await verifyFix.handler(client, { finding_id: stateful.findingId });
+    const result = await verifyFix.handler(client, { finding_id: stateful.issueId });
     expect(result.content[0].text).toContain("RESOLVED");
   });
 
   it("reports still-present finding", async () => {
-    const finding = makeSecurityFinding({ title: "SQL Injection" });
-    const stateful = makeStatefulFinding({ finding, state: "open" });
+    const stateful = makeStatefulIssue({
+      state: "open",
+      issue: {
+        category: "security",
+        rule: "sql-injection",
+        severity: "warning",
+        title: "SQL Injection",
+        desc: "test",
+        hint: "fix",
+        endpoint: "GET /api/test",
+      },
+    });
     const client = makeMockClient({
       getFindings: vi.fn().mockResolvedValue({ total: 1, findings: [stateful] }),
     });
 
-    const result = await verifyFix.handler(client, { finding_id: stateful.findingId });
+    const result = await verifyFix.handler(client, { finding_id: stateful.issueId });
     expect(result.content[0].text).toContain("STILL PRESENT");
   });
 
@@ -185,16 +232,22 @@ describe("verify_fix", () => {
 });
 
 describe("get_report", () => {
-  it("returns report with finding counts", async () => {
-    const openFinding = makeStatefulFinding({ state: "open" });
-    const resolvedFinding = makeStatefulFinding({
+  it("returns report with issue counts", async () => {
+    const openIssue = makeStatefulIssue({ state: "open" });
+    const resolvedIssue = makeStatefulIssue({
       state: "resolved",
-      finding: makeSecurityFinding({ rule: "other-rule" }),
+      issue: {
+        category: "security",
+        rule: "other-rule",
+        severity: "warning",
+        title: "Other Issue",
+        desc: "other desc",
+        hint: "fix",
+        endpoint: "GET /api/other",
+      },
     });
     const client = makeMockClient({
-      getFindings: vi.fn().mockResolvedValue({ total: 2, findings: [openFinding, resolvedFinding] }),
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [makeSecurityFinding()] }),
-      getInsights: vi.fn().mockResolvedValue({ insights: [] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [openIssue, resolvedIssue] }),
       getLiveMetrics: vi.fn().mockResolvedValue({
         endpoints: [{
           endpoint: "GET /api/test",
