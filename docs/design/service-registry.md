@@ -45,9 +45,9 @@ setup.ts creates everything, registers it, then passes the registry to consumers
 │  │ LogStore     │────────────▶│  "query-store"    → QryStore │  │
 │  │ ErrorStore   │────────────▶│  "fetch-store"    → FetStore │  │
 │  │ MetricsStore │────────────▶│  "log-store"      → LogStore │  │
-│  │ FindingStore │────────────▶│  "error-store"    → ErrStore │  │
+│  │ IssueStore   │────────────▶│  "error-store"    → ErrStore │  │
 │  │ AnalysisEng  │────────────▶│  "metrics-store"  → MetStore │  │
-│  └──────────────┘             │  "finding-store"  → FndStore │  │
+│  └──────────────┘             │  "issue-store"    → IssStore │  │
 │                               │  "analysis-engine"→ Engine   │  │
 │                               └──────────┬───────────────────┘  │
 │                                          │                      │
@@ -88,7 +88,7 @@ interface ServiceMap {
   "log-store": TelemetryStoreInterface<TracedLog>;
   "error-store": TelemetryStoreInterface<TracedError>;
   "metrics-store": MetricsStoreInterface;
-  "finding-store": FindingStoreInterface;
+  "issue-store": IssueStoreInterface;
   "analysis-engine": AnalysisEngineInterface;
 }
 ```
@@ -115,7 +115,7 @@ registry.register("fetch-store", fetchStore);
 registry.register("log-store", logStore);
 registry.register("error-store", errorStore);
 registry.register("metrics-store", metricsStore);
-registry.register("finding-store", findingStore);
+registry.register("issue-store", issueStore);
 registry.register("analysis-engine", engine);
 ```
 

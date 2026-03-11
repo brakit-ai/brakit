@@ -71,7 +71,7 @@ Brakit does not activate in environments where developer tooling has no place.
 | Explicit disable | `BRAKIT_DISABLE=true` |
 | Production/staging | `NODE_ENV` is `production` or `staging` |
 | CI environments | `CI` environment variable is set |
-| Cloud platforms | Detects AWS Lambda, Vercel, Railway, Fly.io, Heroku, Google Cloud Run, Azure, and Render via their environment variables |
+| Cloud platforms | Detects 19 cloud/serverless signals: `VERCEL`, `VERCEL_ENV`, `NETLIFY`, `AWS_LAMBDA_FUNCTION_NAME`, `AWS_EXECUTION_ENV`, `ECS_CONTAINER_METADATA_URI`, `GOOGLE_CLOUD_PROJECT`, `GCP_PROJECT`, `K_SERVICE` (Cloud Run), `AZURE_FUNCTIONS_ENVIRONMENT`, `WEBSITE_SITE_NAME`, `FLY_APP_NAME`, `RAILWAY_ENVIRONMENT`, `RENDER`, `HEROKU_APP_NAME`, `DYNO`, `CF_INSTANCE_GUID`, `CF_PAGES` (Cloudflare Pages), `KUBERNETES_SERVICE_HOST` |
 
 If any check matches, brakit stays completely dormant. No hooks installed, no monkey-patches applied, no memory allocated.
 
@@ -98,23 +98,28 @@ There are two variants:
 - **`safeWrap`** — For synchronous functions (console methods, `res.write`, `res.end`)
 - **`safeWrapAsync`** — For async functions. Catches both synchronous throws and rejected promises
 
-Both check `health.isActive()` before running the wrapper. If the circuit breaker has tripped, they skip the wrapper entirely and call the original directly — zero overhead.
+Both check `health.isActive()` before running the wrapper. If the circuit breaker has tripped, they skip the wrapper entirely and call the original directly. Zero overhead.
 
 ---
 
 ## Layer 3: Circuit breaker
 
-`src/runtime/health.ts` tracks how many errors brakit has encountered. If the count exceeds the threshold, brakit disables itself for the rest of the session.
+`src/runtime/health.ts` tracks how many errors brakit has encountered. If the count exceeds `MAX_HEALTH_ERRORS` (10), brakit disables itself.
 
 ```
 Error count exceeds MAX_HEALTH_ERRORS
-  → health.isActive() returns false
-  → all safeWrap wrappers pass through to originals
-  → teardown function runs (cleans up intervals, listeners)
-  → console.warn tells the developer what happened
+  -> health.isActive() returns false
+  -> all safeWrap wrappers pass through to originals
+  -> teardown function runs (cleans up intervals, listeners)
+  -> console.warn tells the developer what happened
+
+After RECOVERY_WINDOW_MS (5 minutes):
+  -> error count resets
+  -> health.isActive() returns true again
+  -> instrumentation resumes
 ```
 
-This prevents a single bad state (like a corrupted store or a serialization bug) from turning into a cascade of errors that degrades app performance.
+The circuit breaker self-heals. A transient burst of errors (e.g. a malformed response during a bad deploy) disables brakit temporarily, then it recovers automatically without requiring a server restart. This prevents a single bad state from permanently losing observability for the rest of the session.
 
 ---
 
@@ -128,7 +133,7 @@ This guarantees:
 - A long-running dev session won't OOM
 - No unbounded arrays, no growing Maps
 
-The MetricsStore and FindingStore persist to `.brakit/metrics.json` and `.brakit/findings.json` using `AtomicWriter` — writes go to a temp file first, then rename, so a crash during write never corrupts the file.
+The MetricsStore and IssueStore persist to `.brakit/metrics.json` and `.brakit/issues.json` using `AtomicWriter`: writes go to a temp file first, then rename, so a crash during write never corrupts the file.
 
 ---
 
@@ -140,7 +145,7 @@ All capture-related errors are silently swallowed:
 - A database query that can't be normalized? Stored with `operation: "OTHER"`.
 - A console argument that can't be serialized? Stored as `"[unserializable]"`.
 - An insight rule that throws? Skipped, other rules still run.
-- A security rule that throws? Same — one rule failing doesn't stop the scanner.
+- A security rule that throws? Same: one rule failing doesn't stop the scanner.
 
 None of these become runtime errors in your app. Brakit prefers incomplete data over crashing.
 
@@ -151,5 +156,5 @@ None of these become runtime errors in your app. Brakit prefers incomplete data 
 If you suspect brakit is affecting your app's behavior:
 
 1. **Quick disable:** Set `BRAKIT_DISABLE=true` in your environment
-2. **Check terminal:** If the circuit breaker tripped, you'll see `brakit: too many errors, disabling for this session.`
+2. **Check terminal:** If the circuit breaker tripped, you'll see a warning in the console. It will self-recover after 5 minutes, or you can restart your dev server.
 3. **Report it:** Open an issue at https://github.com/brakit-ai/brakit/issues with the error output. This is a bug — brakit should never interfere.

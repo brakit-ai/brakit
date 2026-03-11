@@ -71,7 +71,7 @@ src/
     tools/             # McpTool implementations (one file per tool)
   output/              # Terminal insight listener
   runtime/             # In-process architecture (interceptor, capture, health)
-  store/               # In-memory bounded stores, persistent finding store
+  store/               # In-memory bounded stores, persistent issue store
   telemetry/           # Anonymous usage analytics
   types/               # TypeScript type definitions
   utils/               # Shared utilities (collections, format, math, endpoint)
@@ -243,6 +243,7 @@ interface SecurityRule {
 interface SecurityContext {
   requests: readonly TracedRequest[];   // all captured HTTP requests
   logs: readonly TracedLog[];           // all captured console output
+  parsedBodies: ParsedBodyCache;        // pre-parsed JSON bodies (avoids re-parsing per rule)
 }
 ```
 
