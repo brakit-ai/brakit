@@ -33,7 +33,7 @@ export const verifyFix = {
 
     if (findingId) {
       const data = await client.getFindings();
-      const finding = data.findings.find((f) => f.findingId === findingId);
+      const finding = data.findings.find((f) => f.issueId === findingId);
 
       if (!finding) {
         return {
@@ -41,6 +41,7 @@ export const verifyFix = {
             type: "text" as const,
             text: `Finding ${findingId} not found. It may have already been resolved and cleaned up.`,
           }],
+          isError: true,
         };
       }
 
@@ -48,7 +49,7 @@ export const verifyFix = {
         return {
           content: [{
             type: "text" as const,
-            text: `RESOLVED: "${finding.finding.title}" on ${finding.finding.endpoint} is no longer detected. The fix worked.`,
+            text: `RESOLVED: "${finding.issue.title}" on ${finding.issue.endpoint ?? "global"} is no longer detected. The fix worked.`,
           }],
         };
       }
@@ -57,12 +58,12 @@ export const verifyFix = {
         content: [{
           type: "text" as const,
           text: [
-            `STILL PRESENT: "${finding.finding.title}" on ${finding.finding.endpoint}`,
+            `STILL PRESENT: "${finding.issue.title}" on ${finding.issue.endpoint ?? "global"}`,
             `  State: ${finding.state}`,
             `  Last seen: ${new Date(finding.lastSeenAt).toISOString()}`,
             `  Occurrences: ${finding.occurrences}`,
-            `  Issue: ${finding.finding.desc}`,
-            `  Hint: ${finding.finding.hint}`,
+            `  Issue: ${finding.issue.desc}`,
+            `  Hint: ${finding.issue.hint}`,
             "",
             "Make sure the user has triggered the endpoint again after the fix, so Brakit can re-analyze.",
           ].join("\n"),
@@ -73,7 +74,7 @@ export const verifyFix = {
     if (endpoint) {
       const data = await client.getFindings();
       const endpointFindings = data.findings.filter(
-        (f) => f.finding.endpoint === endpoint || f.finding.endpoint.endsWith(` ${endpoint}`),
+        (f) => f.issue.endpoint === endpoint || (f.issue.endpoint && f.issue.endpoint.endsWith(` ${endpoint}`)),
       );
 
       if (endpointFindings.length === 0) {
@@ -85,7 +86,7 @@ export const verifyFix = {
         };
       }
 
-      const open = endpointFindings.filter((f) => f.state === "open");
+      const open = endpointFindings.filter((f) => f.state === "open" || f.state === "regressed");
       const resolved = endpointFindings.filter((f) => f.state === "resolved");
 
       const lines: string[] = [
@@ -96,10 +97,10 @@ export const verifyFix = {
       ];
 
       for (const f of open) {
-        lines.push(`  [${f.finding.severity}] ${f.finding.title}: ${f.finding.desc}`);
+        lines.push(`  [${f.issue.severity}] ${f.issue.title}: ${f.issue.desc}`);
       }
       for (const f of resolved) {
-        lines.push(`  [resolved] ${f.finding.title}`);
+        lines.push(`  [resolved] ${f.issue.title}`);
       }
 
       return { content: [{ type: "text" as const, text: lines.join("\n") }] };
@@ -110,6 +111,7 @@ export const verifyFix = {
         type: "text" as const,
         text: "Please provide either a finding_id or an endpoint to verify.",
       }],
+      isError: true,
     };
   },
 } satisfies McpTool;

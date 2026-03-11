@@ -12,12 +12,13 @@ export type {
   NormalizedOp,
   SecurityFinding,
   SecuritySeverity,
-  FindingState,
-  FindingSource,
-  StatefulFinding,
-  FindingsData,
+  IssueState,
+  IssueSource,
+  IssueCategory,
+  StatefulIssue,
+  IssuesData,
 } from "./types/index.js";
-export { FindingStore } from "./store/finding-store.js";
+export { IssueStore } from "./store/issue-store.js";
 export type { BrakitAdapter } from "./instrument/adapter.js";
 export type { SecurityRule, SecurityContext } from "./analysis/rules/index.js";
 export type { Insight, InsightContext } from "./analysis/insights.js";

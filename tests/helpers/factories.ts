@@ -9,11 +9,11 @@ import type {
 } from "../../src/types/telemetry.js";
 import type { SecurityContext } from "../../src/analysis/rules/rule.js";
 import type { Insight, InsightContext } from "../../src/analysis/insights/types.js";
-import type { StatefulInsight } from "../../src/types/insight-lifecycle.js";
+import type { StatefulIssue, Issue } from "../../src/types/issue-lifecycle.js";
 import type { AnalysisUpdate } from "../../src/analysis/engine.js";
 import type { SecurityFinding } from "../../src/types/security.js";
 import type { CaptureInput } from "../../src/store/request-store.js";
-import { extractEndpointFromDesc } from "../../src/utils/endpoint.js";
+import { computeIssueId } from "../../src/utils/issue-id.js";
 
 export function makeRequest(
   overrides: Partial<TracedRequest> = {},
@@ -177,19 +177,36 @@ export function makeInsight(
   };
 }
 
-export function makeStatefulInsight(
-  overrides: Partial<Insight> = {},
-  stateOverrides: Partial<Omit<StatefulInsight, "insight">> = {},
-): StatefulInsight {
-  const insight = makeInsight(overrides);
+export function makeIssue(
+  overrides: Partial<Issue> = {},
+): Issue {
   return {
-    key: `${insight.type}:${extractEndpointFromDesc(insight.desc) ?? insight.title}`,
+    category: "performance",
+    rule: "slow",
+    severity: "warning",
+    title: "Slow Endpoint",
+    desc: "GET /api/users — avg 2.1s",
+    hint: "Check queries",
+    ...overrides,
+  };
+}
+
+export function makeStatefulIssue(
+  overrides: Partial<Issue> = {},
+  stateOverrides: Partial<Omit<StatefulIssue, "issue">> = {},
+): StatefulIssue {
+  const issue = makeIssue(overrides);
+  return {
+    issueId: computeIssueId(issue),
     state: "open",
-    insight,
+    source: "passive",
+    category: issue.category,
+    issue,
     firstSeenAt: Date.now(),
     lastSeenAt: Date.now(),
     resolvedAt: null,
-    consecutiveAbsences: 0,
+    occurrences: 1,
+    cleanHitsSinceLastSeen: 0,
     aiStatus: null,
     aiNotes: null,
     ...stateOverrides,
@@ -199,11 +216,12 @@ export function makeStatefulInsight(
 export function makeAnalysisUpdate(
   insights: Insight[] = [],
   findings: SecurityFinding[] = [],
+  issues: StatefulIssue[] = [],
 ): AnalysisUpdate {
+  const allIssues = issues.length > 0 ? issues : insights.map((i) => makeStatefulIssue(i));
   return {
     insights,
     findings,
-    statefulFindings: [],
-    statefulInsights: insights.map((i) => makeStatefulInsight(i)),
+    issues: allIssues,
   };
 }

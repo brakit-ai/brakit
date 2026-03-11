@@ -1,12 +1,9 @@
 import type { SecurityRule } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
 import { SECRET_KEYS, MASKED_RE, RULE_HINTS } from "./patterns.js";
-import { SECRET_SCAN_ARRAY_LIMIT } from "../../constants/limits.js";
-
-function tryParseJson(body: string | null): unknown {
-  if (!body) return null;
-  try { return JSON.parse(body); } catch { return null; }
-}
+import { SECRET_SCAN_ARRAY_LIMIT, MIN_SECRET_VALUE_LENGTH } from "../../constants/limits.js";
+import { tryParseJson } from "../../utils/response.js";
+import { isErrorStatus } from "../../utils/http-status.js";
 
 function findSecretKeys(obj: unknown, prefix: string): string[] {
   const found: string[] = [];
@@ -19,7 +16,7 @@ function findSecretKeys(obj: unknown, prefix: string): string[] {
   }
   for (const k of Object.keys(obj as Record<string, unknown>)) {
     const val = (obj as Record<string, unknown>)[k];
-    if (SECRET_KEYS.test(k) && typeof val === "string" && val.length >= 8 && !MASKED_RE.test(val)) {
+    if (SECRET_KEYS.test(k) && typeof val === "string" && val.length >= MIN_SECRET_VALUE_LENGTH && !MASKED_RE.test(val)) {
       found.push(k);
     }
     if (typeof val === "object" && val !== null) {
@@ -40,7 +37,7 @@ export const exposedSecretRule: SecurityRule = {
     const seen = new Map<string, SecurityFinding>();
 
     for (const r of ctx.requests) {
-      if (r.statusCode >= 400) continue;
+      if (isErrorStatus(r.statusCode)) continue;
       const parsed = tryParseJson(r.responseBody);
       if (!parsed) continue;
       const keys = findSecretKeys(parsed, "");

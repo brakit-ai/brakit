@@ -7,8 +7,7 @@ import {
   SSE_EVENT_LOG,
   SSE_EVENT_ERROR,
   SSE_EVENT_QUERY,
-  SSE_EVENT_INSIGHTS,
-  SSE_EVENT_SECURITY,
+  SSE_EVENT_ISSUES,
 } from "../constants/events.js";
 import { getCorsOrigin } from "./api/shared.js";
 
@@ -42,18 +41,16 @@ export function createSSEHandler(
 
   const bus = registry.get("event-bus");
 
-  // Register bus listeners once — stringify once per event, write to all clients.
   bus.on("request:completed", (r) => broadcast(null, JSON.stringify(r)));
   bus.on("telemetry:fetch", (e) => broadcast(SSE_EVENT_FETCH, JSON.stringify(e)));
   bus.on("telemetry:log", (e) => broadcast(SSE_EVENT_LOG, JSON.stringify(e)));
   bus.on("telemetry:error", (e) => broadcast(SSE_EVENT_ERROR, JSON.stringify(e)));
   bus.on("telemetry:query", (e) => broadcast(SSE_EVENT_QUERY, JSON.stringify(e)));
-  bus.on("analysis:updated", ({ statefulInsights, statefulFindings }) => {
-    broadcast(SSE_EVENT_INSIGHTS, JSON.stringify(statefulInsights));
-    broadcast(SSE_EVENT_SECURITY, JSON.stringify(statefulFindings));
+  bus.on("analysis:updated", ({ issues }) => {
+    broadcast(SSE_EVENT_ISSUES, JSON.stringify(issues));
   });
-  bus.on("findings:changed", (findings) => {
-    broadcast(SSE_EVENT_SECURITY, JSON.stringify(findings));
+  bus.on("issues:changed", (issues) => {
+    broadcast(SSE_EVENT_ISSUES, JSON.stringify(issues));
   });
 
   return (req, res) => {

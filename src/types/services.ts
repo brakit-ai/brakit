@@ -1,20 +1,26 @@
 import type {
   TracedRequest,
   TelemetryEntry,
-  SecurityFinding,
   EndpointMetrics,
   RequestMetrics,
   LiveEndpointData,
 } from "./index.js";
 import type {
-  StatefulFinding,
-  FindingState,
-  FindingSource,
+  Issue,
+  StatefulIssue,
+  IssueState,
+  IssueSource,
+  IssueCategory,
   AiFixStatus,
-} from "./finding-lifecycle.js";
-import type { StatefulInsight } from "./insight-lifecycle.js";
+} from "./issue-lifecycle.js";
 import type { CaptureInput } from "../store/request-store.js";
 import type { Insight } from "../analysis/insights.js";
+import type { SecurityFinding } from "./security.js";
+
+export interface Lifecycle {
+  start(): void;
+  stop(): void;
+}
 
 export interface TelemetryStoreInterface<T extends TelemetryEntry> {
   add(data: Omit<T, "id">): T;
@@ -30,36 +36,28 @@ export interface RequestStoreInterface {
   clear(): void;
 }
 
-export interface MetricsStoreInterface {
+export interface MetricsStoreInterface extends Lifecycle {
   recordRequest(req: TracedRequest, metrics: RequestMetrics): void;
   getAll(): readonly EndpointMetrics[];
   getEndpoint(endpoint: string): EndpointMetrics | undefined;
   getLiveEndpoints(): LiveEndpointData[];
   reset(): void;
-  start(): void;
-  stop(): void;
 }
 
-export interface FindingStoreInterface {
-  upsert(finding: SecurityFinding, source: FindingSource): StatefulFinding;
-  transition(findingId: string, state: FindingState): boolean;
-  reportFix(findingId: string, status: AiFixStatus, notes: string): boolean;
-  reconcilePassive(findings: readonly SecurityFinding[]): void;
-  getAll(): readonly StatefulFinding[];
-  getByState(state: FindingState): readonly StatefulFinding[];
-  get(findingId: string): StatefulFinding | undefined;
+export interface IssueStoreInterface extends Lifecycle {
+  upsert(issue: Issue, source: IssueSource): StatefulIssue;
+  transition(issueId: string, state: IssueState): boolean;
+  reportFix(issueId: string, status: AiFixStatus, notes: string): boolean;
+  reconcile(currentIssueIds: Set<string>, activeEndpoints: Set<string>): void;
+  getAll(): readonly StatefulIssue[];
+  getByState(state: IssueState): readonly StatefulIssue[];
+  getByCategory(category: IssueCategory): readonly StatefulIssue[];
+  get(issueId: string): StatefulIssue | undefined;
   clear(): void;
-  start(): void;
-  stop(): void;
 }
 
-export interface AnalysisEngineInterface {
-  start(): void;
-  stop(): void;
+export interface AnalysisEngineInterface extends Lifecycle {
   recompute(): void;
   getInsights(): readonly Insight[];
   getFindings(): readonly SecurityFinding[];
-  getStatefulInsights(): readonly StatefulInsight[];
-  getStatefulFindings(): readonly StatefulFinding[];
-  reportInsightFix(enrichedId: string, status: AiFixStatus, notes: string): boolean;
 }

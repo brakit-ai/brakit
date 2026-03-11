@@ -1,12 +1,35 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { FindingStoreInterface, AnalysisEngineInterface } from "../../types/services.js";
+import type { IssueStoreInterface } from "../../types/services.js";
 import type { EventBus } from "../../core/event-bus.js";
 import { sendJson, requireGet, parseRequestUrl, readJsonBody } from "./shared.js";
-import { isValidFindingState, isValidAiFixStatus } from "../../utils/type-guards.js";
+import { isValidIssueState, isValidIssueCategory, isValidAiFixStatus } from "../../utils/type-guards.js";
 import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_NOT_FOUND, HTTP_METHOD_NOT_ALLOWED } from "../../constants/http.js";
 
+export function createIssuesHandler(
+  issueStore: IssueStoreInterface,
+): (req: IncomingMessage, res: ServerResponse) => void {
+  return (req, res) => {
+    if (!requireGet(req, res)) return;
+
+    const url = parseRequestUrl(req);
+    const stateParam = url.searchParams.get("state");
+    const categoryParam = url.searchParams.get("category");
+
+    let issues;
+    if (stateParam && isValidIssueState(stateParam)) {
+      issues = issueStore.getByState(stateParam);
+    } else if (categoryParam && isValidIssueCategory(categoryParam)) {
+      issues = issueStore.getByCategory(categoryParam);
+    } else {
+      issues = issueStore.getAll();
+    }
+
+    sendJson(req, res, HTTP_OK, { issues });
+  };
+}
+
 export function createFindingsHandler(
-  findingStore: FindingStoreInterface,
+  issueStore: IssueStoreInterface,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;
@@ -14,24 +37,23 @@ export function createFindingsHandler(
     const url = parseRequestUrl(req);
     const stateParam = url.searchParams.get("state");
 
-    let findings;
-    if (stateParam && isValidFindingState(stateParam)) {
-      findings = findingStore.getByState(stateParam);
+    let issues;
+    if (stateParam && isValidIssueState(stateParam)) {
+      issues = issueStore.getByState(stateParam);
     } else {
-      findings = findingStore.getAll();
+      issues = issueStore.getAll();
     }
 
     sendJson(req, res, HTTP_OK, {
-      total: findings.length,
-      findings,
+      total: issues.length,
+      findings: issues,
     });
   };
 }
 
-export function createFindingsReportHandler(
-  findingStore: FindingStoreInterface,
+export function createIssuesReportHandler(
+  issueStore: IssueStoreInterface,
   eventBus: EventBus,
-  analysisEngine?: AnalysisEngineInterface,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return async (req, res) => {
     if (req.method !== "POST") {
@@ -57,20 +79,8 @@ export function createFindingsReportHandler(
       return;
     }
 
-    const findingOk = findingStore.reportFix(findingId, status, notes);
-    if (findingOk) {
-      eventBus.emit("findings:changed", findingStore.getAll());
-      sendJson(req, res, HTTP_OK, { ok: true });
-      return;
-    }
-
-    if (analysisEngine?.reportInsightFix(findingId, status, notes)) {
-      eventBus.emit("analysis:updated", {
-        insights: analysisEngine.getInsights(),
-        findings: analysisEngine.getFindings(),
-        statefulFindings: analysisEngine.getStatefulFindings(),
-        statefulInsights: analysisEngine.getStatefulInsights(),
-      });
+    if (issueStore.reportFix(findingId, status, notes)) {
+      eventBus.emit("issues:changed", issueStore.getAll());
       sendJson(req, res, HTTP_OK, { ok: true });
       return;
     }

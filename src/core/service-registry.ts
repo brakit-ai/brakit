@@ -3,7 +3,7 @@ import type {
   RequestStoreInterface,
   TelemetryStoreInterface,
   MetricsStoreInterface,
-  FindingStoreInterface,
+  IssueStoreInterface,
   AnalysisEngineInterface,
 } from "../types/services.js";
 import type {
@@ -21,7 +21,7 @@ export interface ServiceMap {
   "log-store": TelemetryStoreInterface<TracedLog>;
   "error-store": TelemetryStoreInterface<TracedError>;
   "metrics-store": MetricsStoreInterface;
-  "finding-store": FindingStoreInterface;
+  "issue-store": IssueStoreInterface;
   "analysis-engine": AnalysisEngineInterface;
 }
 

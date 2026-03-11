@@ -14,7 +14,7 @@ import { LogStore } from "../store/log-store.js";
 import { ErrorStore } from "../store/error-store.js";
 import { QueryStore } from "../store/query-store.js";
 import { MetricsStore, FileMetricsPersistence } from "../store/index.js";
-import { FindingStore } from "../store/finding-store.js";
+import { IssueStore } from "../store/issue-store.js";
 import { AnalysisEngine } from "../analysis/engine.js";
 import { startTerminalInsights } from "../output/terminal.js";
 import { VERSION } from "../index.js";
@@ -119,9 +119,9 @@ async function doSetup(): Promise<void> {
   metricsStore.start();
   registry.register("metrics-store", metricsStore);
 
-  const findingStore = new FindingStore(dataDir);
-  findingStore.start();
-  registry.register("finding-store", findingStore);
+  const issueStore = new IssueStore(dataDir);
+  issueStore.start();
+  registry.register("issue-store", issueStore);
 
   const analysisEngine = new AnalysisEngine(registry);
   analysisEngine.start();
@@ -210,7 +210,7 @@ async function doSetup(): Promise<void> {
     uninstallInterceptor();
     terminalDispose?.();
     analysisEngine.stop();
-    findingStore.stop();
+    issueStore.stop();
     metricsStore.stop();
 
     try {

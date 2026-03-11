@@ -7,15 +7,13 @@ import type {
   SecurityFinding,
 } from "../types/index.js";
 import { brakitDebug } from "../utils/log.js";
-import type { StatefulFinding } from "../types/finding-lifecycle.js";
-import type { StatefulInsight } from "../types/insight-lifecycle.js";
+import type { StatefulIssue } from "../types/issue-lifecycle.js";
 import type { Insight } from "../analysis/insights.js";
 
 export interface AnalysisUpdate {
   insights: readonly Insight[];
   findings: readonly SecurityFinding[];
-  statefulFindings: readonly StatefulFinding[];
-  statefulInsights: readonly StatefulInsight[];
+  issues: readonly StatefulIssue[];
 }
 
 export interface ChannelMap {
@@ -25,7 +23,7 @@ export interface ChannelMap {
   "telemetry:error": Omit<TracedError, "id">;
   "request:completed": TracedRequest;
   "analysis:updated": AnalysisUpdate;
-  "findings:changed": readonly StatefulFinding[];
+  "issues:changed": readonly StatefulIssue[];
   "store:cleared": undefined;
 }
 

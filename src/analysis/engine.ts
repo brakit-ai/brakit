@@ -6,25 +6,22 @@ import type {
   SecurityFinding,
 } from "../types/index.js";
 import { ANALYSIS_DEBOUNCE_MS } from "../constants/limits.js";
-import type { StatefulFinding } from "../types/finding-lifecycle.js";
-import type { AiFixStatus } from "../types/finding-lifecycle.js";
-import type { StatefulInsight } from "../types/insight-lifecycle.js";
 import type { ServiceRegistry } from "../core/service-registry.js";
 import { SubscriptionBag } from "../core/disposable.js";
 import type { AnalysisUpdate } from "../core/event-bus.js";
 import { groupRequestsIntoFlows } from "./group.js";
 import { createDefaultScanner, type SecurityScanner } from "./rules/index.js";
 import { computeInsights, type Insight } from "./insights.js";
-import { InsightTracker } from "./insight-tracker.js";
+import { insightToIssue, securityFindingToIssue } from "./issue-mappers.js";
+import { computeIssueId } from "../utils/issue-id.js";
+import { extractActiveEndpoints, windowByEndpoint } from "./insights/prepare.js";
 
 export type { AnalysisUpdate };
 
 export class AnalysisEngine {
   private scanner: SecurityScanner;
-  private insightTracker = new InsightTracker();
   private cachedInsights: Insight[] = [];
   private cachedFindings: SecurityFinding[] = [];
-  private cachedStatefulInsights: readonly StatefulInsight[] = [];
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private subs = new SubscriptionBag();
 
@@ -59,20 +56,6 @@ export class AnalysisEngine {
     return this.cachedFindings;
   }
 
-  getStatefulFindings(): readonly StatefulFinding[] {
-    return this.registry.has("finding-store")
-      ? this.registry.get("finding-store").getAll()
-      : [];
-  }
-
-  getStatefulInsights(): readonly StatefulInsight[] {
-    return this.insightTracker.getAll();
-  }
-
-  reportInsightFix(enrichedId: string, status: AiFixStatus, notes: string): boolean {
-    return this.insightTracker.reportFix(enrichedId, status, notes);
-  }
-
   private scheduleRecompute(): void {
     if (this.debounceTimer) return;
     this.debounceTimer = setTimeout(() => {
@@ -82,23 +65,16 @@ export class AnalysisEngine {
   }
 
   recompute(): void {
-    const requests = this.registry.get("request-store").getAll();
+    const allRequests = this.registry.get("request-store").getAll();
     const queries = this.registry.get("query-store").getAll() as readonly TracedQuery[];
     const errors = this.registry.get("error-store").getAll() as readonly TracedError[];
     const logs = this.registry.get("log-store").getAll() as readonly TracedLog[];
     const fetches = this.registry.get("fetch-store").getAll() as readonly TracedFetch[];
+
+    const requests = windowByEndpoint(allRequests);
     const flows = groupRequestsIntoFlows(requests);
 
     this.cachedFindings = this.scanner.scan({ requests, logs });
-
-    if (this.registry.has("finding-store")) {
-      const findingStore = this.registry.get("finding-store");
-      for (const finding of this.cachedFindings) {
-        findingStore.upsert(finding, "passive");
-      }
-      findingStore.reconcilePassive(this.cachedFindings);
-    }
-
     this.cachedInsights = computeInsights({
       requests,
       queries,
@@ -109,15 +85,38 @@ export class AnalysisEngine {
       securityFindings: this.cachedFindings,
     });
 
-    this.cachedStatefulInsights = this.insightTracker.reconcile(this.cachedInsights);
+    if (this.registry.has("issue-store")) {
+      const issueStore = this.registry.get("issue-store");
 
-    const update: AnalysisUpdate = {
-      insights: this.cachedInsights,
-      findings: this.cachedFindings,
-      statefulFindings: this.getStatefulFindings(),
-      statefulInsights: this.cachedStatefulInsights,
-    };
+      // Upsert security findings into IssueStore
+      for (const finding of this.cachedFindings) {
+        issueStore.upsert(securityFindingToIssue(finding), "passive");
+      }
 
-    this.registry.get("event-bus").emit("analysis:updated", update);
+      // Upsert performance/reliability insights into IssueStore
+      for (const insight of this.cachedInsights) {
+        issueStore.upsert(insightToIssue(insight), "passive");
+      }
+
+      // Build the set of currently-detected issue IDs for reconciliation
+      const currentIssueIds = new Set<string>();
+      for (const finding of this.cachedFindings) {
+        currentIssueIds.add(computeIssueId(securityFindingToIssue(finding)));
+      }
+      for (const insight of this.cachedInsights) {
+        currentIssueIds.add(computeIssueId(insightToIssue(insight)));
+      }
+
+      const activeEndpoints = extractActiveEndpoints(allRequests);
+      issueStore.reconcile(currentIssueIds, activeEndpoints);
+
+      const update: AnalysisUpdate = {
+        insights: this.cachedInsights,
+        findings: this.cachedFindings,
+        issues: issueStore.getAll(),
+      };
+
+      this.registry.get("event-bus").emit("analysis:updated", update);
+    }
   }
 }

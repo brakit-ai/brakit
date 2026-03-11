@@ -35,8 +35,8 @@ export function getOverviewRender(): string {
       '<div class="ov-stat"><span class="ov-stat-value">' + state.fetches.length + '</span><span class="ov-stat-label">Fetches</span></div>';
     container.appendChild(summary);
 
-    var all = state.insights || [];
-    var open = all.filter(function(si) { return si.state === 'open' || si.state === 'fixing'; });
+    var all = state.issues || [];
+    var open = all.filter(function(si) { return si.state === 'open' || si.state === 'fixing' || si.state === 'regressed'; });
     var resolved = all.filter(function(si) { return si.state === 'resolved'; });
 
     if (open.length === 0 && resolved.length === 0) {
@@ -68,31 +68,35 @@ export function getOverviewRender(): string {
 
       for (var i = 0; i < open.length; i++) {
         (function(si) {
-          var insight = si.insight;
+          var issue = si.issue;
           var card = document.createElement('div');
           card.className = 'ov-card';
 
-          var sevCfg = SEV[insight.severity];
+          var sevCfg = SEV[issue.severity];
           var iconCls = sevCfg.cls;
           var iconChar = sevCfg.icon;
 
           var expandHtml = '';
-          if (insight.detail) expandHtml += insight.detail;
-          if (insight.hint) expandHtml += '<div class="ov-card-hint">' + escHtml(insight.hint) + '</div>';
-          expandHtml += '<span class="ov-card-link" data-nav="' + insight.nav + '">View in ' + (NAV_LABELS[insight.nav] || insight.nav) + ' \\u2192</span>';
+          if (issue.detail) expandHtml += issue.detail;
+          if (issue.hint) expandHtml += '<div class="ov-card-hint">' + escHtml(issue.hint) + '</div>';
+          if (issue.nav) expandHtml += '<span class="ov-card-link" data-nav="' + issue.nav + '">View in ' + (NAV_LABELS[issue.nav] || issue.nav) + ' \\u2192</span>';
 
           var aiBadge = '';
           if (si.state === 'fixing' && si.aiStatus === 'fixed') {
             aiBadge = '<span class="sec-ai-badge sec-ai-fixing">AI fixed \\u2014 awaiting verification</span>';
           } else if (si.aiStatus === 'wont_fix') {
             aiBadge = '<span class="sec-ai-badge sec-ai-wontfix">AI: won\\u2019t fix</span>';
+          } else if (si.state === 'regressed') {
+            aiBadge = '<span class="sec-ai-badge sec-ai-fixing" style="background:var(--red)">regressed</span>';
           }
+
+          var occBadge = si.occurrences > 1 ? ' <span class="sec-item-count">' + si.occurrences + 'x</span>' : '';
 
           card.innerHTML =
             '<span class="ov-card-icon ' + iconCls + '">' + iconChar + '</span>' +
             '<div class="ov-card-body">' +
-              '<div class="ov-card-title">' + escHtml(insight.title) + aiBadge + '</div>' +
-              '<div class="ov-card-desc">' + insight.desc + '</div>' +
+              '<div class="ov-card-title">' + escHtml(issue.title) + occBadge + aiBadge + '</div>' +
+              '<div class="ov-card-desc">' + issue.desc + '</div>' +
               '<div class="ov-card-expand">' + expandHtml + '</div>' +
             '</div>' +
             '<span class="ov-card-arrow">\\u2192</span>';
@@ -138,14 +142,14 @@ export function getOverviewRender(): string {
       resolvedCards.className = 'ov-cards';
 
       for (var ri = 0; ri < resolved.length; ri++) {
-        var rInsight = resolved[ri].insight;
+        var rIssue = resolved[ri].issue;
         var rCard = document.createElement('div');
         rCard.className = 'ov-card ov-card-resolved';
         rCard.innerHTML =
           '<span class="ov-card-icon resolved">\\u2713</span>' +
           '<div class="ov-card-body">' +
-            '<div class="ov-card-title" style="text-decoration:line-through;color:var(--text-muted)">' + escHtml(rInsight.title) + '</div>' +
-            '<div class="ov-card-desc">' + rInsight.desc + '</div>' +
+            '<div class="ov-card-title" style="text-decoration:line-through;color:var(--text-muted)">' + escHtml(rIssue.title) + '</div>' +
+            '<div class="ov-card-desc">' + rIssue.desc + '</div>' +
           '</div>';
         resolvedCards.appendChild(rCard);
       }

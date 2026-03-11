@@ -1,10 +1,10 @@
 import type { SecurityRule } from "./rule.js";
-import type { SecurityFinding } from "../../types/index.js";
-import type { TracedRequest } from "../../types/index.js";
+import type { SecurityFinding, TracedRequest } from "../../types/index.js";
 import { RULE_HINTS } from "./patterns.js";
+import { isRedirect } from "../../utils/http-status.js";
 
 function isFrameworkResponse(r: TracedRequest): boolean {
-  if (r.statusCode >= 300 && r.statusCode < 400) return true;
+  if (isRedirect(r.statusCode)) return true;
   if (r.path?.startsWith("/__")) return true;
   if (r.responseHeaders?.["x-middleware-rewrite"]) return true;
   return false;

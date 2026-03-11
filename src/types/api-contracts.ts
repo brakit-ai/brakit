@@ -4,8 +4,7 @@ import type {
   TracedFetch,
   LiveEndpointData,
 } from "./index.js";
-import type { StatefulInsight } from "./insight-lifecycle.js";
-import type { StatefulFinding } from "./finding-lifecycle.js";
+import type { StatefulIssue } from "./issue-lifecycle.js";
 
 export interface TimelineEvent {
   type: "fetch" | "log" | "error" | "query";
@@ -23,17 +22,13 @@ export interface FlowsResponse {
   flows: Array<{ id: string; requests: TracedRequest[] }>;
 }
 
-export interface InsightsResponse {
-  insights: readonly StatefulInsight[];
-}
-
-export interface SecurityFindingsResponse {
-  findings: readonly StatefulFinding[];
+export interface IssuesResponse {
+  issues: readonly StatefulIssue[];
 }
 
 export interface FindingsResponse {
   total: number;
-  findings: readonly StatefulFinding[];
+  findings: readonly StatefulIssue[];
 }
 
 export interface TelemetryEntriesResponse<T = unknown> {

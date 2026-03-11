@@ -1,6 +1,5 @@
 import {
   DASHBOARD_API_REQUESTS,
-  DASHBOARD_API_SECURITY,
   DASHBOARD_API_INSIGHTS,
   DASHBOARD_API_QUERIES,
   DASHBOARD_API_FETCHES,
@@ -15,8 +14,7 @@ import { CLIENT_FETCH_TIMEOUT_MS, HEALTH_CHECK_TIMEOUT_MS } from "../constants/m
 import type { TracedQuery, TracedFetch } from "../types/index.js";
 import type {
   RequestsResponse,
-  SecurityFindingsResponse,
-  InsightsResponse,
+  IssuesResponse,
   TelemetryEntriesResponse,
   ActivityResponse,
   LiveMetricsResponse,
@@ -42,12 +40,14 @@ export class BrakitClient {
     return this.fetchJson(url);
   }
 
-  async getSecurityFindings(): Promise<SecurityFindingsResponse> {
-    return this.fetchJson(`${this.baseUrl}${DASHBOARD_API_SECURITY}`);
-  }
-
-  async getInsights(): Promise<InsightsResponse> {
-    return this.fetchJson(`${this.baseUrl}${DASHBOARD_API_INSIGHTS}`);
+  async getIssues(params?: {
+    state?: string;
+    category?: string;
+  }): Promise<IssuesResponse> {
+    const url = new URL(`${this.baseUrl}${DASHBOARD_API_INSIGHTS}`);
+    if (params?.state) url.searchParams.set("state", params.state);
+    if (params?.category) url.searchParams.set("category", params.category);
+    return this.fetchJson(url);
   }
 
   async getQueries(requestId?: string): Promise<TelemetryEntriesResponse<TracedQuery>> {

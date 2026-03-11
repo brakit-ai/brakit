@@ -1,5 +1,10 @@
 import { OVERFETCH_UNWRAP_MIN_SIZE } from "../constants/thresholds.js";
 
+export function tryParseJson(body: string | null): unknown {
+  if (!body) return null;
+  try { return JSON.parse(body); } catch { return null; }
+}
+
 export function unwrapResponse(parsed: unknown): unknown {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return parsed;
   const obj = parsed as Record<string, unknown>;

@@ -5,6 +5,7 @@ import {
 } from "../constants/index.js";
 import { getEffectivePath } from "./categorize.js";
 import { prettifyEndpoint } from "./label.js";
+import { isServerError } from "../utils/http-status.js";
 
 export function markDuplicates(requests: LabeledRequest[]): void {
   const counts = new Map<string, number>();
@@ -122,7 +123,7 @@ export function detectWarnings(requests: LabeledRequest[]): string[] {
     warnings.push(`${req.label} took ${(req.durationMs / 1000).toFixed(1)}s`);
   }
 
-  const errors = requests.filter((r) => r.statusCode >= 500);
+  const errors = requests.filter((r) => isServerError(r.statusCode));
   for (const req of errors) {
     warnings.push(`${req.label} — server error (${req.statusCode})`);
   }

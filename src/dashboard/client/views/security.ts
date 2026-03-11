@@ -8,30 +8,12 @@ export function getSecurityView(): string {
     container.innerHTML = '';
     var SEV = ${SEVERITY_MAP};
 
-    var all = (state.findings || []).slice();
-    var insightsList = state.insights || [];
-    for (var ix = 0; ix < insightsList.length; ix++) {
-      var si = insightsList[ix];
-      all.push({
-        findingId: si.key,
-        state: si.state,
-        aiStatus: si.aiStatus,
-        aiNotes: si.aiNotes,
-        finding: {
-          severity: si.insight.severity,
-          rule: 'insight-' + si.insight.type,
-          title: si.insight.title,
-          desc: si.insight.desc,
-          hint: si.insight.hint,
-          endpoint: si.insight.nav || 'global',
-          count: 1
-        }
-      });
-    }
-    var open = all.filter(function(f) { return f.state === 'open' || f.state === 'fixing'; });
+    var all = (state.issues || []).slice();
+    var open = all.filter(function(f) { return f.state === 'open' || f.state === 'fixing' || f.state === 'regressed'; });
     var resolved = all.filter(function(f) { return f.state === 'resolved'; });
+    var stale = all.filter(function(f) { return f.state === 'stale'; });
 
-    if (open.length === 0 && resolved.length === 0) {
+    if (open.length === 0 && resolved.length === 0 && stale.length === 0) {
       var hasData = state.requests.length > 0 || state.logs.length > 0 || state.queries.length > 0;
       if (!hasData) {
         container.innerHTML = '<div class="empty"><span class="empty-title">Waiting for requests...</span><span class="empty-sub">Start using your app to see security findings here</span></div>';
@@ -43,7 +25,7 @@ export function getSecurityView(): string {
 
     var critCount = 0, warnCount = 0, infoCount = 0;
     for (var ci = 0; ci < open.length; ci++) {
-      var sev = open[ci].finding.severity;
+      var sev = open[ci].issue.severity;
       if (sev === 'critical') critCount++;
       else if (sev === 'info') infoCount++;
       else warnCount++;
@@ -76,7 +58,7 @@ export function getSecurityView(): string {
       var groupOrder = [];
       for (var gi = 0; gi < open.length; gi++) {
         var sf = open[gi];
-        var f = sf.finding;
+        var f = sf.issue;
         if (!groups[f.rule]) {
           groups[f.rule] = { rule: f.rule, title: f.title, severity: f.severity, hint: f.hint, items: [] };
           groupOrder.push(f.rule);
@@ -119,7 +101,7 @@ export function getSecurityView(): string {
         list.className = 'sec-items';
         for (var ii = 0; ii < group.items.length; ii++) {
           var sf2 = group.items[ii];
-          var item = sf2.finding;
+          var item = sf2.issue;
           var row = document.createElement('div');
           row.className = 'sec-item';
           var aiBadge = '';
@@ -127,11 +109,14 @@ export function getSecurityView(): string {
             aiBadge = '<span class="sec-ai-badge sec-ai-fixing">AI fixed \\u2014 awaiting verification</span>';
           } else if (sf2.aiStatus === 'wont_fix') {
             aiBadge = '<span class="sec-ai-badge sec-ai-wontfix">AI: won\\u2019t fix</span>';
+          } else if (sf2.state === 'regressed') {
+            aiBadge = '<span class="sec-ai-badge sec-ai-fixing" style="background:var(--red)">regressed</span>';
           }
           var aiNotes = sf2.aiNotes ? '<div class="sec-ai-notes">' + escHtml(sf2.aiNotes) + '</div>' : '';
+          var occBadge = sf2.occurrences > 1 ? '<span class="sec-item-count">' + sf2.occurrences + 'x</span>' : '';
           row.innerHTML =
             '<div class="sec-item-desc">' + escHtml(item.desc) + '</div>' +
-            (item.count > 1 ? '<span class="sec-item-count">' + item.count + 'x</span>' : '') +
+            occBadge +
             aiBadge + aiNotes;
           list.appendChild(row);
         }
@@ -152,19 +137,43 @@ export function getSecurityView(): string {
       resolvedItems.className = 'sec-items';
       for (var ri = 0; ri < resolved.length; ri++) {
         var rsf = resolved[ri];
-        var rf = rsf.finding;
+        var rf = rsf.issue;
         var rRow = document.createElement('div');
         rRow.className = 'sec-item sec-item-resolved';
         var verifiedBadge = rsf.aiStatus === 'fixed' ? '<span class="sec-ai-badge sec-ai-verified">Verified fix</span>' : '';
         var rNotes = rsf.aiNotes ? '<div class="sec-ai-notes">' + escHtml(rsf.aiNotes) + '</div>' : '';
         rRow.innerHTML =
           '<span class="sec-resolved-item-icon">\\u2713</span>' +
-          '<div class="sec-item-desc">' + escHtml(rf.title) + ' \\u2014 ' + escHtml(rf.endpoint) + '</div>' +
+          '<div class="sec-item-desc">' + escHtml(rf.title) + ' \\u2014 ' + escHtml(rf.endpoint || 'global') + '</div>' +
           verifiedBadge + rNotes;
         resolvedItems.appendChild(rRow);
       }
       resolvedGroup.appendChild(resolvedItems);
       container.appendChild(resolvedGroup);
+    }
+
+    if (stale.length > 0) {
+      var staleTitle = document.createElement('div');
+      staleTitle.className = 'sec-resolved-title';
+      staleTitle.innerHTML = '<span style="color:var(--text-muted)">\\u23F8</span> Stale <span class="sec-resolved-count">' + stale.length + '</span>';
+      container.appendChild(staleTitle);
+
+      var staleGroup = document.createElement('div');
+      staleGroup.className = 'sec-group sec-group-resolved';
+      var staleItems = document.createElement('div');
+      staleItems.className = 'sec-items';
+      for (var sti = 0; sti < stale.length; sti++) {
+        var ssf = stale[sti];
+        var sf3 = ssf.issue;
+        var sRow = document.createElement('div');
+        sRow.className = 'sec-item sec-item-resolved';
+        sRow.innerHTML =
+          '<span style="color:var(--text-muted)">\\u23F8</span>' +
+          '<div class="sec-item-desc" style="color:var(--text-muted)">' + escHtml(sf3.title) + ' \\u2014 endpoint inactive</div>';
+        staleItems.appendChild(sRow);
+      }
+      staleGroup.appendChild(staleItems);
+      container.appendChild(staleGroup);
     }
   }
   `;

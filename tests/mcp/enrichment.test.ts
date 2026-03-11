@@ -1,19 +1,29 @@
 import { describe, it, expect, vi } from "vitest";
 import { enrichFindings, enrichEndpoints, enrichRequestDetail } from "../../src/mcp/enrichment.js";
-import { makeSecurityFinding, makeStatefulFinding, makeMockClient } from "../helpers/mcp-factories.js";
-import { makeRequest, makeQuery, makeStatefulInsight } from "../helpers/factories.js";
+import { makeStatefulIssue, makeMockClient } from "../helpers/mcp-factories.js";
+import { makeRequest, makeQuery } from "../helpers/factories.js";
 
 describe("enrichFindings", () => {
-  it("returns empty array when no findings exist", async () => {
+  it("returns empty array when no issues exist", async () => {
     const client = makeMockClient();
     const result = await enrichFindings(client);
     expect(result).toHaveLength(0);
   });
 
-  it("maps security findings to enriched format", async () => {
-    const finding = makeSecurityFinding({ rule: "sql-injection", title: "SQL Injection", desc: "User input in query" });
+  it("maps issues to enriched format", async () => {
+    const issue = makeStatefulIssue({
+      issue: {
+        category: "security",
+        rule: "sql-injection",
+        severity: "warning",
+        title: "SQL Injection",
+        desc: "User input in query",
+        hint: "Use parameterized queries",
+        endpoint: "GET /api/test",
+      },
+    });
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [makeStatefulFinding({ finding })] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [issue] }),
     });
 
     const result = await enrichFindings(client);
@@ -23,20 +33,30 @@ describe("enrichFindings", () => {
     expect(result[0].severity).toBe("warning");
   });
 
-  it("includes findingId on enriched findings", async () => {
-    const stateful = makeStatefulFinding();
+  it("includes issueId on enriched findings", async () => {
+    const stateful = makeStatefulIssue();
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [stateful] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [stateful] }),
     });
 
     const result = await enrichFindings(client);
     expect(result[0].findingId).toMatch(/^[0-9a-f]{16}$/);
   });
 
-  it("includes critical/warning insights", async () => {
-    const insight = makeStatefulInsight({ severity: "critical", nav: "GET /api/slow" });
+  it("includes critical/warning issues", async () => {
+    const issue = makeStatefulIssue({
+      issue: {
+        category: "performance",
+        rule: "slow",
+        severity: "critical",
+        title: "Slow Endpoint",
+        desc: "GET /api/slow — avg 5.0s",
+        hint: "Optimize queries",
+        endpoint: "GET /api/slow",
+      },
+    });
     const client = makeMockClient({
-      getInsights: vi.fn().mockResolvedValue({ insights: [insight] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [issue] }),
     });
 
     const result = await enrichFindings(client);
@@ -44,10 +64,33 @@ describe("enrichFindings", () => {
     expect(result[0].severity).toBe("critical");
   });
 
-  it("excludes info severity insights", async () => {
-    const insight = makeStatefulInsight({ severity: "info" });
+  it("excludes info severity issues", async () => {
+    const issue = makeStatefulIssue({
+      issue: {
+        category: "performance",
+        rule: "info-rule",
+        severity: "info",
+        title: "Info Issue",
+        desc: "Something informational",
+        hint: "No action needed",
+      },
+    });
     const client = makeMockClient({
-      getInsights: vi.fn().mockResolvedValue({ insights: [insight] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [issue] }),
+    });
+
+    const result = await enrichFindings(client);
+    expect(result).toHaveLength(0);
+  });
+
+  it("excludes resolved and stale issues", async () => {
+    const resolved = makeStatefulIssue({ state: "resolved" });
+    const stale = makeStatefulIssue({
+      state: "stale",
+      issue: { ...resolved.issue, rule: "other-rule" },
+    });
+    const client = makeMockClient({
+      getIssues: vi.fn().mockResolvedValue({ issues: [resolved, stale] }),
     });
 
     const result = await enrichFindings(client);
@@ -55,10 +98,20 @@ describe("enrichFindings", () => {
   });
 
   it("attaches context from request activity data", async () => {
-    const finding = makeSecurityFinding({ endpoint: "GET /api/users" });
+    const issue = makeStatefulIssue({
+      issue: {
+        category: "security",
+        rule: "test-rule",
+        severity: "warning",
+        title: "Test",
+        desc: "test",
+        hint: "fix",
+        endpoint: "GET /api/users",
+      },
+    });
     const req = makeRequest({ id: "req-1", durationMs: 120 });
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [makeStatefulFinding({ finding })] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [issue] }),
       getRequests: vi.fn().mockResolvedValue({ total: 1, requests: [req] }),
       getActivity: vi.fn().mockResolvedValue({
         requestId: "req-1", total: 0, timeline: [],
@@ -73,9 +126,9 @@ describe("enrichFindings", () => {
   });
 
   it("handles context enrichment failure gracefully", async () => {
-    const finding = makeSecurityFinding();
+    const issue = makeStatefulIssue();
     const client = makeMockClient({
-      getSecurityFindings: vi.fn().mockResolvedValue({ findings: [makeStatefulFinding({ finding })] }),
+      getIssues: vi.fn().mockResolvedValue({ issues: [issue] }),
       getRequests: vi.fn().mockRejectedValue(new Error("network error")),
     });
 
