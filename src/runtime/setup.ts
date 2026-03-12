@@ -55,12 +55,22 @@ export function setup(): Promise<void> {
   return initPromise;
 }
 
-async function doSetup(): Promise<void> {
-  brakitDebug(`[setup] doSetup called at ${new Date().toISOString()}`);
+/* ------------------------------------------------------------------ */
+/*  Phase 1 — Create stores & wire event subscriptions                */
+/* ------------------------------------------------------------------ */
 
-  const bus = new EventBus();
-  const registry = new ServiceRegistry();
+interface Stores {
+  requestStore: RequestStore;
+  fetchStore: FetchStore;
+  logStore: LogStore;
+  errorStore: ErrorStore;
+  queryStore: QueryStore;
+}
 
+function createStores(
+  bus: EventBus,
+  registry: ServiceRegistry,
+): Stores {
   const requestStore = new RequestStore();
   const fetchStore = new FetchStore();
   const logStore = new LogStore();
@@ -81,6 +91,16 @@ async function doSetup(): Promise<void> {
 
   requestStore.onRequest((req) => bus.emit("request:completed", req));
 
+  return { requestStore, fetchStore, logStore, errorStore, queryStore };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Phase 2 — Install instrumentation hooks                           */
+/* ------------------------------------------------------------------ */
+
+function installHooks(
+  bus: EventBus,
+): { framework: Framework; adapterNames: string[] } {
   const telemetryEmit = (event: TelemetryEvent): void => {
     const channel = `telemetry:${event.type}` as keyof ChannelMap;
     bus.emit(channel, event.data as ChannelMap[typeof channel]);
@@ -98,7 +118,8 @@ async function doSetup(): Promise<void> {
   let framework: Framework = "unknown";
   try {
     const pkg = JSON.parse(
-      await readFile(resolve(cwd, "package.json"), "utf-8"),
+      // readFileSync is acceptable here — runs once at startup
+      require("node:fs").readFileSync(resolve(cwd, "package.json"), "utf-8"),
     );
     const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
     framework = detectFrameworkFromDeps(allDeps);
@@ -106,14 +127,28 @@ async function doSetup(): Promise<void> {
     /* no package.json */
   }
 
-  initSession(
+  return {
     framework,
-    detectPackageManagerSync(cwd),
-    false,
-    adapterRegistry.getActive().map((a) => a.name),
-  );
+    adapterNames: adapterRegistry.getActive().map((a) => a.name),
+  };
+}
 
-  const dataDir = getProjectDataDir(cwd);
+/* ------------------------------------------------------------------ */
+/*  Phase 3 — Start analysis, metrics & issue tracking                */
+/* ------------------------------------------------------------------ */
+
+interface AnalysisServices {
+  analysisEngine: AnalysisEngine;
+  metricsStore: MetricsStore;
+  issueStore: IssueStore;
+}
+
+function startAnalysis(
+  registry: ServiceRegistry,
+  stores: Stores,
+  dataDir: string,
+): AnalysisServices {
+  const bus = registry.get("event-bus");
 
   const metricsStore = new MetricsStore(new FileMetricsPersistence(dataDir));
   metricsStore.start();
@@ -128,8 +163,8 @@ async function doSetup(): Promise<void> {
   registry.register("analysis-engine", analysisEngine);
 
   bus.on("request:completed", (req) => {
-    const queries = queryStore.getByRequest(req.id);
-    const fetches = fetchStore.getByRequest(req.id);
+    const queries = stores.queryStore.getByRequest(req.id);
+    const fetches = stores.fetchStore.getByRequest(req.id);
     metricsStore.recordRequest(req, {
       queryCount: queries.length,
       queryTimeMs: queries.reduce((s, q) => s + q.durationMs, 0),
@@ -137,6 +172,93 @@ async function doSetup(): Promise<void> {
     });
   });
 
+  return { analysisEngine, metricsStore, issueStore };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Phase 4 — Register lifecycle (teardown + process handlers)        */
+/* ------------------------------------------------------------------ */
+
+function registerLifecycle(
+  registry: ServiceRegistry,
+  stores: Stores,
+  services: AnalysisServices,
+  cwd: string,
+): void {
+  let telemetrySent = false;
+  const sendTelemetry = (): void => {
+    if (telemetrySent) return;
+    telemetrySent = true;
+    recordRequestCount(stores.requestStore.getAll().length);
+    recordInsightTypes(services.analysisEngine.getInsights().map((i) => i.type));
+    recordRulesTriggered(
+      services.analysisEngine.getFindings().map((f) => f.rule),
+    );
+    trackSession(registry);
+  };
+
+  let teardownCalled = false;
+  const runTeardown = (): void => {
+    if (teardownCalled) return;
+    teardownCalled = true;
+
+    sendTelemetry();
+    uninstallInterceptor();
+    services.analysisEngine.stop();
+    services.issueStore.stop();
+    services.metricsStore.stop();
+
+    try {
+      const portPath = resolve(cwd, PORT_FILE);
+      if (existsSync(portPath)) unlinkSync(portPath);
+    } catch (err) {
+      brakitDebug(`[setup] port file cleanup failed: ${getErrorMessage(err)}`);
+    }
+  };
+
+  health.setTeardown(runTeardown);
+
+  // Send telemetry while async operations still work (before 'exit').
+  process.on("beforeExit", () => {
+    sendTelemetry();
+  });
+  // Run full teardown on exit — only sync code runs here, which is fine
+  // because runTeardown is fully synchronous. Do NOT call process.exit()
+  // — let the host app control its own shutdown lifecycle.
+  process.on("exit", () => {
+    runTeardown();
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Orchestrator                                                       */
+/* ------------------------------------------------------------------ */
+
+async function doSetup(): Promise<void> {
+  brakitDebug(`[setup] doSetup called at ${new Date().toISOString()}`);
+
+  const bus = new EventBus();
+  const registry = new ServiceRegistry();
+  const cwd = process.cwd();
+
+  // Phase 1 — stores & event wiring
+  const stores = createStores(bus, registry);
+
+  // Phase 2 — instrumentation hooks
+  const { framework, adapterNames } = installHooks(bus);
+
+  initSession(
+    framework,
+    detectPackageManagerSync(cwd),
+    false,
+    adapterNames,
+  );
+
+  // Phase 3 — analysis, metrics & issues
+  const dataDir = getProjectDataDir(cwd);
+  const services = startAnalysis(registry, stores, dataDir);
+
+  // Phase 4 — HTTP interceptor + dashboard
   const config: BrakitConfig = {
     proxyPort: 0,
     targetPort: 0,
@@ -146,15 +268,12 @@ async function doSetup(): Promise<void> {
 
   const handleDashboard = createDashboardHandler(registry);
 
-  let terminalDispose: (() => void) | null = null;
-
   installInterceptor({
     handleDashboard,
     config,
-    requestStore,
+    requestStore: stores.requestStore,
     onFirstRequest(port) {
       setBrakitPort(port);
-
       brakitDebug(`[setup] onFirstRequest fired, port=${port}`);
 
       void (async () => {
@@ -184,53 +303,13 @@ async function doSetup(): Promise<void> {
         }
       })();
 
-      terminalDispose = startTerminalInsights(registry, port);
+      startTerminalInsights(registry, port);
       process.stdout.write(
         `  brakit v${VERSION} — http://localhost:${port}${DASHBOARD_PREFIX}\n`,
       );
     },
   });
 
-  let telemetrySent = false;
-  const sendTelemetry = (): void => {
-    if (telemetrySent) return;
-    telemetrySent = true;
-    recordRequestCount(requestStore.getAll().length);
-    recordInsightTypes(analysisEngine.getInsights().map((i) => i.type));
-    recordRulesTriggered(analysisEngine.getFindings().map((f) => f.rule));
-    trackSession(registry);
-  };
-
-  let teardownCalled = false;
-  const runTeardown = (): void => {
-    if (teardownCalled) return;
-    teardownCalled = true;
-
-    sendTelemetry();
-    uninstallInterceptor();
-    terminalDispose?.();
-    analysisEngine.stop();
-    issueStore.stop();
-    metricsStore.stop();
-
-    try {
-      const portPath = resolve(cwd, PORT_FILE);
-      if (existsSync(portPath)) unlinkSync(portPath);
-    } catch (err) {
-      brakitDebug(`[setup] port file cleanup failed: ${getErrorMessage(err)}`);
-    }
-  };
-
-  health.setTeardown(runTeardown);
-
-  // Send telemetry while async operations still work (before 'exit').
-  process.on("beforeExit", () => {
-    sendTelemetry();
-  });
-  // Run full teardown on exit — only sync code runs here, which is fine
-  // because runTeardown is fully synchronous. Do NOT call process.exit()
-  // — let the host app control its own shutdown lifecycle.
-  process.on("exit", () => {
-    runTeardown();
-  });
+  // Phase 5 — lifecycle (teardown + process handlers)
+  registerLifecycle(registry, stores, services, cwd);
 }
