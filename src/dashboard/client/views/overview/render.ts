@@ -36,10 +36,11 @@ export function getOverviewRender(): string {
     container.appendChild(summary);
 
     var all = state.issues || [];
-    var open = all.filter(function(si) { return si.state === 'open' || si.state === 'fixing' || si.state === 'regressed'; });
+    var open = all.filter(function(si) { return si.state === 'open' || si.state === 'regressed'; });
+    var verifying = all.filter(function(si) { return si.state === 'fixing'; });
     var resolved = all.filter(function(si) { return si.state === 'resolved'; });
 
-    if (open.length === 0 && resolved.length === 0) {
+    if (open.length === 0 && verifying.length === 0 && resolved.length === 0) {
       var clear = document.createElement('div');
       clear.className = 'ov-clear';
       clear.innerHTML = '<span class="ov-clear-icon">\\u2713</span>All clear — no issues detected';
@@ -82,21 +83,22 @@ export function getOverviewRender(): string {
           if (issue.nav) expandHtml += '<span class="ov-card-link" data-nav="' + issue.nav + '">View in ' + (NAV_LABELS[issue.nav] || issue.nav) + ' \\u2192</span>';
 
           var aiBadge = '';
-          if (si.state === 'fixing' && si.aiStatus === 'fixed') {
-            aiBadge = '<span class="sec-ai-badge sec-ai-fixing">AI fixed \\u2014 awaiting verification</span>';
-          } else if (si.aiStatus === 'wont_fix') {
+          if (si.aiStatus === 'wont_fix') {
             aiBadge = '<span class="sec-ai-badge sec-ai-wontfix">AI: won\\u2019t fix</span>';
           } else if (si.state === 'regressed') {
             aiBadge = '<span class="sec-ai-badge sec-ai-fixing" style="background:var(--red)">regressed</span>';
           }
 
-          var occBadge = si.occurrences > 1 ? ' <span class="sec-item-count">' + si.occurrences + 'x</span>' : '';
+          var resolvingHtml = si.cleanHitsSinceLastSeen > 0
+            ? '<div class="ov-card-resolving">Resolving\\u2026 ' + si.cleanHitsSinceLastSeen + '/5 clean requests</div>'
+            : '';
 
           card.innerHTML =
             '<span class="ov-card-icon ' + iconCls + '">' + iconChar + '</span>' +
             '<div class="ov-card-body">' +
-              '<div class="ov-card-title">' + escHtml(issue.title) + occBadge + aiBadge + '</div>' +
+              '<div class="ov-card-title">' + escHtml(issue.title) + aiBadge + '</div>' +
               '<div class="ov-card-desc">' + issue.desc + '</div>' +
+              resolvingHtml +
               '<div class="ov-card-expand">' + expandHtml + '</div>' +
             '</div>' +
             '<span class="ov-card-arrow">\\u2192</span>';
@@ -110,7 +112,7 @@ export function getOverviewRender(): string {
                 if (sidebarItem) sidebarItem.click();
                 return;
               }
-              target = target.parentElement;
+target = target.parentElement;
             }
             var expand = card.querySelector('.ov-card-expand');
             var arrow = card.querySelector('.ov-card-arrow');
@@ -130,6 +132,36 @@ export function getOverviewRender(): string {
       }
 
       container.appendChild(cards);
+    }
+
+    if (verifying.length > 0) {
+      var verifyingTitle = document.createElement('div');
+      verifyingTitle.className = 'ov-section-title ov-resolved-title';
+      verifyingTitle.innerHTML = '<span style="color:var(--yellow,#f5a623)">\\u29d7</span> Awaiting Verification <span class="ov-issue-count">' + verifying.length + '</span>';
+      container.appendChild(verifyingTitle);
+
+      var verifyingCards = document.createElement('div');
+      verifyingCards.className = 'ov-cards';
+
+      for (var vi = 0; vi < verifying.length; vi++) {
+        var vsi = verifying[vi];
+        var vIssue = vsi.issue;
+        var vCard = document.createElement('div');
+        vCard.className = 'ov-card ov-card-resolved';
+        var vResolvingHtml = vsi.cleanHitsSinceLastSeen > 0
+          ? '<div class="ov-card-resolving">Verifying\\u2026 ' + vsi.cleanHitsSinceLastSeen + '/5 clean requests</div>'
+          : '';
+        vCard.innerHTML =
+          '<span class="ov-card-icon resolved">\\u29d7</span>' +
+          '<div class="ov-card-body">' +
+            '<div class="ov-card-title" style="color:var(--text-muted)">' + escHtml(vIssue.title) + ' <span class="sec-ai-badge sec-ai-fixing">AI fixed \\u2014 awaiting verification</span></div>' +
+            '<div class="ov-card-desc">' + vIssue.desc + '</div>' +
+            vResolvingHtml +
+          '</div>';
+        verifyingCards.appendChild(vCard);
+      }
+
+      container.appendChild(verifyingCards);
     }
 
     if (resolved.length > 0) {

@@ -1,6 +1,6 @@
 import type { SecurityRule } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
-import { EMAIL_RE, INTERNAL_ID_KEYS, INTERNAL_ID_SUFFIX, RULE_HINTS } from "./patterns.js";
+import { EMAIL_RE, INTERNAL_ID_KEYS, INTERNAL_ID_SUFFIX, RULE_HINTS, SELF_SERVICE_PATH, SENSITIVE_FIELD_NAMES } from "./patterns.js";
 import { unwrapResponse } from "../../utils/response.js";
 import { PII_SCAN_ARRAY_LIMIT, FULL_RECORD_MIN_FIELDS, LIST_PII_MIN_ITEMS, MAX_OBJECT_SCAN_DEPTH } from "../../constants/limits.js";
 import { isErrorStatus } from "../../utils/http-status.js";
@@ -43,7 +43,17 @@ function hasInternalIds(obj: unknown): boolean {
   return false;
 }
 
-type PIIReason = "echo" | "full-record" | "list-pii";
+function hasSensitiveFieldNames(obj: unknown, depth = 0): boolean {
+  if (depth >= MAX_OBJECT_SCAN_DEPTH) return false;
+  if (!obj || typeof obj !== "object") return false;
+  if (Array.isArray(obj)) return obj.length > 0 && hasSensitiveFieldNames(obj[0], depth + 1);
+  for (const key of Object.keys(obj as Record<string, unknown>)) {
+    if (SENSITIVE_FIELD_NAMES.test(key)) return true;
+  }
+  return false;
+}
+
+type PIIReason = "echo" | "full-record" | "list-pii" | "sensitive-fields";
 
 interface PIIDetection {
   reason: PIIReason;
@@ -84,6 +94,17 @@ function detectFullRecordPII(target: unknown): PIIDetection | null {
   return { reason: "full-record", emailCount: emails.length };
 }
 
+// Sensitive-field detection: response contains unambiguous PII field names
+// (phone, SSN, dateOfBirth, etc.) on a record-like object, regardless of
+// whether an email address is present.
+function detectSensitiveFieldPII(target: unknown): PIIDetection | null {
+  const inspect = Array.isArray(target) && target.length > 0 ? target[0] : target;
+  if (!inspect || typeof inspect !== "object" || Array.isArray(inspect)) return null;
+  if (!hasSensitiveFieldNames(inspect)) return null;
+  if (!hasInternalIds(inspect) && topLevelFieldCount(inspect) < FULL_RECORD_MIN_FIELDS) return null;
+  return { reason: "sensitive-fields", emailCount: 0 };
+}
+
 // List detection: an array where multiple items contain email addresses and
 // look like full records signals a list endpoint leaking user PII.
 function detectListPII(target: unknown): PIIDetection | null {
@@ -113,13 +134,15 @@ function detectPII(
   const target = unwrapResponse(resBody);
   return detectEchoPII(method, reqBody, target)
     ?? detectFullRecordPII(target)
-    ?? detectListPII(target);
+    ?? detectListPII(target)
+    ?? detectSensitiveFieldPII(target);
 }
 
 const REASON_LABELS: Record<PIIReason, string> = {
   echo: "echoes back PII from the request body",
   "full-record": "returns a full record with email and internal IDs",
   "list-pii": "returns a list of records containing email addresses",
+  "sensitive-fields": "contains sensitive personal data fields (phone, SSN, date of birth, address, etc.)",
 };
 
 export const responsePiiLeakRule: SecurityRule = {
@@ -134,6 +157,7 @@ export const responsePiiLeakRule: SecurityRule = {
 
     for (const r of ctx.requests) {
       if (isErrorStatus(r.statusCode)) continue;
+      if (SELF_SERVICE_PATH.test(r.path)) continue;
       const resJson = ctx.parsedBodies.response.get(r.id);
       if (!resJson) continue;
       const reqJson = ctx.parsedBodies.request.get(r.id) ?? null;
@@ -142,20 +166,19 @@ export const responsePiiLeakRule: SecurityRule = {
       if (!detection) continue;
 
       const ep = `${r.method} ${r.path}`;
-      const dedupKey = `${ep}:${detection.reason}`;
-      const existing = seen.get(dedupKey);
+      const existing = seen.get(ep);
       if (existing) { existing.count++; continue; }
 
       const finding: SecurityFinding = {
         severity: "warning",
         rule: "response-pii-leak",
         title: "PII Leak in Response",
-        desc: `${ep} — ${REASON_LABELS[detection.reason]}`,
-        hint: this.hint,
+        desc: `${ep} — exposes PII in response`,
+        hint: `Detection: ${REASON_LABELS[detection.reason]}. ${this.hint}`,
         endpoint: ep,
         count: 1,
       };
-      seen.set(dedupKey, finding);
+      seen.set(ep, finding);
       findings.push(finding);
     }
     return findings;

@@ -29,7 +29,7 @@ export const MIN_SECRET_VALUE_LENGTH = 8;
  * A response with this many top-level fields likely represents a full database
  * record (e.g. user profile) rather than a simple acknowledgment.
  */
-export const FULL_RECORD_MIN_FIELDS = 5;
+export const FULL_RECORD_MIN_FIELDS = 8;
 
 /** Minimum items in a list endpoint that must contain PII to flag. */
 export const LIST_PII_MIN_ITEMS = 2;

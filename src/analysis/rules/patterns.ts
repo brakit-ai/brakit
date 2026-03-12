@@ -10,6 +10,20 @@ export const MASKED_RE = /^\*+$|\[REDACTED\]|\[FILTERED\]|CHANGE_ME|^x{3,}$/i;
 export const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
 export const INTERNAL_ID_KEYS = /^(id|_id|userId|user_id|createdBy|updatedBy|organizationId|org_id|tenantId|tenant_id)$/;
 export const INTERNAL_ID_SUFFIX = /Id$|_id$/;
+
+/**
+ * Path segments that indicate the response is the authenticated user's own
+ * data (self-service). These endpoints legitimately return personal fields,
+ * so PII detection is suppressed to avoid false positives.
+ * Uses a lookahead so the segment delimiter is not consumed.
+ */
+export const SELF_SERVICE_PATH = /\/(?:me|account|profile|settings|self)(?=\/|\?|#|$)/i;
+
+/**
+ * Response field names that are unambiguous PII regardless of whether an
+ * email address is present. Matching any of these triggers PII detection.
+ */
+export const SENSITIVE_FIELD_NAMES = /^(phone|phoneNumber|phone_number|ssn|socialSecurityNumber|social_security_number|dateOfBirth|date_of_birth|dob|address|streetAddress|street_address|creditCard|credit_card|cardNumber|card_number|bankAccount|bank_account|passport|passportNumber|passport_number|nationalId|national_id)$/i;
 export const SELECT_STAR_RE = /^SELECT\s+\*/i;
 export const SELECT_DOT_STAR_RE = /\.\*\s+FROM/i;
 
