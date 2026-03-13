@@ -34,9 +34,8 @@ export function getSecurityStyles(): string {
 .sec-hint{padding:8px 16px;font-size:11px;color:var(--text-muted);background:var(--bg-muted);border-bottom:1px solid var(--border)}
 
 /* Items */
-.sec-items{padding:4px 0}
-.sec-item{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;font-size:12px;transition:background .1s}
-.sec-item:hover{background:var(--bg-hover)}
+.sec-items{padding:2px 0}
+.sec-item{display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:12px;flex-wrap:wrap}
 .sec-item-desc{color:var(--text-dim);line-height:1.5;flex:1;min-width:0}
 .sec-item-desc strong{color:var(--text);font-family:var(--mono);font-weight:600}
 .sec-item-count{font-size:10px;font-family:var(--mono);color:var(--text-muted);flex-shrink:0;margin-left:12px}

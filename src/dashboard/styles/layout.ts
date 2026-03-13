@@ -42,6 +42,11 @@ export function getLayoutStyles(): string {
 
 /* Content */
 .main-content{flex:1;overflow-y:auto}
+bk-dashboard{display:contents}
+bk-overview-view,bk-flows-view,bk-requests-view,bk-fetches-view,bk-queries-view,bk-errors-view,bk-logs-view,bk-security-view,bk-performance-view,bk-timeline-panel,bk-empty-state{display:block}
+bk-method-badge,bk-status-pill,bk-duration-label,bk-copy-button{display:inline-flex;flex-shrink:0}
+bk-stat-card{display:inline-flex}
+bk-toast{display:block;position:fixed;top:0;left:0;right:0;z-index:100;pointer-events:none}
 
 /* Column headers */
 .col-header{display:flex;align-items:center;gap:16px;padding:8px 28px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-sidebar);position:sticky;top:0;z-index:2;font-family:var(--mono)}

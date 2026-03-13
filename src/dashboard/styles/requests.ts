@@ -57,16 +57,22 @@ export function getRequestStyles(): string {
 .fetch-stat-value{font-size:17px;font-weight:700;font-family:var(--mono);color:var(--text)}
 .fetch-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);font-weight:600}
 .fetch-groups-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:10px}
-.fetch-groups{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
-.fetch-group{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow-sm);transition:all .15s}
+.fetch-groups{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.fetch-group{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;box-shadow:var(--shadow-sm);transition:all .15s}
 .fetch-group:hover{border-color:var(--border-light);box-shadow:var(--shadow-md)}
 .fetch-group-header{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:13px}
 .fetch-group-url{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--text)}
 .fetch-group-count{font-size:12px;color:var(--text-muted);flex-shrink:0;background:var(--bg-muted);padding:2px 8px;border-radius:10px}
-.fetch-group-meta{display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text-dim);font-family:var(--mono)}
+.fetch-group-meta{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11px;color:var(--text-dim);font-family:var(--mono)}
 .fetch-group-meta span{display:flex;align-items:center;gap:4px}
-.fetch-group-callers{margin-top:6px;font-size:11px;color:var(--text-muted)}
-.fetch-group-callers strong{color:var(--text-dim);font-weight:500}
+.fetch-group-sep{color:var(--text-muted);font-size:9px}
+.fetch-group-ok{color:var(--green)}
 .fetch-group-err{color:var(--red)}
+.fetch-group-timeline{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:10px;color:var(--text-muted);font-family:var(--mono)}
+.fetch-group-timeline-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);opacity:.5;flex-shrink:0}
+.fetch-group-timeline-range{letter-spacing:.3px}
+.fetch-group-callers{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:10px;flex-wrap:wrap}
+.fetch-group-callers-label{color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.fetch-group-caller-pill{background:var(--bg-muted);border:1px solid var(--border);color:var(--text-dim);padding:1px 8px;border-radius:10px;font-family:var(--mono);font-size:10px;white-space:nowrap}
 `;
 }
