@@ -1,31 +1,34 @@
 /**
- * Generates a standalone dashboard HTML file and syncs it to the Python SDK.
+ * Generates a standalone dashboard HTML file.
  *
  * Run after `npm run build`:
  *   npx tsx scripts/export-dashboard.ts
  */
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { getDashboardHtml } from "../src/dashboard/page.js";
-import type { BrakitConfig } from "../src/types/config.js";
+import { getStyles } from "../src/dashboard/styles.js";
+import { getLayoutHtml } from "../src/dashboard/layout.js";
 
-const SENTINEL_PORT = 0;
 const PLACEHOLDER = "{{PORT}}";
+const VERSION_PLACEHOLDER = "{{VERSION}}";
 
-const config: BrakitConfig = {
-  proxyPort: SENTINEL_PORT,
-  targetPort: 0,
-  showStatic: false,
-  maxBodyCapture: 10_240,
-};
+const clientBundle = readFileSync(resolve("dist/dashboard-client.global.js"), "utf-8");
 
-let html = getDashboardHtml(config);
+const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>brakit</title>
+<style>${getStyles()}</style>
+</head>
+<body>
+${getLayoutHtml()}
+<script>window.__BRAKIT_CONFIG__={port:${PLACEHOLDER},version:"${VERSION_PLACEHOLDER}"};</script>
+<script>${clientBundle}</script>
+</body>
+</html>`;
 
-// Replace sentinel port values with placeholders
-html = html.replace(`var PORT = ${SENTINEL_PORT};`, `var PORT = ${PLACEHOLDER};`);
-html = html.replace(`:${SENTINEL_PORT}</div>`, `:${PLACEHOLDER}</div>`);
-
-// Write standalone HTML
 const distPath = resolve("dist/dashboard.html");
 mkdirSync(dirname(distPath), { recursive: true });
 writeFileSync(distPath, html, "utf-8");

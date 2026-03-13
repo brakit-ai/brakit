@@ -1,200 +1,204 @@
+/** Root <bk-dashboard> app shell component. */
+
+import { LitElement, html, nothing } from "lit";
+import { customElement, state } from "lit/decorators.js";
+import { provide } from "@lit/context";
+import { DashboardStore, dashboardContext } from "./store/dashboard-store.js";
+import { SSEController } from "./controllers/sse-controller.js";
+import { Toast } from "./components/toast.js";
+import { copyAsCurl } from "./utils/curl.js";
+import { API, DASHBOARD_PREFIX, VIEW_TITLES, VIEW_SUBTITLES } from "./constants.js";
 import {
-  DASHBOARD_PREFIX,
-  DASHBOARD_API_FLOWS,
-  DASHBOARD_API_REQUESTS,
-  DASHBOARD_API_EVENTS,
-  DASHBOARD_API_CLEAR,
-  DASHBOARD_API_INSIGHTS,
-  DASHBOARD_API_TAB,
-  MAX_TELEMETRY_ENTRIES,
-} from "../../constants/index.js";
-import {
-  CLIENT_MAX_REQUESTS,
-  CLIENT_RELOAD_DEBOUNCE_MS,
-  VIEW_CONTAINERS,
-  VIEW_TITLES,
-  VIEW_SUBTITLES,
-  ALL_ENDPOINTS_SELECTOR,
-  PERF_RELOAD_DEBOUNCE_MS,
-  CURL_SKIP_HEADERS,
-} from "./constants/index.js";
+  iconOverview, iconActions, iconRequests, iconFetches,
+  iconQueries, iconErrors, iconLogs, iconSecurity, iconPerformance,
+} from "./components/icons.js";
+import type { TracedRequest } from "./store/types.js";
 
-export function getApp(): string {
-  return `
-  var VIEW_CONTAINERS = ${VIEW_CONTAINERS};
-  var VIEW_TITLES = ${VIEW_TITLES};
-  var VIEW_SUBTITLES = ${VIEW_SUBTITLES};
+@customElement("bk-dashboard")
+export class Dashboard extends LitElement {
+  @provide({ context: dashboardContext })
+  store = new DashboardStore();
 
-  async function init() {
+  @state() private activeView = "overview";
+  @state() private viewMode: "simple" | "detailed" = "simple";
+
+  private sse = new SSEController(this, this.store);
+
+  createRenderRoot() {
+    return this;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.loadInitialData();
+    this.store.addEventListener("state-changed", () => this.requestUpdate());
+  }
+
+  private async loadInitialData() {
     try {
-      var res = await fetch('${DASHBOARD_API_FLOWS}');
-      var data = await res.json();
-      state.flows = data.flows;
-      renderFlows();
-    } catch(e) { console.error('Failed to load flows', e); }
-
-    try {
-      var res2 = await fetch('${DASHBOARD_API_REQUESTS}');
-      var data2 = await res2.json();
-      state.requests = data2.requests;
-      renderRequests();
-    } catch(e) { console.warn('[brakit]', e); }
-
-    await Promise.all([loadFetches(), loadErrors(), loadLogs(), loadQueries(), loadMetrics()]);
-
-    try {
-      var res3 = await fetch('${DASHBOARD_API_INSIGHTS}');
-      var data3 = await res3.json();
-      state.issues = data3.issues || [];
-    } catch(e) { console.warn('[brakit]', e); }
-
-    updateStats();
-    renderOverview();
-
-    var events = new EventSource('${DASHBOARD_API_EVENTS}');
-    var reloadTimer = null;
-    var perfReloadTimer = null;
-    events.onmessage = function(e) {
-      var req = JSON.parse(e.data);
-      if (req.path && req.path.startsWith('${DASHBOARD_PREFIX}')) return;
-      state.requests.unshift(req);
-      if (state.requests.length > ${CLIENT_MAX_REQUESTS}) state.requests.pop();
-      clearTimeout(reloadTimer);
-      reloadTimer = setTimeout(reloadFlows, ${CLIENT_RELOAD_DEBOUNCE_MS});
-      prependRequestRow(req);
-      updateStats();
-      if (state.activeView === 'performance') {
-        clearTimeout(perfReloadTimer);
-        perfReloadTimer = setTimeout(loadMetrics, ${PERF_RELOAD_DEBOUNCE_MS});
-      }
-    };
-
-    function registerTelemetryListener(eventName, stateKey, prependFn) {
-      events.addEventListener(eventName, function(e) {
-        var item = JSON.parse(e.data);
-        state[stateKey].unshift(item);
-        if (state[stateKey].length > ${MAX_TELEMETRY_ENTRIES}) state[stateKey].pop();
-        prependFn(item);
-        updateStats();
-        if (item.parentRequestId) { invalidateTimelineCache(item.parentRequestId); refreshVisibleTimeline(item.parentRequestId); }
-      });
+      const [flowsRes, requestsRes] = await Promise.all([
+        fetch(API.flows),
+        fetch(API.requests),
+      ]);
+      const [flowsData, requestsData] = await Promise.all([
+        flowsRes.json(),
+        requestsRes.json(),
+      ]);
+      this.store.setFlows(flowsData.flows);
+      this.store.setRequests(requestsData.requests);
+    } catch (e) {
+      console.warn("[brakit]", e);
     }
-    registerTelemetryListener('fetch', 'fetches', prependFetchRow);
-    registerTelemetryListener('log', 'logs', prependLogRow);
-    registerTelemetryListener('error_event', 'errors', prependErrorRow);
-    registerTelemetryListener('query', 'queries', prependQueryRow);
 
-    events.addEventListener('issues', function(e) {
-      state.issues = JSON.parse(e.data);
-      if (state.activeView === 'overview') renderOverview();
-      if (state.activeView === 'security') renderSecurity();
-      updateStats();
-    });
-
-    window.addEventListener('beforeunload', function() {
-      events.close();
-      clearTimeout(reloadTimer);
-      clearTimeout(perfReloadTimer);
-    });
-  }
-
-  async function reloadFlows() {
     try {
-      var res = await fetch('${DASHBOARD_API_FLOWS}');
-      var data = await res.json();
-      state.flows = data.flows;
-      renderFlows();
-      updateStats();
-    } catch(e) { console.warn('[brakit]', e); }
-  }
+      const [fetchesRes, errorsRes, logsRes, queriesRes, metricsRes] = await Promise.all([
+        fetch(API.fetches),
+        fetch(API.errors),
+        fetch(API.logs),
+        fetch(API.queries),
+        fetch(API.metricsLive),
+      ]);
+      const [fetchesData, errorsData, logsData, queriesData, metricsData] = await Promise.all([
+        fetchesRes.json(),
+        errorsRes.json(),
+        logsRes.json(),
+        queriesRes.json(),
+        metricsRes.json(),
+      ]);
+      this.store.setFetches(fetchesData.entries);
+      this.store.setErrors(errorsData.entries);
+      this.store.setLogs(logsData.entries);
+      this.store.setQueries(queriesData.entries);
+      this.store.setMetrics(metricsData.endpoints || []);
+    } catch (e) {
+      console.warn("[brakit]", e);
+    }
 
-  function switchView(view) {
-    Object.keys(VIEW_CONTAINERS).forEach(function(v) {
-      var el = document.getElementById(VIEW_CONTAINERS[v]);
-      if (el) el.style.display = v === view ? 'block' : 'none';
-    });
-  }
-
-  var sidebarItems = document.querySelectorAll('.sidebar-item:not(.disabled)');
-  sidebarItems.forEach(function(item) {
-    item.addEventListener('click', function() {
-      var view = item.getAttribute('data-view');
-      if (!view || view === state.activeView) return;
-      sidebarItems.forEach(function(i) { i.classList.remove('active'); });
-      item.classList.add('active');
-      state.activeView = view;
-      fetch('${DASHBOARD_API_TAB}?tab=' + encodeURIComponent(view)).catch(function(){});
-      document.getElementById('header-title').textContent = VIEW_TITLES[view] || view;
-      document.getElementById('header-sub').textContent = VIEW_SUBTITLES[view] || '';
-      document.getElementById('mode-toggle').style.display = view === 'actions' ? 'flex' : 'none';
-      if (view === 'overview') renderOverview();
-      if (view === 'security') renderSecurity();
-      if (view === 'performance') loadMetrics();
-      switchView(view);
-    });
-  });
-
-  document.getElementById('mode-simple').addEventListener('click', function() {
-    state.viewMode = 'simple';
-    document.getElementById('mode-simple').classList.add('active');
-    document.getElementById('mode-detailed').classList.remove('active');
-    collapseAll('.flow-row', '.flow-expand');
-  });
-  document.getElementById('mode-detailed').addEventListener('click', function() {
-    state.viewMode = 'detailed';
-    document.getElementById('mode-detailed').classList.add('active');
-    document.getElementById('mode-simple').classList.remove('active');
-    collapseAll('.flow-row', '.flow-expand');
-  });
-
-  function updateStats() {
-    var reqs = state.requests.filter(function(r) { return !r.path || !r.path.startsWith('${DASHBOARD_PREFIX}'); });
-    var errors = reqs.filter(function(r) { return r.statusCode >= 400; }).length;
-    var avg = reqs.length > 0 ? Math.round(reqs.reduce(function(s,r) { return s + r.durationMs; }, 0) / reqs.length) : 0;
-    document.getElementById('stat-total').textContent = reqs.length + ' request' + (reqs.length !== 1 ? 's' : '');
-    document.getElementById('stat-flows').textContent = state.flows.length + ' action' + (state.flows.length !== 1 ? 's' : '');
-    document.getElementById('stat-errors').textContent = errors + ' error' + (errors !== 1 ? 's' : '');
-    document.getElementById('stat-avg').textContent = 'Avg: ' + avg + 'ms';
-    var actionCount = document.getElementById('sidebar-count-actions');
-    var requestCount = document.getElementById('sidebar-count-requests');
-    var fetchCount = document.getElementById('sidebar-count-fetches');
-    var errorCount = document.getElementById('sidebar-count-errors');
-    var logCount = document.getElementById('sidebar-count-logs');
-    var queryCount = document.getElementById('sidebar-count-queries');
-    if (actionCount) actionCount.textContent = state.flows.length;
-    if (requestCount) requestCount.textContent = reqs.length;
-    if (fetchCount) fetchCount.textContent = state.fetches.length;
-    if (errorCount) errorCount.textContent = state.errors.length;
-    if (logCount) logCount.textContent = state.logs.length;
-    if (queryCount) queryCount.textContent = state.queries.length;
-    var secCount = document.getElementById('sidebar-count-security');
-    if (secCount) {
-      var numIssues = (state.issues || []).filter(function(f) { return f.state !== 'resolved' && f.state !== 'stale'; }).length;
-      secCount.textContent = numIssues;
-      secCount.style.display = numIssues > 0 ? '' : 'none';
+    try {
+      const insightsRes = await fetch(API.insights);
+      const insightsData = await insightsRes.json();
+      this.store.setIssues(insightsData.issues || []);
+    } catch (e) {
+      console.warn("[brakit]", e);
     }
   }
 
-  function copyAsCurl(req) {
-    var headers = Object.entries(req.headers || {})
-      .filter(function(e) { return ${CURL_SKIP_HEADERS}.indexOf(e[0]) === -1; })
-      .map(function(e) { return "-H '" + e[0] + ": " + e[1] + "'"; })
-      .join(' ');
-    var body = req.requestBody ? " -d '" + req.requestBody.replace(/'/g, "'\\\\''") + "'" : '';
-    var curl = "curl -X " + req.method + " " + headers + body + " 'http://localhost:" + PORT + req.url + "'";
-    navigator.clipboard.writeText(curl).then(function() { showToast('Copied cURL command'); });
+  private switchView(view: string) {
+    if (view === this.activeView) return;
+    this.activeView = view;
+    this.store.setActiveView(view);
+    fetch(`${API.tab}?tab=${encodeURIComponent(view)}`).catch(() => {});
+    if (view === "performance") {
+      this.sse.reloadMetrics();
+    }
   }
 
-  document.getElementById('clear-btn').addEventListener('click', async function() {
-    if (!confirm('This will clear all data including performance metrics history. Continue?')) return;
-    await fetch('${DASHBOARD_API_CLEAR}', {method: 'POST'});
-    state.flows = []; state.requests = []; state.fetches = []; state.errors = []; state.logs = []; state.queries = [];
-    state.issues = [];
-    graphData = []; selectedEndpoint = ${ALL_ENDPOINTS_SELECTOR}; timelineCache = {};
-    renderFlows(); renderRequests(); renderFetches(); renderErrors(); renderLogs(); renderQueries(); renderGraph(); renderOverview(); renderSecurity(); updateStats();
-    showToast('Cleared');
-  });
+  private async handleClear() {
+    if (!confirm("This will clear all data including performance metrics history. Continue?")) return;
+    await fetch(API.clear, { method: "POST" });
+    this.store.clearAll();
+    Toast.show("Cleared");
+  }
 
-  init();
-  `;
+  handleCopyAsCurl(req: TracedRequest) {
+    copyAsCurl(req);
+  }
+
+  render() {
+    const s = this.store.state;
+    const reqs = s.requests.filter((r) => !r.path?.startsWith(DASHBOARD_PREFIX));
+    const errors = reqs.filter((r) => r.statusCode >= 400).length;
+    const avg = reqs.length > 0 ? Math.round(reqs.reduce((sum, r) => sum + r.durationMs, 0) / reqs.length) : 0;
+    const openIssues = (s.issues || []).filter((f) => f.state !== "resolved" && f.state !== "stale").length;
+
+    const config = window.__BRAKIT_CONFIG__;
+
+    return html`
+      <div class="app" id="app">
+        <aside class="sidebar">
+          <div class="sidebar-logo">
+            <span class="logo-text">brakit</span>
+            <span class="logo-version">v${config?.version ?? ""}</span>
+          </div>
+          <nav class="sidebar-nav">
+            ${this.renderSidebarItem("overview", "Overview", iconOverview(), undefined)}
+            <div class="sidebar-section">Monitor</div>
+            ${this.renderSidebarItem("actions", "Actions", iconActions(), s.flows.length)}
+            ${this.renderSidebarItem("requests", "Requests", iconRequests(), reqs.length)}
+            ${this.renderSidebarItem("fetches", "Fetches", iconFetches(), s.fetches.length)}
+            <div class="sidebar-section">Insights</div>
+            ${this.renderSidebarItem("queries", "Queries", iconQueries(), s.queries.length)}
+            ${this.renderSidebarItem("errors", "Errors", iconErrors(), s.errors.length)}
+            ${this.renderSidebarItem("logs", "Logs", iconLogs(), s.logs.length)}
+            ${this.renderSidebarItem("security", "Security", iconSecurity(), openIssues, openIssues === 0)}
+            ${this.renderSidebarItem("performance", "Performance", iconPerformance(), undefined)}
+          </nav>
+          <div class="sidebar-footer">:${config?.port ?? ""}</div>
+        </aside>
+        <div class="main-panel">
+          <div class="header">
+            <div class="header-left">
+              <span class="header-title" id="header-title">${VIEW_TITLES[this.activeView] || this.activeView}</span>
+              <span class="header-sub" id="header-sub">${VIEW_SUBTITLES[this.activeView] || ""}</span>
+            </div>
+            <div class="header-right">
+              ${this.activeView === "actions" ? html`
+                <div class="segmented-control" id="mode-toggle">
+                  <button class="segmented-btn ${this.viewMode === "simple" ? "active" : ""}" @click=${() => { this.viewMode = "simple"; this.store.setViewMode("simple"); }}>Quick</button>
+                  <button class="segmented-btn ${this.viewMode === "detailed" ? "active" : ""}" @click=${() => { this.viewMode = "detailed"; this.store.setViewMode("detailed"); }}>Detailed</button>
+                </div>
+              ` : nothing}
+              <button class="btn btn-danger" @click=${this.handleClear}>Clear</button>
+            </div>
+          </div>
+          <div class="main-content">
+            <div id="overview-container" style="display:${this.activeView === "overview" ? "block" : "none"}">
+              <bk-overview-view></bk-overview-view>
+            </div>
+            <div class="view-flows" id="flow-container" style="display:${this.activeView === "actions" ? "block" : "none"}">
+              <bk-flows-view></bk-flows-view>
+            </div>
+            <div class="view-requests" id="request-container" style="display:${this.activeView === "requests" ? "block" : "none"}">
+              <bk-requests-view></bk-requests-view>
+            </div>
+            <div class="view-telemetry" id="fetch-container" style="display:${this.activeView === "fetches" ? "block" : "none"}">
+              <bk-fetches-view></bk-fetches-view>
+            </div>
+            <div class="view-telemetry" id="query-container" style="display:${this.activeView === "queries" ? "block" : "none"}">
+              <bk-queries-view></bk-queries-view>
+            </div>
+            <div class="view-telemetry" id="error-container" style="display:${this.activeView === "errors" ? "block" : "none"}">
+              <bk-errors-view></bk-errors-view>
+            </div>
+            <div class="view-telemetry" id="log-container" style="display:${this.activeView === "logs" ? "block" : "none"}">
+              <bk-logs-view></bk-logs-view>
+            </div>
+            <div class="view-telemetry" id="security-container" style="display:${this.activeView === "security" ? "block" : "none"}">
+              <bk-security-view></bk-security-view>
+            </div>
+            <div class="view-telemetry" id="performance-container" style="display:${this.activeView === "performance" ? "block" : "none"}">
+              <bk-performance-view></bk-performance-view>
+            </div>
+          </div>
+          <div class="footer">
+            <span id="stat-total">${reqs.length} request${reqs.length !== 1 ? "s" : ""}</span>
+            <span id="stat-flows">${s.flows.length} action${s.flows.length !== 1 ? "s" : ""}</span>
+            <span id="stat-errors" class="error-count">${errors} error${errors !== 1 ? "s" : ""}</span>
+            <span id="stat-avg">Avg: ${avg}ms</span>
+          </div>
+        </div>
+      </div>
+      <bk-toast></bk-toast>
+    `;
+  }
+
+  private renderSidebarItem(view: string, label: string, icon: unknown, count?: number, hideCount = false) {
+    return html`
+      <button class="sidebar-item ${this.activeView === view ? "active" : ""}" @click=${() => this.switchView(view)}>
+        <span class="item-icon">${icon}</span>
+        <span class="item-label">${label}</span>
+        ${count !== undefined ? html`<span class="item-count" style="display:${hideCount ? "none" : ""}">${count}</span>` : nothing}
+      </button>
+    `;
+  }
 }

@@ -67,10 +67,7 @@ interface Stores {
   queryStore: QueryStore;
 }
 
-function createStores(
-  bus: EventBus,
-  registry: ServiceRegistry,
-): Stores {
+function createStores(bus: EventBus, registry: ServiceRegistry): Stores {
   const requestStore = new RequestStore();
   const fetchStore = new FetchStore();
   const logStore = new LogStore();
@@ -98,9 +95,10 @@ function createStores(
 /*  Phase 2 — Install instrumentation hooks                           */
 /* ------------------------------------------------------------------ */
 
-function installHooks(
-  bus: EventBus,
-): { framework: Framework; adapterNames: string[] } {
+function installHooks(bus: EventBus): {
+  framework: Framework;
+  adapterNames: string[];
+} {
   const telemetryEmit = (event: TelemetryEvent): void => {
     const channel = `telemetry:${event.type}` as keyof ChannelMap;
     bus.emit(channel, event.data as ChannelMap[typeof channel]);
@@ -190,7 +188,9 @@ function registerLifecycle(
     if (telemetrySent) return;
     telemetrySent = true;
     recordRequestCount(stores.requestStore.getAll().length);
-    recordInsightTypes(services.analysisEngine.getInsights().map((i) => i.type));
+    recordInsightTypes(
+      services.analysisEngine.getInsights().map((i) => i.type),
+    );
     recordRulesTriggered(
       services.analysisEngine.getFindings().map((f) => f.rule),
     );
@@ -247,12 +247,7 @@ async function doSetup(): Promise<void> {
   // Phase 2 — instrumentation hooks
   const { framework, adapterNames } = installHooks(bus);
 
-  initSession(
-    framework,
-    detectPackageManagerSync(cwd),
-    false,
-    adapterNames,
-  );
+  initSession(framework, detectPackageManagerSync(cwd), false, adapterNames);
 
   // Phase 3 — analysis, metrics & issues
   const dataDir = getProjectDataDir(cwd);
