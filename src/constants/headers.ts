@@ -1,4 +1,5 @@
 export const BRAKIT_REQUEST_ID_HEADER = "x-brakit-request-id";
+export const BRAKIT_FETCH_ID_HEADER = "x-brakit-fetch-id";
 
 export const SENSITIVE_HEADER_NAMES = new Set([
   "authorization",

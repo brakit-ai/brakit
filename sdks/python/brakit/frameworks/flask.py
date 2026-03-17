@@ -8,10 +8,12 @@ import uuid
 from typing import Any, TYPE_CHECKING
 
 from brakit.constants.events import CHANNEL_REQUEST_COMPLETED, CHANNEL_TELEMETRY_ERROR
+from brakit.constants.headers import BRAKIT_REQUEST_ID_HEADER
 from brakit.constants.limits import MAX_BODY_CAPTURE
 from brakit.constants.logger import LOGGER_NAME
 from brakit.core.context import clear_request_id, set_request_id
-from brakit.core.sanitize import sanitize_headers
+from brakit.core.decompress import decompress_body
+from brakit.core.sanitize import sanitize_headers, sanitize_stack_trace
 from brakit.frameworks._shared import is_static
 from brakit.types.http import TracedRequest
 from brakit.types.telemetry import TracedError
@@ -23,6 +25,7 @@ logger = logging.getLogger(LOGGER_NAME)
 
 _FLASK_G_REQUEST_ID = "_brakit_request_id"
 _FLASK_G_START = "_brakit_start"
+_FLASK_G_IS_CHILD = "_brakit_is_child"
 
 
 class FlaskAdapter:
@@ -83,9 +86,11 @@ def _install_hooks(app: Any, registry: ServiceRegistry) -> None:
                 from brakit.transport.port_file import write_port_if_needed
                 write_port_if_needed(int(port_str))
 
-        rid = uuid.uuid4().hex
+        propagated = flask.request.headers.get(BRAKIT_REQUEST_ID_HEADER)
+        rid = propagated if propagated else uuid.uuid4().hex
         set_request_id(rid)
         setattr(flask.g, _FLASK_G_REQUEST_ID, rid)
+        setattr(flask.g, _FLASK_G_IS_CHILD, propagated is not None)
         setattr(flask.g, _FLASK_G_START, time.perf_counter())
 
     @app.after_request
@@ -109,30 +114,42 @@ def _install_hooks(app: Any, registry: ServiceRegistry) -> None:
         response_body: str | None = None
         response_size = 0
         try:
-            data = response.get_data(as_text=True)
-            response_size = len(data.encode("utf-8", errors="replace"))
-            if data and not is_static(path):
-                response_body = data[:MAX_BODY_CAPTURE]
+            if response.is_streamed:
+                response_body = None
+            else:
+                raw_bytes = response.get_data(as_text=False)
+                response_size = len(raw_bytes)
+                if raw_bytes and not is_static(path):
+                    raw_bytes = decompress_body(
+                        raw_bytes, response.headers.get("Content-Encoding")
+                    )
+                    response_body = raw_bytes.decode("utf-8", errors="replace")[
+                        :MAX_BODY_CAPTURE
+                    ]
         except Exception:
             logger.debug("failed to read response body", exc_info=True)
 
-        entry = TracedRequest(
-            id=rid,
-            method=flask.request.method,
-            url=path,
-            status_code=response.status_code,
-            duration_ms=round(duration_ms, 2),
-            timestamp=time.time() * 1_000,
-            headers=sanitize_headers(dict(flask.request.headers)),
-            response_headers=sanitize_headers(dict(response.headers)),
-            request_body=request_body,
-            response_body=response_body,
-            response_size=response_size,
-            is_static=is_static(path),
-        )
+        is_child: bool = getattr(flask.g, _FLASK_G_IS_CHILD, False)
 
-        registry.request_store.add(entry)
-        registry.bus.emit(CHANNEL_REQUEST_COMPLETED, entry)
+        if not is_child:
+            entry = TracedRequest(
+                id=rid,
+                method=flask.request.method,
+                url=path,
+                status_code=response.status_code,
+                duration_ms=round(duration_ms, 2),
+                timestamp=time.time() * 1_000,
+                headers=sanitize_headers(dict(flask.request.headers)),
+                response_headers=sanitize_headers(dict(response.headers)),
+                request_body=request_body,
+                response_body=response_body,
+                response_size=response_size,
+                is_static=is_static(path),
+            )
+
+            registry.request_store.add(entry)
+            registry.bus.emit(CHANNEL_REQUEST_COMPLETED, entry)
+
         clear_request_id()
         return response
 
@@ -147,7 +164,7 @@ def _install_hooks(app: Any, registry: ServiceRegistry) -> None:
             timestamp=time.time() * 1_000,
             name=type(exc).__name__,
             message=str(exc),
-            stack=traceback.format_exc(),
+            stack=sanitize_stack_trace(traceback.format_exc()),
         )
         registry.error_store.add(error_entry)
         registry.bus.emit(CHANNEL_TELEMETRY_ERROR, error_entry)

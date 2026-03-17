@@ -4,6 +4,7 @@ import type { TelemetryBatch, TelemetryEvent, TracedRequest, TracedQuery, Traced
 import type { SDKIngestPayload } from "../../types/api-contracts.js";
 import { MAX_INGEST_BYTES } from "../../constants/limits.js";
 import { HTTP_NO_CONTENT, HTTP_BAD_REQUEST, HTTP_METHOD_NOT_ALLOWED, HTTP_PAYLOAD_TOO_LARGE } from "../../constants/http.js";
+import { TIMELINE_FETCH, TIMELINE_LOG, TIMELINE_ERROR, TIMELINE_QUERY } from "../../constants/timeline.js";
 import { sendJson } from "./shared.js";
 import { routeSDKEvent } from "./sdk-event-parser.js";
 
@@ -32,16 +33,16 @@ export function createIngestHandler(
 ): (req: IncomingMessage, res: ServerResponse) => void {
   const routeEvent = (event: TelemetryEvent): void => {
     switch (event.type) {
-      case "fetch":
+      case TIMELINE_FETCH:
         registry.get("fetch-store").add(event.data);
         break;
-      case "log":
+      case TIMELINE_LOG:
         registry.get("log-store").add(event.data);
         break;
-      case "error":
+      case TIMELINE_ERROR:
         registry.get("error-store").add(event.data);
         break;
-      case "query":
+      case TIMELINE_QUERY:
         registry.get("query-store").add(event.data);
         break;
     }
@@ -79,7 +80,7 @@ export function createIngestHandler(
       chunks.push(chunk);
     });
     req.on("end", () => {
-      if (totalSize > MAX_INGEST_BYTES) return;
+      if (res.headersSent) return;
       try {
         const body = JSON.parse(Buffer.concat(chunks).toString());
 

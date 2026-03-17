@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>AI writes your code. Brakit watches what it does.</b> <br />
-  Every request, query, and security issue, caught before you ship. <br />
+  Every request, query, and API call mapped to the action that triggered it. See your entire backend at a glance. <br />
   <b>Open source · Local first · Zero config · AI-native via MCP</b>
 </p>
 
@@ -31,6 +31,12 @@
 </h4>
 
 ---
+
+<p align="center">
+  <img width="700" src="docs/images/actions.png" alt="Brakit Actions — endpoints grouped by user action" />
+  <br />
+  <sub>Every endpoint grouped by the action that triggered it — see "Sign Up" and "Load Dashboard", not 47 raw requests</sub>
+</p>
 
 <p align="center">
   <img width="700" src="docs/images/dashboard.png" alt="Brakit Dashboard — issues surfaced automatically" />

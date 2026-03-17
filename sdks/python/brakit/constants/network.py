@@ -4,6 +4,9 @@ from __future__ import annotations
 BRAKIT_DIR_NAME: str = ".brakit"
 PORT_FILE_NAME: str = "port"
 ENV_PORT_KEY: str = "BRAKIT_PORT"
+# Walk up to 10 parent directories when searching for the .brakit/port file.
+# Most monorepo nesting depths are under 5; 10 covers extreme cases without
+# unbounded filesystem traversal.
 MAX_PARENT_DEPTH: int = 10
 
 ENV_DISABLE_KEY: str = "BRAKIT_DISABLE"
@@ -11,7 +14,9 @@ ENV_DISABLE_KEY: str = "BRAKIT_DISABLE"
 PRODUCTION_SIGNALS: tuple[str, ...] = (
     "FLASK_ENV", "ENVIRONMENT", "NODE_ENV", "APP_ENV", "DJANGO_SETTINGS_MODULE",
 )
+# Tuple preserves insertion order for logging/display.
 PRODUCTION_VALUES: tuple[str, ...] = ("production", "staging", "prod")
+# Frozen set for O(1) membership tests in environment guards.
 PRODUCTION_VALUES_SET: frozenset[str] = frozenset(PRODUCTION_VALUES)
 
 CI_SIGNALS: tuple[str, ...] = (

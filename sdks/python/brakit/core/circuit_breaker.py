@@ -6,6 +6,8 @@ import time
 
 from brakit.constants import MAX_HEALTH_ERRORS
 
+# 30-second cooldown balances between fast recovery and avoiding
+# flood-retries against a downed Node.js server.
 _DEFAULT_COOLDOWN_S: float = 30.0
 
 

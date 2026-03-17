@@ -102,6 +102,7 @@ export {
 
 export {
   BRAKIT_REQUEST_ID_HEADER,
+  BRAKIT_FETCH_ID_HEADER,
   SENSITIVE_HEADER_NAMES,
 } from "./headers.js";
 
@@ -165,3 +166,19 @@ export {
   BUILD_CACHE_DIRS,
   FALLBACK_SCAN_DIRS,
 } from "./cli.js";
+
+export {
+  TIMELINE_FETCH,
+  TIMELINE_LOG,
+  TIMELINE_ERROR,
+  TIMELINE_QUERY,
+} from "./timeline.js";
+
+export {
+  SDK_EVENT_REQUEST,
+  SDK_EVENT_DB_QUERY,
+  SDK_EVENT_FETCH,
+  SDK_EVENT_LOG,
+  SDK_EVENT_ERROR,
+  SDK_EVENT_AUTH_CHECK,
+} from "./sdk-events.js";

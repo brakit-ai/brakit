@@ -6,27 +6,27 @@ import time
 import uuid
 from typing import Any
 
-from brakit.adapters._normalize import normalize_sql
+from brakit.adapters._normalize import is_noise_query, normalize_sql
 from brakit.constants.events import CHANNEL_TELEMETRY_QUERY
 from brakit.constants.limits import MAX_SQL_LENGTH
 from brakit.constants.logger import LOGGER_NAME
-from brakit.core.context import get_request_id
+from brakit.core.context import get_fetch_id, get_request_id
 from brakit.core.event_bus import EventBus
 from brakit.store.query_store import QueryStore
 from brakit.types.telemetry import TracedQuery
 
 logger = logging.getLogger(LOGGER_NAME)
 
-_CONN_KEY_START = "_brakit_start"
-_CONN_KEY_SQL = "_brakit_sql"
+_SA_INFO_START_TIME = "_brakit_start"
+_SA_INFO_SQL = "_brakit_sql"
 
 
 class SQLAlchemyAdapter:
     name = "sqlalchemy"
 
     _patched = False
-    _before_listener: Any = None
-    _after_listener: Any = None
+    _on_before_listener: Any = None
+    _on_after_listener: Any = None
 
     def detect(self) -> bool:
         try:
@@ -46,7 +46,7 @@ class SQLAlchemyAdapter:
             return
 
         @event.listens_for(Engine, "before_cursor_execute")
-        def _before(
+        def _on_before_execute(
             conn: Any,
             cursor: Any,
             statement: str,
@@ -54,11 +54,11 @@ class SQLAlchemyAdapter:
             context: Any,
             executemany: bool,
         ) -> None:
-            conn.info[_CONN_KEY_START] = time.perf_counter()
-            conn.info[_CONN_KEY_SQL] = statement
+            conn.info[_SA_INFO_START_TIME] = time.perf_counter()
+            conn.info[_SA_INFO_SQL] = statement
 
         @event.listens_for(Engine, "after_cursor_execute")
-        def _after(
+        def _on_after_execute(
             conn: Any,
             cursor: Any,
             statement: str,
@@ -66,10 +66,17 @@ class SQLAlchemyAdapter:
             context: Any,
             executemany: bool,
         ) -> None:
-            start: float | None = conn.info.pop(_CONN_KEY_START, None)
-            sql: str = conn.info.pop(_CONN_KEY_SQL, "")
+            start: float | None = conn.info.pop(_SA_INFO_START_TIME, None)
+            sql: str = conn.info.pop(_SA_INFO_SQL, "")
 
             if start is None:
+                return
+
+            request_id = get_request_id()
+            if request_id is None:
+                return
+
+            if is_noise_query(sql):
                 return
 
             duration_ms = (time.perf_counter() - start) * 1_000
@@ -77,20 +84,21 @@ class SQLAlchemyAdapter:
 
             entry = TracedQuery(
                 id=uuid.uuid4().hex,
-                parent_request_id=get_request_id(),
+                parent_request_id=request_id,
                 timestamp=time.time() * 1_000,
                 driver="sqlalchemy",
                 sql=sql[:MAX_SQL_LENGTH] if sql else None,
                 operation=operation,
                 table=table,
                 duration_ms=round(duration_ms, 2),
+                parent_fetch_id=get_fetch_id(),
             )
 
             query_store.add(entry)
             bus.emit(CHANNEL_TELEMETRY_QUERY, entry)
 
-        SQLAlchemyAdapter._before_listener = _before
-        SQLAlchemyAdapter._after_listener = _after
+        SQLAlchemyAdapter._on_before_listener = _on_before_execute
+        SQLAlchemyAdapter._on_after_listener = _on_after_execute
         SQLAlchemyAdapter._patched = True
 
     def unpatch(self) -> None:
@@ -101,12 +109,12 @@ class SQLAlchemyAdapter:
             from sqlalchemy import event
             from sqlalchemy.engine import Engine
 
-            if SQLAlchemyAdapter._before_listener is not None:
-                event.remove(Engine, "before_cursor_execute", SQLAlchemyAdapter._before_listener)
-            if SQLAlchemyAdapter._after_listener is not None:
-                event.remove(Engine, "after_cursor_execute", SQLAlchemyAdapter._after_listener)
-            SQLAlchemyAdapter._before_listener = None
-            SQLAlchemyAdapter._after_listener = None
+            if SQLAlchemyAdapter._on_before_listener is not None:
+                event.remove(Engine, "before_cursor_execute", SQLAlchemyAdapter._on_before_listener)
+            if SQLAlchemyAdapter._on_after_listener is not None:
+                event.remove(Engine, "after_cursor_execute", SQLAlchemyAdapter._on_after_listener)
+            SQLAlchemyAdapter._on_before_listener = None
+            SQLAlchemyAdapter._on_after_listener = None
         except Exception:
             logger.debug("sqlalchemy unpatch failed", exc_info=True)
 

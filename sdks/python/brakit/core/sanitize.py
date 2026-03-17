@@ -1,37 +1,18 @@
 """Sanitize sensitive data from captured telemetry before forwarding."""
 from __future__ import annotations
 
+import re
 from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
-SENSITIVE_HEADER_NAMES: frozenset[str] = frozenset({
-    "authorization",
-    "cookie",
-    "set-cookie",
-    "proxy-authorization",
-    "x-api-key",
-    "x-auth-token",
-})
-
-SENSITIVE_QUERY_PARAMS: frozenset[str] = frozenset({
-    "token",
-    "key",
-    "secret",
-    "password",
-    "api_key",
-    "apikey",
-    "access_token",
-    "auth",
-})
-
-_MASK_MIN_LENGTH = 8
-_MASK_VISIBLE_CHARS = 4
+from brakit.constants.headers import SENSITIVE_HEADER_NAMES, SENSITIVE_QUERY_PARAMS
+from brakit.constants.limits import MASK_MIN_LENGTH, MASK_VISIBLE_CHARS
 
 
 def _mask_value(value: str) -> str:
-    if len(value) <= _MASK_MIN_LENGTH:
+    """Mask a sensitive value, preserving a few chars for identification."""
+    if len(value) <= MASK_MIN_LENGTH:
         return "****"
-    v = _MASK_VISIBLE_CHARS
-    return value[:v] + "..." + value[-v:]
+    return value[:MASK_VISIBLE_CHARS] + "..." + value[-MASK_VISIBLE_CHARS:]
 
 
 def sanitize_headers(headers: dict[str, str]) -> dict[str, str]:
@@ -63,3 +44,16 @@ def sanitize_url(url: str) -> str:
 
     new_query = urlencode(params, doseq=True)
     return urlunsplit(parts._replace(query=new_query))
+
+
+# Matches connection strings with embedded credentials: proto://user:pass@host
+_CONN_STRING_RE = re.compile(r"(\w+://)[^:]+:[^@]+@")
+
+
+def sanitize_stack_trace(trace: str) -> str:
+    """Remove embedded credentials from connection strings in stack traces.
+
+    Replaces ``user:password`` in database URLs while preserving the overall
+    stack-trace structure for debugging.
+    """
+    return _CONN_STRING_RE.sub(r"\1****:****@", trace)

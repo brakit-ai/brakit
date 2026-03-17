@@ -5,6 +5,7 @@ export interface TelemetryEntry {
 }
 
 export interface TracedFetch extends TelemetryEntry {
+  fetchId?: string;
   url: string;
   method: string;
   statusCode: number;
@@ -19,13 +20,14 @@ export interface TracedLog extends TelemetryEntry {
 export interface TracedError extends TelemetryEntry {
   name: string;
   message: string;
-  stack: string;
+  stack?: string;
 }
 
 export type NormalizedOp = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
 
 export interface TracedQuery extends TelemetryEntry {
-  driver: "pg" | "mysql2" | "prisma" | "sdk";
+  // Python SDK supports: asyncpg, sqlalchemy, sdk
+  driver: "pg" | "mysql2" | "prisma" | "asyncpg" | "sqlalchemy" | "sdk";
   sql?: string;
   model?: string;
   operation?: string;
@@ -34,6 +36,7 @@ export interface TracedQuery extends TelemetryEntry {
   normalizedOp?: NormalizedOp;
   table?: string;
   source?: string;
+  parentFetchId?: string;
 }
 
 export type TelemetryEvent =
