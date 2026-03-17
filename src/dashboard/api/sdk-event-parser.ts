@@ -3,6 +3,10 @@ import type { TracedRequest, HttpMethod, NormalizedOp } from "../../types/index.
 import type { TracedFetch, TracedLog, TracedError, TracedQuery, TelemetryEntry } from "../../types/telemetry.js";
 import type { SDKEvent } from "../../types/api-contracts.js";
 import { isString, isNumber, isBoolean } from "../../utils/type-guards.js";
+import {
+  SDK_EVENT_DB_QUERY, SDK_EVENT_FETCH, SDK_EVENT_LOG, SDK_EVENT_ERROR,
+  SDK_EVENT_REQUEST, SDK_EVENT_AUTH_CHECK,
+} from "../../constants/sdk-events.js";
 
 type OmitId<T extends TelemetryEntry> = Omit<T, "id">;
 
@@ -24,7 +28,11 @@ function numOrUndef(val: unknown): number | undefined {
 
 function headers(val: unknown): Record<string, string> {
   if (val && typeof val === "object" && !Array.isArray(val)) {
-    return val as Record<string, string>;
+    const result: Record<string, string> = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (typeof v === "string") result[k] = v;
+    }
+    return result;
   }
   return {};
 }
@@ -35,8 +43,8 @@ export function parseQueryEvent(
   parentRequestId: string | null,
 ): OmitId<TracedQuery> {
   return {
-    driver: str(data.source, "sdk") as TracedQuery["driver"],
-    source: strOrUndef(data.source),
+    driver: str(data.source ?? data.driver, "sdk") as TracedQuery["driver"],
+    source: strOrUndef(data.source ?? data.driver),
     sql: strOrUndef(data.sql),
     model: strOrUndef(data.model),
     operation: strOrUndef(data.operation),
@@ -45,6 +53,7 @@ export function parseQueryEvent(
     durationMs: num(data.duration, num(data.durationMs, 0)),
     rowCount: numOrUndef(data.rowCount),
     parentRequestId,
+    parentFetchId: strOrUndef(data.parentFetchId ?? data.parent_fetch_id),
     timestamp: ts,
   };
 }
@@ -55,6 +64,7 @@ export function parseFetchEvent(
   parentRequestId: string | null,
 ): OmitId<TracedFetch> {
   return {
+    fetchId: strOrUndef(data.fetchId ?? data.fetch_id),
     url: str(data.url, ""),
     method: str(data.method, "GET"),
     statusCode: num(data.statusCode, 0),
@@ -64,13 +74,23 @@ export function parseFetchEvent(
   };
 }
 
+const LOG_LEVEL_MAP: Record<string, TracedLog["level"]> = {
+  debug: "debug",
+  info: "info",
+  warning: "warn",
+  warn: "warn",
+  error: "error",
+  critical: "error",
+  log: "log",
+};
+
 export function parseLogEvent(
   data: Record<string, unknown>,
   ts: number,
   parentRequestId: string | null,
 ): OmitId<TracedLog> {
   return {
-    level: (str(data.level, "log") as TracedLog["level"]),
+    level: LOG_LEVEL_MAP[str(data.level, "log")] ?? "log",
     message: str(data.message, ""),
     parentRequestId,
     timestamp: ts,
@@ -140,23 +160,26 @@ export function routeSDKEvent(
   const parentRequestId = event.requestId ?? null;
 
   switch (event.type) {
-    case "db.query":
+    case SDK_EVENT_DB_QUERY:
       stores.addQuery(parseQueryEvent(event.data, ts, parentRequestId));
       break;
-    case "fetch":
+    case SDK_EVENT_FETCH:
       stores.addFetch(parseFetchEvent(event.data, ts, parentRequestId));
       break;
-    case "log":
+    case SDK_EVENT_LOG:
       stores.addLog(parseLogEvent(event.data, ts, parentRequestId));
       break;
-    case "error":
+    case SDK_EVENT_ERROR:
       stores.addError(parseErrorEvent(event.data, ts, parentRequestId));
       break;
-    case "auth.check":
+    case SDK_EVENT_AUTH_CHECK:
       stores.addLog(parseAuthEvent(event.data, ts, parentRequestId));
       break;
-    case "request":
+    case SDK_EVENT_REQUEST:
       stores.addRequest(parseRequestEvent(event.data, ts));
+      break;
+    default:
+      // Silently ignore unknown event types for forward compatibility.
       break;
   }
 }

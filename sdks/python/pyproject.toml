@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brakit"
-version = "0.1.0"
+version = "0.1.2"
 description = "Zero-config observability for Python web frameworks"
-readme = {text = "Zero-config observability for Python web frameworks.", content-type = "text/plain"}
+readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
 dependencies = []
@@ -28,9 +28,24 @@ classifiers = [
     "Typing :: Typed",
 ]
 
+[project.urls]
+Homepage = "https://brakit.ai"
+Repository = "https://github.com/brakit-ai/brakit"
+Issues = "https://github.com/brakit-ai/brakit/issues"
+Documentation = "https://github.com/brakit-ai/brakit#readme"
+
 [project.optional-dependencies]
 flask = ["flask>=2.0"]
 fastapi = ["fastapi>=0.100", "uvicorn[standard]>=0.20"]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+    "httpx>=0.24",
+    "flask>=2.0",
+    "fastapi>=0.100",
+    "sqlalchemy>=2.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["brakit"]
@@ -50,3 +65,4 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -19,3 +19,6 @@ build/
 *.so
 .venv/
 venv/
+
+# Build artifacts
+*.tgz

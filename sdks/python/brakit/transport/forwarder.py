@@ -10,7 +10,7 @@ from collections import deque
 
 from brakit.constants.logger import LOGGER_NAME
 from brakit.constants.routes import ROUTE_INGEST
-from brakit.constants.transport import BATCH_SIZE, FLUSH_INTERVAL_S, TRANSPORT_TIMEOUT_S
+from brakit.constants.transport import BATCH_SIZE, FLUSH_INTERVAL_S, MAX_QUEUE_SIZE, TRANSPORT_TIMEOUT_S
 from brakit.core.circuit_breaker import CircuitBreaker
 from brakit.types.events import SDKEvent
 
@@ -33,7 +33,7 @@ SDK_IDENTIFIER: str = _sdk_identifier()
 class Forwarder:
     def __init__(self, port: int) -> None:
         self._url = f"http://localhost:{port}{ROUTE_INGEST}"
-        self._queue: deque[dict[str, object]] = deque()
+        self._queue: deque[dict[str, object]] = deque(maxlen=MAX_QUEUE_SIZE)
         self._lock = threading.Lock()
         self._running = False
         self._thread: threading.Thread | None = None
@@ -110,7 +110,8 @@ class Forwarder:
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            urllib.request.urlopen(req, timeout=TRANSPORT_TIMEOUT_S)
+            resp = urllib.request.urlopen(req, timeout=TRANSPORT_TIMEOUT_S)
+            logger.debug("flushed %d events to %s → %d", len(events), self._url, resp.status)
             self._breaker.record_success()
         except Exception:
             logger.debug("forward flush failed to %s", self._url, exc_info=True)

@@ -2,15 +2,17 @@ import type {
   TracedRequest,
   TracedQuery,
   TracedFetch,
+  TracedLog,
+  TracedError,
   LiveEndpointData,
 } from "./index.js";
 import type { StatefulIssue } from "./issue-lifecycle.js";
 
-export interface TimelineEvent {
-  type: "fetch" | "log" | "error" | "query";
-  timestamp: number;
-  data: Record<string, unknown>;
-}
+export type TimelineEvent =
+  | { type: "fetch"; timestamp: number; data: TracedFetch }
+  | { type: "query"; timestamp: number; data: TracedQuery }
+  | { type: "log"; timestamp: number; data: TracedLog }
+  | { type: "error"; timestamp: number; data: TracedError };
 
 export interface RequestsResponse {
   total: number;

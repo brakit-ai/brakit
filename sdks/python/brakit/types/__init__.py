@@ -1,6 +1,7 @@
 """Public type re-exports for the brakit SDK."""
 from brakit.types.http import HttpMethod, TracedRequest
 from brakit.types.telemetry import (
+    DriverName,
     LogLevel,
     NormalizedOp,
     TracedError,
@@ -8,10 +9,10 @@ from brakit.types.telemetry import (
     TracedLog,
     TracedQuery,
 )
-from brakit.types.events import EventBatch, EventType, SDKEvent
+from brakit.types.events import EventType, SDKEvent
 
 __all__ = [
-    "EventBatch",
+    "DriverName",
     "EventType",
     "HttpMethod",
     "LogLevel",

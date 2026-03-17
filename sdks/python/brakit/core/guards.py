@@ -8,7 +8,7 @@ from brakit.constants.network import (
     CLOUD_SIGNALS,
     ENV_DISABLE_KEY,
     PRODUCTION_SIGNALS,
-    PRODUCTION_VALUES,
+    PRODUCTION_VALUES_SET,
 )
 
 
@@ -18,7 +18,7 @@ def should_activate() -> bool:
 
     for signal in PRODUCTION_SIGNALS:
         val = os.environ.get(signal, "").lower()
-        if val in PRODUCTION_VALUES:
+        if val in PRODUCTION_VALUES_SET:
             return False
 
     for signal in CI_SIGNALS:

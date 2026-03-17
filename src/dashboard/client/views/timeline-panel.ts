@@ -62,9 +62,9 @@ export class TimelinePanel extends LitElement {
     this.loading = true;
     try {
       const res = await fetch(`${API.activity}?requestId=${this.requestId}`);
+      if (!res.ok) { this.failed = true; this.loading = false; return; }
       const data: TimelineData = await res.json();
 
-      // Evict oldest entry when cache is full
       if (TimelinePanel.cache.size >= TIMELINE_CACHE_MAX) {
         const oldest = TimelinePanel.cache.keys().next().value;
         if (oldest !== undefined) TimelinePanel.cache.delete(oldest);
@@ -73,7 +73,8 @@ export class TimelinePanel extends LitElement {
 
       this.data = data;
       this.loading = false;
-    } catch {
+    } catch (err) {
+      console.debug("[brakit] timeline load failed:", err);
       this.failed = true;
       this.loading = false;
     }
@@ -86,7 +87,9 @@ export class TimelinePanel extends LitElement {
 
   private copySql(sql: string, e: Event) {
     e.stopPropagation();
-    navigator.clipboard.writeText(sql).then(() => Toast.show("SQL copied"));
+    navigator.clipboard.writeText(sql)
+        .then(() => Toast.show("SQL copied"))
+        .catch(() => Toast.show("Copy failed"));
   }
 
   render() {
@@ -94,7 +97,7 @@ export class TimelinePanel extends LitElement {
     if (this.failed || !this.data || this.data.total === 0) return nothing;
 
     const data = this.data;
-    const baseTs = data.timeline[0].timestamp;
+    const baseTs = data.timeline[0]?.timestamp ?? 0;
 
     return html`
       <div class="tl-header">
@@ -106,64 +109,104 @@ export class TimelinePanel extends LitElement {
           ${data.counts.errors > 0 ? html`<span class="tl-count tl-count-error">${data.counts.errors} error${data.counts.errors === 1 ? "" : "s"}</span>` : nothing}
         </span>
       </div>
-      <div class="tl-events">${data.timeline.map((evt, idx) => this.renderEvent(evt, idx, baseTs))}</div>
+      <div class="tl-events">${this.renderTimeline(data.timeline, baseTs)}</div>
     `;
   }
 
-  private renderEvent(evt: TimelineEvent, idx: number, baseTs: number) {
+  private renderTimeline(timeline: TimelineEvent[], baseTs: number) {
+    // Group queries by parentFetchId so they nest under their parent fetch.
+    const childQueries = new Map<string, TimelineEvent[]>();
+    const topLevel: TimelineEvent[] = [];
+
+    for (const evt of timeline) {
+      const pfid = evt.type === "query" ? evt.data.parentFetchId : undefined;
+      if (evt.type === "query" && pfid) {
+        let children = childQueries.get(pfid);
+        if (!children) { children = []; childQueries.set(pfid, children); }
+        children.push(evt);
+      } else {
+        topLevel.push(evt);
+      }
+    }
+
+    let idx = 0;
+    return topLevel.map((evt) => {
+      const thisIdx = idx++;
+      const fetchId = evt.type === "fetch" ? evt.data.fetchId : undefined;
+      const children = fetchId ? childQueries.get(fetchId) : undefined;
+      if (children && children.length > 0) {
+        const n = children.length;
+        return html`
+          ${this.renderEvent(evt, thisIdx, baseTs)}
+          <div class="tl-nested">
+            <span class="tl-nested-label">${n} nested quer${n === 1 ? "y" : "ies"}</span>
+            ${children.map((child) => {
+              const childIdx = idx++;
+              return this.renderEvent(child, childIdx, baseTs, true);
+            })}
+          </div>
+        `;
+      }
+      return this.renderEvent(evt, thisIdx, baseTs);
+    });
+  }
+
+  private renderEvent(evt: TimelineEvent, idx: number, baseTs: number, nested = false) {
     const color = TL_TYPE_COLORS[evt.type] || "var(--text-dim)";
     const label = TL_TYPE_LABELS[evt.type] || evt.type;
     const relStr = "+" + formatDuration(Math.round(evt.timestamp - baseTs));
-    const isQuery = evt.type === "query" && evt.data?.sql;
+    const sql = evt.type === "query" ? evt.data.sql : undefined;
+    const isQuery = !!sql;
     const isSqlExpanded = this.expandedSqlIdx === idx;
 
     return html`
-      <div class="tl-event ${isQuery ? "tl-clickable" : ""}"
+      <div class="tl-event ${isQuery ? "tl-clickable" : ""} ${nested ? "tl-nested-event" : ""}"
         style="${!isQuery ? `border-left-color:${color}` : ""}"
         @click=${isQuery ? (e: Event) => this.toggleSql(idx, e) : nothing}>
         <span class="tl-event-time">${relStr}</span>
         <span class="tl-event-type" style="color:${color}">${label}</span>
         ${this.renderEventContent(evt)}
-        ${isQuery ? html`
+        ${sql ? html`
           <div class="tl-event-sql ${isSqlExpanded ? "open" : ""}">
-            <button class="tl-sql-copy" @click=${(e: Event) => this.copySql(evt.data.sql, e)}>Copy</button>
-            ${evt.data.sql}
+            <button class="tl-sql-copy" @click=${(e: Event) => this.copySql(sql, e)}>Copy</button>
+            ${sql}
           </div>` : nothing}
       </div>
     `;
   }
 
   private renderEventContent(evt: TimelineEvent) {
-    const d = evt.data;
-
-    if (evt.type === "fetch") {
-      const isErr = d.statusCode >= 400;
-      return html`
-        <span class="tl-event-summary">${d.method} ${d.url}</span>
-        <span class="tl-event-status" style="${isErr ? "color:var(--red)" : ""}">${d.statusCode}</span>
-        <span class="tl-event-dur">${formatDuration(d.durationMs)}</span>
-      `;
+    switch (evt.type) {
+      case "fetch": {
+        const f = evt.data;
+        const isErr = f.statusCode >= 400;
+        return html`
+          <span class="tl-event-summary">${f.method} ${f.url}</span>
+          <span class="tl-event-status" style="${isErr ? "color:var(--red)" : ""}">${f.statusCode}</span>
+          <span class="tl-event-dur">${formatDuration(f.durationMs)}</span>
+        `;
+      }
+      case "query": {
+        const q = evt.data;
+        const op = (q.normalizedOp || q.operation || "?").toUpperCase();
+        const table = q.table || q.model || "";
+        const opColor = QUERY_OP_COLORS[op] || "var(--text-dim)";
+        return html`
+          <span class="tl-event-summary"><span style="color:${opColor};font-weight:600">${op}</span> ${table}</span>
+          <span class="tl-event-dur">${queryDuration(q.durationMs)}</span>
+        `;
+      }
+      case "log": {
+        const l = evt.data;
+        const lColor = LOG_LEVEL_COLORS[l.level] || "var(--text-dim)";
+        return html`<span class="tl-event-summary"><span style="color:${lColor}">${l.level.toUpperCase()}</span> ${l.message}</span>`;
+      }
+      case "error": {
+        const e = evt.data;
+        return html`<span class="tl-event-summary" style="color:var(--red)">${e.name}: ${e.message}</span>`;
+      }
+      default:
+        return nothing;
     }
-
-    if (evt.type === "query") {
-      const op = (d.normalizedOp || d.operation || "?").toUpperCase();
-      const table = d.table || d.model || "";
-      const opColor = QUERY_OP_COLORS[op] || "var(--text-dim)";
-      return html`
-        <span class="tl-event-summary"><span style="color:${opColor};font-weight:600">${op}</span> ${table}</span>
-        <span class="tl-event-dur">${queryDuration(d.durationMs)}</span>
-      `;
-    }
-
-    if (evt.type === "log") {
-      const lColor = LOG_LEVEL_COLORS[d.level] || "var(--text-dim)";
-      return html`<span class="tl-event-summary"><span style="color:${lColor}">${d.level.toUpperCase()}</span> ${d.message}</span>`;
-    }
-
-    if (evt.type === "error") {
-      return html`<span class="tl-event-summary" style="color:var(--red)">${d.name}: ${d.message}</span>`;
-    }
-
-    return nothing;
   }
 }

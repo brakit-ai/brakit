@@ -1,7 +1,8 @@
 import { subscribe } from "node:diagnostics_channel";
+import { randomUUID } from "node:crypto";
 import type { TelemetryEvent } from "../../types/index.js";
 import { getRequestContext } from "./context.js";
-import { NOISE_HOSTS, NOISE_PATH_PATTERNS } from "../../constants/index.js";
+import { NOISE_HOSTS, NOISE_PATH_PATTERNS, BRAKIT_REQUEST_ID_HEADER, BRAKIT_FETCH_ID_HEADER } from "../../constants/index.js";
 
 interface UndiciRequest {
   origin?: string;
@@ -31,7 +32,7 @@ function isNoise(origin: string, path: string): boolean {
 
 const pending = new WeakMap<
   object,
-  { origin: string; method: string; path: string; startTime: number; parentRequestId: string }
+  { origin: string; method: string; path: string; startTime: number; parentRequestId: string; fetchId: string }
 >();
 
 export function setupFetchHook(emit: (event: TelemetryEvent) => void): void {
@@ -44,12 +45,16 @@ export function setupFetchHook(emit: (event: TelemetryEvent) => void): void {
     if (brakitPort && origin.includes(`localhost:${brakitPort}`)) return;
     const ctx = getRequestContext();
     if (!ctx) return;
+    const fetchId = randomUUID();
+    req.addHeader?.(BRAKIT_REQUEST_ID_HEADER, ctx.requestId);
+    req.addHeader?.(BRAKIT_FETCH_ID_HEADER, fetchId);
     pending.set(msg.request, {
       origin,
       method: req.method ?? "GET",
       path,
       startTime: performance.now(),
       parentRequestId: ctx.requestId,
+      fetchId,
     });
   });
 
@@ -62,6 +67,7 @@ export function setupFetchHook(emit: (event: TelemetryEvent) => void): void {
     emit({
       type: "fetch",
       data: {
+        fetchId: info.fetchId,
         url: info.origin + info.path,
         method: info.method,
         statusCode: msg.response.statusCode ?? 0,

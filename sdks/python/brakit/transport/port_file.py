@@ -17,6 +17,21 @@ _written = False
 _port_path: Path | None = None
 
 
+def cleanup_stale_port_file() -> None:
+    """Remove any leftover .brakit/port in CWD from a previous run.
+
+    Called at startup *before* port discovery so we don't accidentally
+    discover our own stale port file from a previous session.
+    """
+    try:
+        stale = Path.cwd().resolve() / BRAKIT_DIR_NAME / PORT_FILE_NAME
+        if stale.exists():
+            stale.unlink()
+            logger.debug("removed stale port file %s", stale)
+    except Exception:
+        pass
+
+
 def enable_port_writing() -> None:
     """Enable port file writing. Called when no Node.js server is found (standalone mode)."""
     global _should_write
@@ -31,19 +46,18 @@ def write_port_if_needed(port: int) -> None:
     with _lock:
         if not _should_write or _written:
             return
-        _written = True
 
-    try:
-        brakit_dir = Path.cwd().resolve() / BRAKIT_DIR_NAME
-        brakit_dir.mkdir(parents=True, exist_ok=True)
-        port_path = brakit_dir / PORT_FILE_NAME
-        port_path.write_text(str(port))
-        with _lock:
+        try:
+            brakit_dir = Path.cwd().resolve() / BRAKIT_DIR_NAME
+            brakit_dir.mkdir(parents=True, exist_ok=True)
+            port_path = brakit_dir / PORT_FILE_NAME
+            port_path.write_text(str(port))
             _port_path = port_path
-        atexit.register(_cleanup)
-        logger.debug("wrote port file %s", port_path)
-    except Exception:
-        logger.debug("failed to write port file", exc_info=True)
+            _written = True
+            atexit.register(_cleanup)
+            logger.debug("wrote port file %s", port_path)
+        except Exception:
+            logger.debug("failed to write port file", exc_info=True)
 
 
 def _cleanup() -> None:

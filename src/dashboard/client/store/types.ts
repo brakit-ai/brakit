@@ -44,6 +44,7 @@ export interface TracedRequest {
 export interface TracedFetch {
   id: string;
   parentRequestId: string | null;
+  fetchId?: string;
   method: string;
   url: string;
   statusCode: number;
@@ -53,24 +54,28 @@ export interface TracedFetch {
   responseHeaders?: Record<string, string>;
 }
 
+/** Keep in sync with src/types/telemetry.ts (server types). */
 export interface TracedQuery {
   id: string;
   parentRequestId: string | null;
+  parentFetchId?: string;
   sql?: string;
-  normalizedOp?: string;
+  normalizedOp?: "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
   operation?: string;
   table?: string;
   model?: string;
   durationMs: number;
   timestamp: number;
   rowCount?: number;
-  driver?: string;
+  driver: "pg" | "mysql2" | "prisma" | "asyncpg" | "sqlalchemy" | "sdk";
+  source?: string;
 }
 
+/** Keep in sync with src/types/telemetry.ts (server types). */
 export interface TracedLog {
   id: string;
   parentRequestId: string | null;
-  level: string;
+  level: "log" | "warn" | "error" | "info" | "debug";
   message: string;
   args?: unknown[];
   timestamp: number;
@@ -237,11 +242,11 @@ export interface TimelineCounts {
   errors: number;
 }
 
-export interface TimelineEvent {
-  type: string;
-  timestamp: number;
-  data: Record<string, any>;
-}
+export type TimelineEvent =
+  | { type: "fetch"; timestamp: number; data: TracedFetch }
+  | { type: "query"; timestamp: number; data: TracedQuery }
+  | { type: "log"; timestamp: number; data: TracedLog }
+  | { type: "error"; timestamp: number; data: TracedError };
 
 export interface TimelineData {
   total: number;

@@ -8,10 +8,12 @@ import uuid
 from typing import Any, TYPE_CHECKING
 
 from brakit.constants.events import CHANNEL_REQUEST_COMPLETED, CHANNEL_TELEMETRY_ERROR
+from brakit.constants.headers import BRAKIT_FETCH_ID_HEADER, BRAKIT_REQUEST_ID_HEADER
 from brakit.constants.limits import MAX_BODY_CAPTURE
 from brakit.constants.logger import LOGGER_NAME
 from brakit.core.context import clear_request_id, set_request_id
-from brakit.core.sanitize import sanitize_headers
+from brakit.core.decompress import decompress_body
+from brakit.core.sanitize import sanitize_headers, sanitize_stack_trace
 from brakit.frameworks._shared import is_static
 from brakit.types.http import TracedRequest
 from brakit.types.telemetry import TracedError
@@ -66,39 +68,85 @@ class FastAPIAdapter:
 
 
 def _install_middleware(app: Any, registry: ServiceRegistry) -> None:
-    from starlette.middleware.base import BaseHTTPMiddleware
-    from starlette.requests import Request
-    from starlette.responses import Response
+    """Install a raw ASGI middleware that captures request/response telemetry.
 
+    Uses raw scope/receive/send wrapping instead of Starlette's BaseHTTPMiddleware
+    to avoid: body buffering, StreamingResponse breakage, and task context issues.
+    """
     _banner_printed = False
 
-    class BrakitMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request: Request, call_next: Any) -> Response:
+    class BrakitASGIMiddleware:
+        def __init__(self, inner_app: Any) -> None:
+            self.app = inner_app
+
+        async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+            if scope["type"] != "http":
+                await self.app(scope, receive, send)
+                return
+
             nonlocal _banner_printed
             if not _banner_printed:
                 _banner_printed = True
-                host = request.headers.get("host", "localhost")
-                port_str = host.split(":")[-1] if ":" in host else None
-                if port_str and port_str.isdigit():
-                    from brakit.transport.port_file import write_port_if_needed
-                    write_port_if_needed(int(port_str))
+                for key, val in scope.get("headers", []):
+                    if key == b"host":
+                        host_str = val.decode("latin-1")
+                        port_str = host_str.split(":")[-1] if ":" in host_str else None
+                        if port_str and port_str.isdigit():
+                            from brakit.transport.port_file import write_port_if_needed
+                            write_port_if_needed(int(port_str))
+                        break
 
-            path = request.url.path
-            rid = uuid.uuid4().hex
-            set_request_id(rid)
+            path: str = scope.get("path", scope.get("root_path", "") + scope.get("path", "/"))
+            req_headers = {
+                k.decode("latin-1"): v.decode("latin-1")
+                for k, v in scope.get("headers", [])
+            }
+
+            propagated = req_headers.get(BRAKIT_REQUEST_ID_HEADER)
+            fetch_id = req_headers.get(BRAKIT_FETCH_ID_HEADER)
+            rid = propagated if propagated else uuid.uuid4().hex
+            is_child = propagated is not None
+            set_request_id(rid, fetch_id=fetch_id)
             start = time.perf_counter()
 
-            request_body: str | None = None
-            try:
-                raw = await request.body()
-                if raw:
-                    request_body = raw.decode("utf-8", errors="replace")[:MAX_BODY_CAPTURE]
-            except Exception:
-                logger.debug("failed to read request body", exc_info=True)
+            # Capture request body by wrapping receive
+            request_body_chunks: list[bytes] = []
+            request_body_size = 0
+
+            async def receive_wrapper() -> dict[str, Any]:
+                nonlocal request_body_size
+                message: dict[str, Any] = await receive()
+                if message.get("type") == "http.request":
+                    body = message.get("body", b"")
+                    if body and request_body_size < MAX_BODY_CAPTURE:
+                        request_body_chunks.append(body)
+                        request_body_size += len(body)
+                return message
+
+            # Capture response by wrapping send
+            status_code = 0
+            resp_headers: dict[str, str] = {}
+            response_body_chunks: list[bytes] = []
+            response_body_size = 0
+
+            async def send_wrapper(message: dict[str, Any]) -> None:
+                nonlocal status_code, resp_headers, response_body_size
+                if message.get("type") == "http.response.start":
+                    status_code = message.get("status", 0)
+                    raw_headers = message.get("headers", [])
+                    resp_headers = {
+                        k.decode("latin-1"): v.decode("latin-1")
+                        for k, v in raw_headers
+                    }
+                elif message.get("type") == "http.response.body":
+                    body = message.get("body", b"")
+                    if body and response_body_size < MAX_BODY_CAPTURE:
+                        response_body_chunks.append(body)
+                        response_body_size += len(body)
+                await send(message)
 
             try:
-                response = await call_next(request)
-                status_code = response.status_code
+                await self.app(scope, receive_wrapper, send_wrapper)
             except Exception as exc:
                 status_code = 500
                 error_entry = TracedError(
@@ -107,57 +155,59 @@ def _install_middleware(app: Any, registry: ServiceRegistry) -> None:
                     timestamp=time.time() * 1_000,
                     name=type(exc).__name__,
                     message=str(exc),
-                    stack=traceback.format_exc(),
+                    stack=sanitize_stack_trace(traceback.format_exc()),
                 )
                 registry.error_store.add(error_entry)
                 registry.bus.emit(CHANNEL_TELEMETRY_ERROR, error_entry)
                 raise
+            finally:
+                duration_ms = (time.perf_counter() - start) * 1_000
 
-            duration_ms = (time.perf_counter() - start) * 1_000
+                if not is_child:
+                    request_body: str | None = None
+                    try:
+                        raw_req = b"".join(request_body_chunks)
+                        if raw_req:
+                            request_body = raw_req.decode("utf-8", errors="replace")[
+                                :MAX_BODY_CAPTURE
+                            ]
+                    except Exception:
+                        logger.debug("failed to decode request body", exc_info=True)
 
-            response_body: str | None = None
-            response_size = 0
-            try:
-                chunks: list[bytes] = []
-                async for chunk in response.body_iterator:
-                    if isinstance(chunk, str):
-                        chunks.append(chunk.encode("utf-8"))
-                    else:
-                        chunks.append(chunk)
-                body_bytes = b"".join(chunks)
-                response_size = len(body_bytes)
+                    response_body: str | None = None
+                    response_size = response_body_size
+                    try:
+                        if not is_static(path):
+                            raw_resp = b"".join(response_body_chunks)
+                            if raw_resp:
+                                raw_resp = decompress_body(
+                                    raw_resp, resp_headers.get("content-encoding")
+                                )
+                                response_body = raw_resp.decode("utf-8", errors="replace")[
+                                    :MAX_BODY_CAPTURE
+                                ]
+                    except Exception:
+                        logger.debug("failed to decode response body", exc_info=True)
 
-                if not is_static(path):
-                    response_body = body_bytes.decode("utf-8", errors="replace")[:MAX_BODY_CAPTURE]
+                    method = scope.get("method", "GET")
+                    entry = TracedRequest(
+                        id=rid,
+                        method=method,
+                        url=path,
+                        status_code=status_code,
+                        duration_ms=round(duration_ms, 2),
+                        timestamp=time.time() * 1_000,
+                        headers=sanitize_headers(req_headers),
+                        response_headers=sanitize_headers(resp_headers),
+                        request_body=request_body,
+                        response_body=response_body,
+                        response_size=response_size,
+                        is_static=is_static(path),
+                    )
 
-                from starlette.responses import Response as StarletteResponse
-                response = StarletteResponse(
-                    content=body_bytes,
-                    status_code=response.status_code,
-                    headers=dict(response.headers),
-                    media_type=response.media_type,
-                )
-            except Exception:
-                logger.debug("failed to capture response body", exc_info=True)
+                    registry.request_store.add(entry)
+                    registry.bus.emit(CHANNEL_REQUEST_COMPLETED, entry)
 
-            entry = TracedRequest(
-                id=rid,
-                method=request.method,
-                url=path,
-                status_code=status_code,
-                duration_ms=round(duration_ms, 2),
-                timestamp=time.time() * 1_000,
-                headers=sanitize_headers(dict(request.headers)),
-                response_headers=sanitize_headers(dict(response.headers)),
-                request_body=request_body,
-                response_body=response_body,
-                response_size=response_size,
-                is_static=is_static(path),
-            )
+                clear_request_id()
 
-            registry.request_store.add(entry)
-            registry.bus.emit(CHANNEL_REQUEST_COMPLETED, entry)
-            clear_request_id()
-            return response
-
-    app.add_middleware(BrakitMiddleware)
+    app.add_middleware(BrakitASGIMiddleware)
