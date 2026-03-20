@@ -1,5 +1,5 @@
 import type { SecurityRule } from "./rule.js";
-import type { SecurityFinding } from "../../types/index.js";
+import { deduplicateFindings } from "../../utils/collections.js";
 import {
   STACK_TRACE_RE,
   DB_CONN_RE,
@@ -16,6 +16,7 @@ import {
 import { unwrapResponse } from "../../utils/response.js";
 import { PII_SCAN_ARRAY_LIMIT, FULL_RECORD_MIN_FIELDS, LIST_PII_MIN_ITEMS, MAX_OBJECT_SCAN_DEPTH } from "../../constants/config.js";
 import { isErrorStatus } from "../../utils/http-status.js";
+import { collectFromObject } from "../../utils/object-scan.js";
 
 // ── Stack Trace Leak Detection ──
 
@@ -26,28 +27,23 @@ export const stackTraceLeakRule: SecurityRule = {
   hint: RULE_HINTS["stack-trace-leak"],
 
   check(ctx) {
-    const findings: SecurityFinding[] = [];
-    const seen = new Map<string, SecurityFinding>();
-
-    for (const r of ctx.requests) {
-      if (!r.responseBody) continue;
-      if (!STACK_TRACE_RE.test(r.responseBody)) continue;
-      const ep = `${r.method} ${r.path}`;
-      const existing = seen.get(ep);
-      if (existing) { existing.count++; continue; }
-      const finding: SecurityFinding = {
-        severity: "critical",
-        rule: "stack-trace-leak",
-        title: "Stack Trace Leaked to Client",
-        desc: `${ep} — response exposes internal stack trace`,
-        hint: this.hint,
-        endpoint: ep,
-        count: 1,
+    return deduplicateFindings(ctx.requests, (request) => {
+      if (!request.responseBody) return null;
+      if (!STACK_TRACE_RE.test(request.responseBody)) return null;
+      const ep = `${request.method} ${request.path}`;
+      return {
+        key: ep,
+        finding: {
+          severity: "critical",
+          rule: "stack-trace-leak",
+          title: "Stack Trace Leaked to Client",
+          desc: `${ep} — response exposes internal stack trace`,
+          hint: this.hint,
+          endpoint: ep,
+          count: 1,
+        },
       };
-      seen.set(ep, finding);
-      findings.push(finding);
-    }
-    return findings;
+    });
   },
 };
 
@@ -66,33 +62,33 @@ export const errorInfoLeakRule: SecurityRule = {
   hint: RULE_HINTS["error-info-leak"],
 
   check(ctx) {
-    const findings: SecurityFinding[] = [];
-    const seen = new Map<string, SecurityFinding>();
+    const entries: { ep: string; pattern: typeof CRITICAL_PATTERNS[number]; body: string }[] = [];
+    for (const request of ctx.requests) {
+      if (request.statusCode < 400) continue;
+      if (!request.responseBody) continue;
+      if (request.responseHeaders["x-nextjs-error"] || request.responseHeaders["x-nextjs-matched-path"]) continue;
+      const ep = `${request.method} ${request.path}`;
+      for (const pattern of CRITICAL_PATTERNS) {
+        if (pattern.re.test(request.responseBody)) {
+          entries.push({ ep, pattern, body: request.responseBody });
+        }
+      }
+    }
 
-    for (const r of ctx.requests) {
-      if (r.statusCode < 400) continue;
-      if (!r.responseBody) continue;
-      if (r.responseHeaders["x-nextjs-error"] || r.responseHeaders["x-nextjs-matched-path"]) continue;
-      const ep = `${r.method} ${r.path}`;
-      for (const p of CRITICAL_PATTERNS) {
-        if (!p.re.test(r.responseBody)) continue;
-        const dedupKey = `${ep}:${p.label}`;
-        const existing = seen.get(dedupKey);
-        if (existing) { existing.count++; continue; }
-        const finding: SecurityFinding = {
+    return deduplicateFindings(entries, ({ ep, pattern }) => {
+      return {
+        key: `${ep}:${pattern.label}`,
+        finding: {
           severity: "critical",
           rule: "error-info-leak",
           title: "Sensitive Data in Error Response",
-          desc: `${ep} — error response exposes ${p.label}`,
+          desc: `${ep} — error response exposes ${pattern.label}`,
           hint: this.hint,
           endpoint: ep,
           count: 1,
-        };
-        seen.set(dedupKey, finding);
-        findings.push(finding);
-      }
-    }
-    return findings;
+        },
+      };
+    });
   },
 };
 
@@ -128,24 +124,11 @@ export const sensitiveLogsRule: SecurityRule = {
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH"]);
 
-function findEmails(obj: unknown, depth = 0): string[] {
-  const emails: string[] = [];
-  if (depth >= MAX_OBJECT_SCAN_DEPTH) return emails;
-  if (!obj || typeof obj !== "object") return emails;
-  if (Array.isArray(obj)) {
-    for (let i = 0; i < Math.min(obj.length, PII_SCAN_ARRAY_LIMIT); i++) {
-      emails.push(...findEmails(obj[i], depth + 1));
-    }
-    return emails;
-  }
-  for (const v of Object.values(obj as Record<string, unknown>)) {
-    if (typeof v === "string" && EMAIL_RE.test(v)) {
-      emails.push(v);
-    } else if (typeof v === "object" && v !== null) {
-      emails.push(...findEmails(v, depth + 1));
-    }
-  }
-  return emails;
+function findEmails(obj: unknown): string[] {
+  return collectFromObject(obj, (_key, val) =>
+    typeof val === "string" && EMAIL_RE.test(val) ? val : null,
+    { arrayLimit: PII_SCAN_ARRAY_LIMIT },
+  );
 }
 
 function topLevelFieldCount(obj: unknown): number {
@@ -273,35 +256,29 @@ export const responsePiiLeakRule: SecurityRule = {
   hint: RULE_HINTS["response-pii-leak"],
 
   check(ctx) {
-    const findings: SecurityFinding[] = [];
-    const seen = new Map<string, SecurityFinding>();
+    return deduplicateFindings(ctx.requests, (request) => {
+      if (isErrorStatus(request.statusCode)) return null;
+      if (SELF_SERVICE_PATH.test(request.path)) return null;
+      const resJson = ctx.parsedBodies.response.get(request.id);
+      if (!resJson) return null;
+      const reqJson = ctx.parsedBodies.request.get(request.id) ?? null;
 
-    for (const r of ctx.requests) {
-      if (isErrorStatus(r.statusCode)) continue;
-      if (SELF_SERVICE_PATH.test(r.path)) continue;
-      const resJson = ctx.parsedBodies.response.get(r.id);
-      if (!resJson) continue;
-      const reqJson = ctx.parsedBodies.request.get(r.id) ?? null;
+      const detection = detectPII(request.method, reqJson, resJson);
+      if (!detection) return null;
 
-      const detection = detectPII(r.method, reqJson, resJson);
-      if (!detection) continue;
-
-      const ep = `${r.method} ${r.path}`;
-      const existing = seen.get(ep);
-      if (existing) { existing.count++; continue; }
-
-      const finding: SecurityFinding = {
-        severity: "warning",
-        rule: "response-pii-leak",
-        title: "PII Leak in Response",
-        desc: `${ep} — exposes PII in response`,
-        hint: `Detection: ${REASON_LABELS[detection.reason]}. ${this.hint}`,
-        endpoint: ep,
-        count: 1,
+      const ep = `${request.method} ${request.path}`;
+      return {
+        key: ep,
+        finding: {
+          severity: "warning",
+          rule: "response-pii-leak",
+          title: "PII Leak in Response",
+          desc: `${ep} — exposes PII in response`,
+          hint: `Detection: ${REASON_LABELS[detection.reason]}. ${this.hint}`,
+          endpoint: ep,
+          count: 1,
+        },
       };
-      seen.set(ep, finding);
-      findings.push(finding);
-    }
-    return findings;
+    });
   },
 };

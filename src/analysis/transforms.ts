@@ -7,13 +7,48 @@ import { STRICT_MODE_MAX_GAP_MS } from "../constants/config.js";
 import { getEffectivePath } from "./categorize.js";
 import { prettifyEndpoint } from "./label.js";
 import { isServerError } from "../utils/http-status.js";
+import { stripQueryString } from "../utils/endpoint.js";
 
-export function markDuplicates(requests: LabeledRequest[]): void {
+const DUPLICATE_CATEGORIES = new Set(["data-fetch", "auth-check"]);
+
+function isDuplicateCandidate(req: LabeledRequest): boolean {
+  return DUPLICATE_CATEGORIES.has(req.category);
+}
+
+function buildRequestKey(req: LabeledRequest): string {
+  return `${req.method} ${stripQueryString(getEffectivePath(req))}`;
+}
+
+function isStrictModePattern(requests: LabeledRequest[], counts: Map<string, number>): boolean {
+  if (counts.size === 0 || ![...counts.values()].every((c) => c === 2)) {
+    return false;
+  }
+
+  const firstByKey = new Map<string, LabeledRequest>();
+  for (const req of requests) {
+    if (!isDuplicateCandidate(req)) continue;
+    const key = buildRequestKey(req);
+    const first = firstByKey.get(key);
+    if (!first) {
+      firstByKey.set(key, req);
+    } else if (Math.abs(req.startedAt - first.startedAt) > STRICT_MODE_MAX_GAP_MS) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Detects React Strict Mode duplication: when ALL data-fetch/auth-check
+ * endpoints appear exactly 2x within a short time window, marks the second
+ * occurrences as Strict Mode dupes rather than real duplicates. Otherwise,
+ * marks repeat requests to the same endpoint as genuine duplicates.
+ */
+export function flagDuplicateRequests(requests: LabeledRequest[]): void {
   const counts = new Map<string, number>();
   for (const req of requests) {
-    if (req.category !== "data-fetch" && req.category !== "auth-check")
-      continue;
-    const key = `${req.method} ${getEffectivePath(req).split("?")[0]}`;
+    if (!isDuplicateCandidate(req)) continue;
+    const key = buildRequestKey(req);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
@@ -21,29 +56,12 @@ export function markDuplicates(requests: LabeledRequest[]): void {
   // Mark the second occurrences as Strict Mode dupes instead of real duplicates.
   // Additionally validate temporal proximity: Strict Mode fires effects almost
   // instantly, so both requests in each pair must be within a small time gap.
-  let isStrictMode =
-    counts.size > 0 && [...counts.values()].every((c) => c === 2);
-
-  if (isStrictMode) {
-    const firstByKey = new Map<string, LabeledRequest>();
-    for (const req of requests) {
-      if (req.category !== "data-fetch" && req.category !== "auth-check") continue;
-      const key = `${req.method} ${getEffectivePath(req).split("?")[0]}`;
-      const first = firstByKey.get(key);
-      if (!first) {
-        firstByKey.set(key, req);
-      } else if (Math.abs(req.startedAt - first.startedAt) > STRICT_MODE_MAX_GAP_MS) {
-        isStrictMode = false;
-        break;
-      }
-    }
-  }
+  const isStrictMode = isStrictModePattern(requests, counts);
 
   const seen = new Set<string>();
   for (const req of requests) {
-    if (req.category !== "data-fetch" && req.category !== "auth-check")
-      continue;
-    const key = `${req.method} ${getEffectivePath(req).split("?")[0]}`;
+    if (!isDuplicateCandidate(req)) continue;
+    const key = buildRequestKey(req);
     if (seen.has(key)) {
       if (isStrictMode) {
         req.isStrictModeDupe = true;
@@ -56,27 +74,27 @@ export function markDuplicates(requests: LabeledRequest[]): void {
   }
 }
 
-export function collapsePolling(requests: LabeledRequest[]): LabeledRequest[] {
+export function mergePollingSequences(requests: LabeledRequest[]): LabeledRequest[] {
   const result: LabeledRequest[] = [];
   let i = 0;
 
   while (i < requests.length) {
     const current = requests[i];
-    const currentEffective = getEffectivePath(current).split("?")[0];
+    const currentEffective = stripQueryString(getEffectivePath(current));
 
     if (current.method === "GET" && current.category === "data-fetch") {
-      let j = i + 1;
+      let nextIndex = i + 1;
       while (
-        j < requests.length &&
-        requests[j].method === "GET" &&
-        getEffectivePath(requests[j]).split("?")[0] === currentEffective
+        nextIndex < requests.length &&
+        requests[nextIndex].method === "GET" &&
+        stripQueryString(getEffectivePath(requests[nextIndex])) === currentEffective
       ) {
-        j++;
+        nextIndex++;
       }
 
-      const count = j - i;
+      const count = nextIndex - i;
       if (count >= MIN_POLLING_SEQUENCE) {
-        const last = requests[j - 1];
+        const last = requests[nextIndex - 1];
         const pollingDuration =
           last.startedAt + last.durationMs - current.startedAt;
         const endpointName = prettifyEndpoint(currentEffective);
@@ -88,7 +106,7 @@ export function collapsePolling(requests: LabeledRequest[]): LabeledRequest[] {
           pollingDurationMs: pollingDuration,
           isDuplicate: false,
         });
-        i = j;
+        i = nextIndex;
         continue;
       }
     }
@@ -105,7 +123,7 @@ function formatDurationLabel(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-export function detectWarnings(requests: LabeledRequest[]): string[] {
+export function collectRequestWarnings(requests: LabeledRequest[]): string[] {
   const warnings: string[] = [];
 
   const duplicateCount = requests.filter((r) => r.isDuplicate).length;
@@ -113,17 +131,17 @@ export function detectWarnings(requests: LabeledRequest[]): string[] {
     const unique = new Set(
       requests
         .filter((r) => r.isDuplicate)
-        .map((r) => `${r.method} ${getEffectivePath(r).split("?")[0]}`),
+        .map((r) => buildRequestKey(r)),
     );
     const endpoints = unique.size;
     const sameData = requests
       .filter((r) => r.isDuplicate)
       .every((r) => {
-        const key = `${r.method} ${getEffectivePath(r).split("?")[0]}`;
+        const key = buildRequestKey(r);
         const first = requests.find(
           (o) =>
             !o.isDuplicate &&
-            `${o.method} ${getEffectivePath(o).split("?")[0]}` === key,
+            buildRequestKey(o) === key,
         );
         return first && first.responseBody === r.responseBody;
       });

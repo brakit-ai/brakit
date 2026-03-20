@@ -6,6 +6,27 @@ import type { Services } from "../../core/services.js";
 import { sendJson, requireGet, handleTelemetryGet, maskSensitiveHeaders, parseRequestUrl } from "./shared.js";
 import type { TracedRequest } from "../../types/index.js";
 
+function filterByStatusRange(requests: TracedRequest[], statusStr: string): TracedRequest[] {
+  if (statusStr.endsWith("xx")) {
+    const prefix = parseInt(statusStr[0], 10);
+    return requests.filter(
+      (r) => Math.floor(r.statusCode / 100) === prefix,
+    );
+  }
+  const code = parseInt(statusStr, 10);
+  return requests.filter((r) => r.statusCode === code);
+}
+
+function filterBySearch(requests: TracedRequest[], searchQuery: string): TracedRequest[] {
+  const lower = searchQuery.toLowerCase();
+  return requests.filter(
+    (r) =>
+      r.url.toLowerCase().includes(lower) ||
+      r.requestBody?.toLowerCase().includes(lower) ||
+      r.responseBody?.toLowerCase().includes(lower),
+  );
+}
+
 function sanitizeRequest(r: TracedRequest): TracedRequest {
   return {
     ...r,
@@ -35,25 +56,11 @@ export function createRequestsHandler(
     }
 
     if (status) {
-      if (status.endsWith("xx")) {
-        const prefix = parseInt(status[0], 10);
-        results = results.filter(
-          (r) => Math.floor(r.statusCode / 100) === prefix,
-        );
-      } else {
-        const code = parseInt(status, 10);
-        results = results.filter((r) => r.statusCode === code);
-      }
+      results = filterByStatusRange(results, status);
     }
 
     if (search) {
-      const lower = search.toLowerCase();
-      results = results.filter(
-        (r) =>
-          r.url.toLowerCase().includes(lower) ||
-          r.requestBody?.toLowerCase().includes(lower) ||
-          r.responseBody?.toLowerCase().includes(lower),
-      );
+      results = filterBySearch(results, search);
     }
 
     const total = results.length;

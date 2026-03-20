@@ -8,6 +8,7 @@ import type {
 } from "../types/index.js";
 import { MAX_REQUEST_ENTRIES } from "../constants/index.js";
 import { isStaticPath, isHealthCheckPath } from "../utils/static-patterns.js";
+import { stripQueryString } from "../utils/endpoint.js";
 
 export function flattenHeaders(headers: IncomingHttpHeaders): FlatHeaders {
   const flat: FlatHeaders = {};
@@ -41,7 +42,7 @@ export class RequestStore {
 
   capture(input: CaptureInput): TracedRequest {
     const url = input.url;
-    const path = url.split("?")[0];
+    const path = stripQueryString(url);
 
     let requestBodyStr: string | null = null;
     if (input.requestBody && input.requestBody.length > 0) {

@@ -19,8 +19,8 @@ export const errorRule: InsightRule = {
 
     const insights: Insight[] = [];
     const groups = new Map<string, number>();
-    for (const e of ctx.errors) {
-      const name = e.name || "Error";
+    for (const error of ctx.errors) {
+      const name = error.name || "Error";
       groups.set(name, (groups.get(name) ?? 0) + 1);
     }
 
@@ -45,15 +45,15 @@ export const errorHotspotRule: InsightRule = {
   check(ctx: PreparedInsightContext): Insight[] {
     const insights: Insight[] = [];
 
-    for (const [ep, g] of ctx.endpointGroups) {
-      if (g.total < MIN_REQUESTS_FOR_INSIGHT) continue;
-      const errorRate = Math.round((g.errors / g.total) * 100);
+    for (const [endpointKey, group] of ctx.endpointGroups) {
+      if (group.total < MIN_REQUESTS_FOR_INSIGHT) continue;
+      const errorRate = Math.round((group.errors / group.total) * 100);
       if (errorRate >= ERROR_RATE_THRESHOLD_PCT) {
         insights.push({
           severity: "critical",
           type: "error-hotspot",
           title: "Error Hotspot",
-          desc: `${ep} — ${errorRate}% error rate (${g.errors}/${g.total} requests)`,
+          desc: `${endpointKey} — ${errorRate}% error rate (${group.errors}/${group.total} requests)`,
           hint: "This endpoint frequently returns errors. Check the response bodies for error details and stack traces.",
           nav: "requests",
         });
@@ -117,13 +117,13 @@ export const slowRule: InsightRule = {
   check(ctx: PreparedInsightContext): Insight[] {
     const insights: Insight[] = [];
 
-    for (const [ep, g] of ctx.endpointGroups) {
-      if (g.total < MIN_REQUESTS_FOR_INSIGHT) continue;
-      const avgMs = Math.round(g.totalDuration / g.total);
+    for (const [endpointKey, group] of ctx.endpointGroups) {
+      if (group.total < MIN_REQUESTS_FOR_INSIGHT) continue;
+      const avgMs = Math.round(group.totalDuration / group.total);
       if (avgMs < SLOW_ENDPOINT_THRESHOLD_MS) continue;
 
-      const avgQueryMs = Math.round(g.totalQueryTimeMs / g.total);
-      const avgFetchMs = Math.round(g.totalFetchTimeMs / g.total);
+      const avgQueryMs = Math.round(group.totalQueryTimeMs / group.total);
+      const avgFetchMs = Math.round(group.totalFetchTimeMs / group.total);
       const avgAppMs = Math.max(0, avgMs - avgQueryMs - avgFetchMs);
 
       const parts: string[] = [];
@@ -135,11 +135,11 @@ export const slowRule: InsightRule = {
 
       let detail: string | undefined;
       let slowestMs = 0;
-      for (const [, sd] of g.queryShapeDurations) {
-        const avgShapeMs = sd.totalMs / sd.count;
+      for (const [, shapeDuration] of group.queryShapeDurations) {
+        const avgShapeMs = shapeDuration.totalMs / shapeDuration.count;
         if (avgShapeMs > slowestMs) {
           slowestMs = avgShapeMs;
-          detail = `Slowest query: ${sd.label} — avg ${formatDuration(Math.round(avgShapeMs))} (${sd.count}x)`;
+          detail = `Slowest query: ${shapeDuration.label} — avg ${formatDuration(Math.round(avgShapeMs))} (${shapeDuration.count}x)`;
         }
       }
 
@@ -147,7 +147,7 @@ export const slowRule: InsightRule = {
         severity: "warning",
         type: "slow",
         title: "Slow Endpoint",
-        desc: `${ep} — avg ${formatDuration(avgMs)}${breakdown}`,
+        desc: `${endpointKey} — avg ${formatDuration(avgMs)}${breakdown}`,
         hint: avgQueryMs >= avgFetchMs && avgQueryMs >= avgAppMs
           ? "Most time is in database queries. Check the Queries tab for slow or redundant queries."
           : avgFetchMs >= avgQueryMs && avgFetchMs >= avgAppMs

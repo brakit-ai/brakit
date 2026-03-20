@@ -42,12 +42,15 @@ function outgoingToIncoming(headers: OutgoingHttpHeaders): IncomingHttpHeaders {
   return result;
 }
 
+function getDecompressor(encoding: string): typeof gunzip | typeof brotliDecompress | typeof inflate | null {
+  if (encoding === CONTENT_ENCODING_GZIP) return gunzip;
+  if (encoding === CONTENT_ENCODING_BR) return brotliDecompress;
+  if (encoding === CONTENT_ENCODING_DEFLATE) return inflate;
+  return null;
+}
+
 function decompressAsync(body: Buffer<ArrayBuffer>, encoding: string): Promise<Buffer<ArrayBuffer>> {
-  const decompressor =
-    encoding === CONTENT_ENCODING_GZIP ? gunzip :
-    encoding === CONTENT_ENCODING_BR ? brotliDecompress :
-    encoding === CONTENT_ENCODING_DEFLATE ? inflate :
-    null;
+  const decompressor = getDecompressor(encoding);
 
   if (!decompressor) return Promise.resolve(body);
 

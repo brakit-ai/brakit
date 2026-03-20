@@ -18,6 +18,11 @@ export function isBoolean(val: unknown): val is boolean {
   return typeof val === "boolean";
 }
 
+/** Check whether a value is a thenable (promise-like object) */
+export function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return value != null && typeof (value as Record<string, unknown>).then === "function";
+}
+
 export function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === "string") return err;
@@ -42,13 +47,9 @@ export function isValidAiFixStatus(val: unknown): val is AiFixStatus {
  * they were serialized by this same application.
  */
 export function validateIssuesData(parsed: unknown): IssuesData | null {
-  if (
-    parsed != null &&
-    typeof parsed === "object" &&
-    !Array.isArray(parsed) &&
-    (parsed as Record<string, unknown>).version === ISSUES_DATA_VERSION &&
-    Array.isArray((parsed as Record<string, unknown>).issues)
-  ) {
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const obj = parsed as Record<string, unknown>;
+  if (obj.version === ISSUES_DATA_VERSION && Array.isArray(obj.issues)) {
     return parsed as IssuesData;
   }
   return null;
@@ -58,13 +59,9 @@ export function validateIssuesData(parsed: unknown): IssuesData | null {
  * Validates that a parsed JSON value conforms to the MetricsData envelope.
  */
 export function validateMetricsData(parsed: unknown): MetricsData | null {
-  if (
-    parsed != null &&
-    typeof parsed === "object" &&
-    !Array.isArray(parsed) &&
-    (parsed as Record<string, unknown>).version === 1 &&
-    Array.isArray((parsed as Record<string, unknown>).endpoints)
-  ) {
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const obj = parsed as Record<string, unknown>;
+  if (obj.version === 1 && Array.isArray(obj.endpoints)) {
     return parsed as MetricsData;
   }
   return null;

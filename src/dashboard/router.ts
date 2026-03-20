@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { BrakitConfig } from "../types/index.js";
+import { stripQueryString } from "../utils/endpoint.js";
 import type { Services } from "../core/services.js";
 import {
   DASHBOARD_PREFIX,
@@ -100,7 +101,7 @@ export function createDashboardHandler(
   };
 
   return (req, res, config) => {
-    const path = (req.url ?? "/").split("?")[0];
+    const path = stripQueryString(req.url ?? "/");
     const handler = routes[path];
 
     if (handler) {

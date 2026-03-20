@@ -6,9 +6,36 @@ import { randomUUID } from "node:crypto";
 import type { TracedRequest, LabeledRequest, RequestFlow } from "../types/index.js";
 import { FLOW_GAP_MS, DASHBOARD_PREFIX } from "../constants/index.js";
 import { isErrorStatus } from "../utils/http-status.js";
+import { stripQueryString } from "../utils/endpoint.js";
 import { labelRequest, prettifyEndpoint, prettifyPageName, capitalize, deriveActionVerb } from "./label.js";
 import { getEffectivePath } from "./categorize.js";
-import { markDuplicates, collapsePolling, detectWarnings } from "./transforms.js";
+import { flagDuplicateRequests, mergePollingSequences, collectRequestWarnings } from "./transforms.js";
+
+function shouldStartNewFlow(
+  labeled: LabeledRequest,
+  currentRequests: LabeledRequest[],
+  lastEndTime: number,
+  currentSourcePage: string | undefined,
+  startedAt: number,
+): boolean {
+  if (currentRequests.length === 0) return false;
+
+  const sourcePage = labeled.sourcePage;
+
+  // 1. Page change — referer switched, indicating user navigated
+  const isNewPage =
+    sourcePage !== undefined &&
+    currentSourcePage !== undefined &&
+    sourcePage !== currentSourcePage;
+
+  // 2. Time gap — idle period exceeds FLOW_GAP_MS, suggesting a new action
+  const isTimeGap = startedAt - lastEndTime > FLOW_GAP_MS;
+
+  // 3. Page load — HTML/navigation request marks a fresh page lifecycle
+  const isPageLoad = labeled.category === "page-load" || labeled.category === "navigation";
+
+  return isNewPage || isTimeGap || isPageLoad;
+}
 
 export function groupRequestsIntoFlows(
   requests: readonly TracedRequest[],
@@ -26,28 +53,13 @@ export function groupRequestsIntoFlows(
     const labeled = labelRequest(req);
     if (labeled.category === "static") continue;
 
-    const sourcePage = labeled.sourcePage;
-    const gap = currentRequests.length > 0 ? req.startedAt - lastEndTime : 0;
-
-    // A new flow starts when any of three signals fire:
-    // 1. Page change — referer switched, indicating user navigated
-    // 2. Time gap — idle period exceeds FLOW_GAP_MS, suggesting a new action
-    // 3. Page load — HTML/navigation request marks a fresh page lifecycle
-    const isNewPage =
-      currentRequests.length > 0 &&
-      sourcePage !== undefined &&
-      currentSourcePage !== undefined &&
-      sourcePage !== currentSourcePage;
-    const isPageLoad = labeled.category === "page-load" || labeled.category === "navigation";
-    const isTimeGap = currentRequests.length > 0 && gap > FLOW_GAP_MS;
-
-    if (currentRequests.length > 0 && (isNewPage || isTimeGap || isPageLoad)) {
+    if (shouldStartNewFlow(labeled, currentRequests, lastEndTime, currentSourcePage, req.startedAt)) {
       flows.push(buildFlow(currentRequests));
       currentRequests = [];
     }
 
     currentRequests.push(labeled);
-    currentSourcePage = sourcePage ?? currentSourcePage;
+    currentSourcePage = labeled.sourcePage ?? currentSourcePage;
     lastEndTime = Math.max(lastEndTime, req.startedAt + req.durationMs);
   }
 
@@ -59,8 +71,8 @@ export function groupRequestsIntoFlows(
 }
 
 function buildFlow(rawRequests: LabeledRequest[]): RequestFlow {
-  markDuplicates(rawRequests);
-  const requests = collapsePolling(rawRequests);
+  flagDuplicateRequests(rawRequests);
+  const requests = mergePollingSequences(rawRequests);
 
   const first = requests[0];
   const startTime = first.startedAt;
@@ -86,7 +98,7 @@ function buildFlow(rawRequests: LabeledRequest[]): RequestFlow {
     startTime,
     totalDurationMs: Math.round(endTime - startTime),
     hasErrors: requests.some((r) => isErrorStatus(r.statusCode)),
-    warnings: detectWarnings(rawRequests),
+    warnings: collectRequestWarnings(rawRequests),
     sourcePage,
     redundancyPct,
   };
@@ -100,16 +112,16 @@ function getDominantSourcePage(requests: LabeledRequest[]): string {
     }
   }
 
-  let best = "";
-  let bestCount = 0;
+  let mostCommonPage = "";
+  let highestCount = 0;
   for (const [page, count] of counts) {
-    if (count > bestCount) {
-      best = page;
-      bestCount = count;
+    if (count > highestCount) {
+      mostCommonPage = page;
+      highestCount = count;
     }
   }
 
-  return best || requests[0]?.path?.split("?")[0] || "/";
+  return mostCommonPage || (requests[0]?.path ? stripQueryString(requests[0].path) : "") || "/";
 }
 
 function deriveFlowLabel(requests: LabeledRequest[], sourcePage: string): string {
@@ -122,7 +134,7 @@ function deriveFlowLabel(requests: LabeledRequest[], sourcePage: string): string
     requests[0];
 
   if (trigger.category === "page-load" || trigger.category === "navigation") {
-    const pageName = prettifyPageName(trigger.path.split("?")[0]);
+    const pageName = prettifyPageName(stripQueryString(trigger.path));
     return `${pageName} Page`;
   }
 

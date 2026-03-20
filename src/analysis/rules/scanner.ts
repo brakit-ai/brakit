@@ -2,20 +2,22 @@ import type { SecurityRule, SecurityContext, ParsedBodyCache } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
 import type { TracedRequest, TracedLog } from "../../types/index.js";
 import { tryParseJson } from "../../utils/response.js";
+import { brakitDebug } from "../../utils/log.js";
+import { getErrorMessage } from "../../utils/type-guards.js";
 import { exposedSecretRule, tokenInUrlRule, insecureCookieRule, corsCredentialsRule } from "./auth-rules.js";
 import { stackTraceLeakRule, errorInfoLeakRule, sensitiveLogsRule, responsePiiLeakRule } from "./data-rules.js";
 
 function buildBodyCache(requests: readonly TracedRequest[]): ParsedBodyCache {
   const response = new Map<string, unknown>();
   const request = new Map<string, unknown>();
-  for (const r of requests) {
-    if (r.responseBody) {
-      const parsed = tryParseJson(r.responseBody);
-      if (parsed != null) response.set(r.id, parsed);
+  for (const req of requests) {
+    if (req.responseBody) {
+      const parsed = tryParseJson(req.responseBody);
+      if (parsed != null) response.set(req.id, parsed);
     }
-    if (r.requestBody) {
-      const parsed = tryParseJson(r.requestBody);
-      if (parsed != null) request.set(r.id, parsed);
+    if (req.requestBody) {
+      const parsed = tryParseJson(req.requestBody);
+      if (parsed != null) request.set(req.id, parsed);
     }
   }
   return { response, request };
@@ -37,8 +39,8 @@ export class SecurityScanner {
     for (const rule of this.rules) {
       try {
         findings.push(...rule.check(ctx));
-      } catch {
-        // One rule failing doesn't stop others
+      } catch (e) {
+        brakitDebug(`rule ${rule.id} failed: ${getErrorMessage(e)}`);
       }
     }
     return findings;

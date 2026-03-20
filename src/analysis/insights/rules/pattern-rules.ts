@@ -20,13 +20,13 @@ export const duplicateRule: InsightRule = {
     for (const flow of ctx.flows) {
       if (!flow.requests) continue;
       const seenInFlow = new Set<string>();
-      for (const fr of flow.requests) {
-        if (!(fr as { isDuplicate?: boolean }).isDuplicate) continue;
-        const dupKey = `${fr.method} ${(fr as { label?: string }).label ?? fr.path ?? fr.url}`;
-        dupCounts.set(dupKey, (dupCounts.get(dupKey) ?? 0) + 1);
-        if (!seenInFlow.has(dupKey)) {
-          seenInFlow.add(dupKey);
-          flowCount.set(dupKey, (flowCount.get(dupKey) ?? 0) + 1);
+      for (const request of flow.requests) {
+        if (!request.isDuplicate) continue;
+        const deduplicationKey = `${request.method} ${request.label ?? request.path ?? request.url}`;
+        dupCounts.set(deduplicationKey, (dupCounts.get(deduplicationKey) ?? 0) + 1);
+        if (!seenInFlow.has(deduplicationKey)) {
+          seenInFlow.add(deduplicationKey);
+          flowCount.set(deduplicationKey, (flowCount.get(deduplicationKey) ?? 0) + 1);
         }
       }
     }
@@ -37,12 +37,12 @@ export const duplicateRule: InsightRule = {
 
     const insights: Insight[] = [];
     for (let i = 0; i < Math.min(dupEntries.length, MAX_DUPLICATE_INSIGHTS); i++) {
-      const d = dupEntries[i];
+      const duplicate = dupEntries[i];
       insights.push({
         severity: "warning",
         type: "duplicate",
         title: "Duplicate API Call",
-        desc: `${d.key} loaded ${d.count}x as duplicate across ${d.flows} action${d.flows !== 1 ? "s" : ""}`,
+        desc: `${duplicate.key} loaded ${duplicate.count}x as duplicate across ${duplicate.flows} action${duplicate.flows !== 1 ? "s" : ""}`,
         hint: "Multiple components independently fetch the same endpoint. Lift the fetch to a parent component, use a data cache, or deduplicate with React Query / SWR.",
         nav: "actions",
       });
@@ -67,10 +67,13 @@ export const crossEndpointRule: InsightRule = {
       allEndpoints.add(endpoint);
 
       const seenInReq = new Set<string>();
-      for (const q of reqQueries) {
-        const shape = getQueryShape(q);
+      for (const query of reqQueries) {
+        const shape = getQueryShape(query);
         let entry = queryMap.get(shape);
-        if (!entry) { entry = { endpoints: new Set(), count: 0, first: q }; queryMap.set(shape, entry); }
+        if (!entry) {
+          entry = { endpoints: new Set(), count: 0, first: query };
+          queryMap.set(shape, entry);
+        }
         entry.count++;
         if (!seenInReq.has(shape)) {
           seenInReq.add(shape);
@@ -80,18 +83,18 @@ export const crossEndpointRule: InsightRule = {
     }
 
     if (allEndpoints.size >= CROSS_ENDPOINT_MIN_ENDPOINTS) {
-      for (const [, cem] of queryMap) {
-        if (cem.count < CROSS_ENDPOINT_MIN_OCCURRENCES) continue;
-        if (cem.endpoints.size < CROSS_ENDPOINT_MIN_ENDPOINTS) continue;
-        const p = Math.round((cem.endpoints.size / allEndpoints.size) * 100);
-        if (p < CROSS_ENDPOINT_PCT) continue;
-        const info = getQueryInfo(cem.first);
+      for (const [, queryMetric] of queryMap) {
+        if (queryMetric.count < CROSS_ENDPOINT_MIN_OCCURRENCES) continue;
+        if (queryMetric.endpoints.size < CROSS_ENDPOINT_MIN_ENDPOINTS) continue;
+        const coveragePct = Math.round((queryMetric.endpoints.size / allEndpoints.size) * 100);
+        if (coveragePct < CROSS_ENDPOINT_PCT) continue;
+        const info = getQueryInfo(queryMetric.first);
         const label = info.op + (info.table ? ` ${info.table}` : "");
         insights.push({
           severity: "warning",
           type: "cross-endpoint",
           title: "Repeated Query Across Endpoints",
-          desc: `${label} runs on ${cem.endpoints.size} of ${allEndpoints.size} endpoints (${p}%).`,
+          desc: `${label} runs on ${queryMetric.endpoints.size} of ${allEndpoints.size} endpoints (${coveragePct}%).`,
           hint: "This query runs on most of your endpoints. Load it once in middleware or cache the result to avoid redundant database calls.",
           nav: "queries",
         });

@@ -14,7 +14,7 @@ import { createDefaultScanner, type SecurityScanner } from "./rules/index.js";
 import { computeInsights, type Insight } from "./insights.js";
 import { insightToIssue, securityFindingToIssue } from "./issue-mappers.js";
 import { computeIssueId } from "../utils/issue-id.js";
-import { extractActiveEndpoints, windowByEndpoint } from "./insights/prepare.js";
+import { extractActiveEndpoints, keepRecentPerEndpoint } from "./insights/prepare.js";
 
 export type { AnalysisUpdate };
 
@@ -71,7 +71,7 @@ export class AnalysisEngine {
     const logs = this.services.logStore.getAll() as readonly TracedLog[];
     const fetches = this.services.fetchStore.getAll() as readonly TracedFetch[];
 
-    const requests = windowByEndpoint(allRequests);
+    const requests = keepRecentPerEndpoint(allRequests);
     const flows = groupRequestsIntoFlows(requests);
 
     this.cachedFindings = this.scanner.scan({ requests, logs });
@@ -86,24 +86,18 @@ export class AnalysisEngine {
     });
 
     const issueStore = this.services.issueStore;
-
-    // Upsert security findings into IssueStore
-    for (const finding of this.cachedFindings) {
-      issueStore.upsert(securityFindingToIssue(finding), "passive");
-    }
-
-    // Upsert performance/reliability insights into IssueStore
-    for (const insight of this.cachedInsights) {
-      issueStore.upsert(insightToIssue(insight), "passive");
-    }
-
-    // Build the set of currently-detected issue IDs for reconciliation
     const currentIssueIds = new Set<string>();
+
     for (const finding of this.cachedFindings) {
-      currentIssueIds.add(computeIssueId(securityFindingToIssue(finding)));
+      const issue = securityFindingToIssue(finding);
+      issueStore.upsert(issue, "passive");
+      currentIssueIds.add(computeIssueId(issue));
     }
+
     for (const insight of this.cachedInsights) {
-      currentIssueIds.add(computeIssueId(insightToIssue(insight)));
+      const issue = insightToIssue(insight);
+      issueStore.upsert(issue, "passive");
+      currentIssueIds.add(computeIssueId(issue));
     }
 
     const activeEndpoints = extractActiveEndpoints(allRequests);

@@ -26,12 +26,15 @@ export const n1Rule: InsightRule = {
       const endpoint = getEndpointKey(req.method, req.path);
 
       const shapeGroups = new Map<string, { count: number; distinctSql: Set<string>; first: typeof reqQueries[0] }>();
-      for (const q of reqQueries) {
-        const shape = getQueryShape(q);
+      for (const query of reqQueries) {
+        const shape = getQueryShape(query);
         let group = shapeGroups.get(shape);
-        if (!group) { group = { count: 0, distinctSql: new Set(), first: q }; shapeGroups.set(shape, group); }
+        if (!group) {
+          group = { count: 0, distinctSql: new Set(), first: query };
+          shapeGroups.set(shape, group);
+        }
         group.count++;
-        group.distinctSql.add(q.sql ?? shape);
+        group.distinctSql.add(query.sql ?? shape);
       }
 
       for (const [, sg] of shapeGroups) {
@@ -68,25 +71,28 @@ export const redundantQueryRule: InsightRule = {
       const endpoint = getEndpointKey(req.method, req.path);
       const exact = new Map<string, { count: number; first: TracedQuery }>();
 
-      for (const q of reqQueries) {
-        if (!q.sql) continue;
-        let entry = exact.get(q.sql);
-        if (!entry) { entry = { count: 0, first: q }; exact.set(q.sql, entry); }
+      for (const query of reqQueries) {
+        if (!query.sql) continue;
+        let entry = exact.get(query.sql);
+        if (!entry) {
+          entry = { count: 0, first: query };
+          exact.set(query.sql, entry);
+        }
         entry.count++;
       }
 
-      for (const [, e] of exact) {
-        if (e.count < REDUNDANT_QUERY_MIN_COUNT) continue;
-        const info = getQueryInfo(e.first);
+      for (const [, entry] of exact) {
+        if (entry.count < REDUNDANT_QUERY_MIN_COUNT) continue;
+        const info = getQueryInfo(entry.first);
         const label = info.op + (info.table ? ` ${info.table}` : "");
-        const dedupKey = `${endpoint}:${label}`;
-        if (seen.has(dedupKey)) continue;
-        seen.add(dedupKey);
+        const deduplicationKey = `${endpoint}:${label}`;
+        if (seen.has(deduplicationKey)) continue;
+        seen.add(deduplicationKey);
         insights.push({
           severity: "warning",
           type: "redundant-query",
           title: "Redundant Query",
-          desc: `${label} runs ${e.count}x with identical params in ${endpoint}.`,
+          desc: `${label} runs ${entry.count}x with identical params in ${endpoint}.`,
           hint: "The exact same query with identical parameters runs multiple times in one request. Cache the first result or lift the query to a shared function.",
           nav: "queries",
         });
@@ -104,11 +110,11 @@ export const selectStarRule: InsightRule = {
     const seen = new Map<string, number>();
 
     for (const [, reqQueries] of ctx.queriesByReq) {
-      for (const q of reqQueries) {
-        if (!q.sql) continue;
-        const isSelectStar = SELECT_STAR_RE.test(q.sql.trim()) || SELECT_DOT_STAR_RE.test(q.sql);
+      for (const query of reqQueries) {
+        if (!query.sql) continue;
+        const isSelectStar = SELECT_STAR_RE.test(query.sql.trim()) || SELECT_DOT_STAR_RE.test(query.sql);
         if (!isSelectStar) continue;
-        const info = getQueryInfo(q);
+        const info = getQueryInfo(query);
         const key = info.table || "unknown";
         seen.set(key, (seen.get(key) ?? 0) + 1);
       }
@@ -138,14 +144,17 @@ export const highRowsRule: InsightRule = {
     const seen = new Map<string, { max: number; count: number }>();
 
     for (const [, reqQueries] of ctx.queriesByReq) {
-      for (const q of reqQueries) {
-        if (!q.rowCount || q.rowCount <= HIGH_ROW_COUNT) continue;
-        const info = getQueryInfo(q);
+      for (const query of reqQueries) {
+        if (!query.rowCount || query.rowCount <= HIGH_ROW_COUNT) continue;
+        const info = getQueryInfo(query);
         const key = `${info.op} ${info.table || "unknown"}`;
         let entry = seen.get(key);
-        if (!entry) { entry = { max: 0, count: 0 }; seen.set(key, entry); }
+        if (!entry) {
+          entry = { max: 0, count: 0 };
+          seen.set(key, entry);
+        }
         entry.count++;
-        if (q.rowCount > entry.max) entry.max = q.rowCount;
+        if (query.rowCount > entry.max) entry.max = query.rowCount;
       }
     }
 
@@ -172,15 +181,15 @@ export const queryHeavyRule: InsightRule = {
   check(ctx: PreparedInsightContext): Insight[] {
     const insights: Insight[] = [];
 
-    for (const [ep, g] of ctx.endpointGroups) {
-      if (g.total < MIN_REQUESTS_FOR_INSIGHT) continue;
-      const avgQueries = Math.round(g.queryCount / g.total);
+    for (const [endpointKey, group] of ctx.endpointGroups) {
+      if (group.total < MIN_REQUESTS_FOR_INSIGHT) continue;
+      const avgQueries = Math.round(group.queryCount / group.total);
       if (avgQueries > HIGH_QUERY_COUNT_PER_REQ) {
         insights.push({
           severity: "warning",
           type: "query-heavy",
           title: "Query-Heavy Endpoint",
-          desc: `${ep} — avg ${avgQueries} queries/request`,
+          desc: `${endpointKey} — avg ${avgQueries} queries/request`,
           hint: "Too many queries per request increases latency. Combine queries with JOINs, use batch operations, or reduce the number of data fetches.",
           nav: "queries",
         });
