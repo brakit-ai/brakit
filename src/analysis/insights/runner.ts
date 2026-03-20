@@ -1,6 +1,8 @@
 import type { InsightRule } from "./rule.js";
 import type { Insight, InsightContext } from "./types.js";
-import { prepareContext } from "./prepare.js";
+import { buildInsightContext } from "./prepare.js";
+import { brakitDebug } from "../../utils/log.js";
+import { getErrorMessage } from "../../utils/type-guards.js";
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, info: 2 };
 
@@ -12,14 +14,14 @@ export class InsightRunner {
   }
 
   run(ctx: InsightContext): Insight[] {
-    const prepared = prepareContext(ctx);
+    const prepared = buildInsightContext(ctx);
     const insights: Insight[] = [];
 
     for (const rule of this.rules) {
       try {
         insights.push(...rule.check(prepared));
-      } catch {
-        // One rule failing does not stop others
+      } catch (e) {
+        brakitDebug(`insight rule ${rule.id} failed: ${getErrorMessage(e)}`);
       }
     }
 

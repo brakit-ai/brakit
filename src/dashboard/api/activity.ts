@@ -27,14 +27,14 @@ export function createActivityHandler(
 
       const timeline: TimelineEvent[] = [];
 
-      for (const f of fetches)
-        timeline.push({ type: TIMELINE_FETCH, timestamp: f.timestamp, data: f });
-      for (const l of logs)
-        timeline.push({ type: TIMELINE_LOG, timestamp: l.timestamp, data: l });
-      for (const e of errors)
-        timeline.push({ type: TIMELINE_ERROR, timestamp: e.timestamp, data: e });
-      for (const q of queries)
-        timeline.push({ type: TIMELINE_QUERY, timestamp: q.timestamp, data: q });
+      for (const fetch of fetches)
+        timeline.push({ type: TIMELINE_FETCH, timestamp: fetch.timestamp, data: fetch });
+      for (const log of logs)
+        timeline.push({ type: TIMELINE_LOG, timestamp: log.timestamp, data: log });
+      for (const error of errors)
+        timeline.push({ type: TIMELINE_ERROR, timestamp: error.timestamp, data: error });
+      for (const query of queries)
+        timeline.push({ type: TIMELINE_QUERY, timestamp: query.timestamp, data: query });
 
       timeline.sort((a, b) => a.timestamp - b.timestamp);
 

@@ -1,9 +1,21 @@
 import type { BrakitAdapter } from "../adapter.js";
-import { tryRequire, captureRequestId } from "./shared.js";
-import { normalizeSQL } from "./normalize.js";
+import { tryRequire, getPrototype, wrapQueryMethod } from "./shared.js";
+import type { LibraryModule, PgQueryConfig, QueryPatchConfig } from "./types.js";
 
 let origQuery: ((...args: unknown[]) => unknown) | null = null;
 let proto: Record<string, unknown> | null = null;
+
+const pgConfig: QueryPatchConfig = {
+  driver: "pg",
+  extractSql: (args) => {
+    const q = args[0];
+    if (typeof q === "string") return q;
+    if (typeof q === "object" && q !== null && "text" in q) return (q as PgQueryConfig).text;
+    return undefined;
+  },
+  extractRowCount: (result) => (result as { rowCount?: number })?.rowCount,
+  supportsEventEmitter: true,
+};
 
 export const pgAdapter: BrakitAdapter = {
   name: "pg",
@@ -12,87 +24,15 @@ export const pgAdapter: BrakitAdapter = {
     return tryRequire("pg") !== null;
   },
 
+  /** Monkeypatches pg's Client prototype to intercept database queries and emit telemetry events. */
   patch(emit) {
-    const pg = tryRequire("pg") as Record<string, unknown> | null;
+    const pg = tryRequire("pg") as LibraryModule | null;
     if (!pg) return;
-    const Client = (pg.default as Record<string, unknown>)?.Client ?? pg.Client;
-    if (!Client || typeof Client !== "function") return;
-    proto =
-      (Client as { prototype?: Record<string, unknown> }).prototype ?? null;
+    proto = getPrototype<Record<string, unknown>>(pg, "Client");
     if (!proto?.query) return;
 
     origQuery = proto.query as (...args: unknown[]) => unknown;
-    const saved = origQuery;
-
-    proto.query = function (...args: unknown[]) {
-      const first = args[0];
-      const sql =
-        typeof first === "string"
-          ? first
-          : typeof first === "object" && first !== null && "text" in first
-            ? (first as { text: string }).text
-            : undefined;
-      const start = performance.now();
-      const requestId = captureRequestId();
-      const { op, table } = normalizeSQL(sql ?? "");
-
-      const emitQuery = (rowCount?: number) => {
-        emit({
-          type: "query",
-          data: {
-            driver: "pg",
-            source: "pg",
-            sql,
-            normalizedOp: op,
-            table,
-            durationMs: Math.round(performance.now() - start),
-            rowCount: rowCount ?? undefined,
-            parentRequestId: requestId,
-            timestamp: Date.now(),
-          },
-        });
-      };
-
-      // Callback-based
-      const lastIdx = args.length - 1;
-      if (lastIdx >= 0 && typeof args[lastIdx] === "function") {
-        const origCb = args[lastIdx] as (...cbArgs: unknown[]) => unknown;
-        args[lastIdx] = function (
-          this: unknown,
-          err: unknown,
-          res: { rowCount?: number } | undefined,
-        ) {
-          emitQuery(res?.rowCount ?? undefined);
-          return origCb.call(this, err, res);
-        };
-        return saved.apply(this, args);
-      }
-
-      const result = saved.apply(this, args);
-
-      // Promise-based
-      if (result && typeof (result as { then?: unknown }).then === "function") {
-        return (result as Promise<{ rowCount?: number }>).then((res) => {
-          try { emitQuery(res?.rowCount ?? undefined); } catch { /* brakit telemetry must not affect host queries */ }
-          return res;
-        });
-      }
-
-      // EventEmitter-based
-      if (result && typeof (result as { on?: unknown }).on === "function") {
-        (
-          result as {
-            on: (
-              event: string,
-              fn: (res: { rowCount?: number }) => void,
-            ) => void;
-          }
-        ).on("end", (res) => emitQuery(res?.rowCount ?? undefined));
-        return result;
-      }
-
-      return result;
-    };
+    proto.query = wrapQueryMethod(origQuery, emit, pgConfig);
   },
 
   unpatch() {

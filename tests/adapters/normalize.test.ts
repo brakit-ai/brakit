@@ -59,10 +59,16 @@ describe("normalizeSQL", () => {
     expect(result.table).toBe("");
   });
 
-  it("returns empty table when no schema-qualified name is found", () => {
+  it("extracts unqualified table names", () => {
     const result = normalizeSQL("SELECT * FROM users WHERE id = 1");
     expect(result.op).toBe("SELECT");
-    expect(result.table).toBe("");
+    expect(result.table).toBe("users");
+  });
+
+  it("extracts unqualified table in INSERT", () => {
+    const result = normalizeSQL("INSERT INTO orders (id) VALUES (1)");
+    expect(result.op).toBe("INSERT");
+    expect(result.table).toBe("orders");
   });
 
   it("trims whitespace before parsing", () => {
@@ -113,10 +119,9 @@ describe("normalizeQueryParams", () => {
     );
   });
 
-  it("replaces digit portion of positional parameters ($1, $2)", () => {
-    // Numeric regex runs before $N regex, so $1 becomes $? (digit replaced, $ kept)
+  it("replaces positional parameters ($1, $2) with ?", () => {
     expect(normalizeQueryParams("SELECT * FROM users WHERE id = $1 AND org = $2")).toBe(
-      "SELECT * FROM users WHERE id = $? AND org = $?",
+      "SELECT * FROM users WHERE id = ? AND org = ?",
     );
   });
 
@@ -132,8 +137,7 @@ describe("normalizeQueryParams", () => {
   });
 
   it("handles mixed parameter styles", () => {
-    // $1 digit replaced first → $?, then string 'hello' → ?
     const result = normalizeQueryParams("INSERT INTO logs (id, msg) VALUES ($1, 'hello')");
-    expect(result).toBe("INSERT INTO logs (id, msg) VALUES ($?, ?)");
+    expect(result).toBe("INSERT INTO logs (id, msg) VALUES (?, ?)");
   });
 });

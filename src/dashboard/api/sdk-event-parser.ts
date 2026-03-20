@@ -8,6 +8,7 @@ import {
   SDK_EVENT_REQUEST, SDK_EVENT_AUTH_CHECK,
 } from "../../constants/labels.js";
 import { isHealthCheckPath } from "../../utils/static-patterns.js";
+import { stripQueryString } from "../../utils/endpoint.js";
 
 type OmitId<T extends TelemetryEntry> = Omit<T, "id">;
 
@@ -30,8 +31,8 @@ function numOrUndef(val: unknown): number | undefined {
 function headers(val: unknown): Record<string, string> {
   if (val && typeof val === "object" && !Array.isArray(val)) {
     const result: Record<string, string> = {};
-    for (const [k, v] of Object.entries(val)) {
-      if (typeof v === "string") result[k] = v;
+    for (const [key, value] of Object.entries(val)) {
+      if (typeof value === "string") result[key] = value;
     }
     return result;
   }
@@ -134,7 +135,7 @@ export function parseRequestEvent(
     id: str(data.id, randomUUID()),
     method: str(data.method, "GET") as HttpMethod,
     url,
-    path: url.split("?")[0],
+    path: stripQueryString(url),
     headers: headers(data.headers),
     requestBody: isString(data.requestBody) ? data.requestBody : null,
     statusCode: num(data.statusCode, 200),
@@ -144,7 +145,7 @@ export function parseRequestEvent(
     durationMs: num(data.durationMs, 0),
     responseSize: num(data.responseSize, 0),
     isStatic: isBoolean(data.isStatic) ? data.isStatic : false,
-    isHealthCheck: isBoolean(data.isHealthCheck) ? data.isHealthCheck : isHealthCheckPath(url.split("?")[0]),
+    isHealthCheck: isBoolean(data.isHealthCheck) ? data.isHealthCheck : isHealthCheckPath(stripQueryString(url)),
   };
 }
 

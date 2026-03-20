@@ -1,7 +1,15 @@
 import type { BrakitAdapter } from "../adapter.js";
-import type { TelemetryEvent } from "../../types/index.js";
-import { tryRequire, captureRequestId } from "./shared.js";
+import { tryRequire, getActiveRequestId, getPrototype } from "./shared.js";
 import { normalizePrismaOp } from "./normalize.js";
+import type { LibraryModule } from "./types.js";
+
+/** Shape of the $allOperations callback argument from Prisma's $extends API */
+interface PrismaOperationArgs {
+  model: string;
+  operation: string;
+  args: unknown;
+  query: (args: unknown) => Promise<unknown>;
+}
 
 let origConnect: ((...args: unknown[]) => Promise<unknown>) | null = null;
 let prismaProto: Record<string, unknown> | null = null;
@@ -14,13 +22,11 @@ export const prismaAdapter: BrakitAdapter = {
   },
 
   patch(emit) {
-    const prismaModule = tryRequire("@prisma/client") as Record<string, unknown> | null;
+    const prismaModule = tryRequire("@prisma/client") as LibraryModule | null;
     if (!prismaModule) return;
-    const PrismaClient =
-      (prismaModule.default as Record<string, unknown>)?.PrismaClient ?? prismaModule.PrismaClient;
-    if (!PrismaClient || typeof PrismaClient !== "function") return;
+    prismaProto = getPrototype<Record<string, unknown>>(prismaModule, "PrismaClient");
+    if (!prismaProto) return;
 
-    prismaProto = (PrismaClient as { prototype: Record<string, unknown> }).prototype;
     origConnect = prismaProto.$connect as (...args: unknown[]) => Promise<unknown>;
     if (typeof origConnect !== "function") return;
 
@@ -36,13 +42,8 @@ export const prismaAdapter: BrakitAdapter = {
                 operation,
                 args: opArgs,
                 query,
-              }: {
-                model: string;
-                operation: string;
-                args: unknown;
-                query: (args: unknown) => Promise<unknown>;
-              }) {
-                const requestId = captureRequestId();
+              }: PrismaOperationArgs) {
+                const requestId = getActiveRequestId();
                 const start = performance.now();
                 const result = await query(opArgs);
                 emit({

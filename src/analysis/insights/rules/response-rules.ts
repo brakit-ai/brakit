@@ -5,6 +5,8 @@ import { unwrapResponse } from "../../../utils/response.js";
 import { isErrorStatus } from "../../../utils/http-status.js";
 import { formatSize } from "../../../utils/format.js";
 import { INTERNAL_ID_SUFFIX } from "../../rules/patterns.js";
+import { brakitDebug } from "../../../utils/log.js";
+import { getErrorMessage } from "../../../utils/type-guards.js";
 import {
   OVERFETCH_MIN_FIELDS,
   OVERFETCH_MIN_INTERNAL_IDS,
@@ -21,13 +23,18 @@ export const responseOverfetchRule: InsightRule = {
     const insights: Insight[] = [];
     const seen = new Set<string>();
 
-    for (const r of ctx.nonStatic) {
-      if (isErrorStatus(r.statusCode) || !r.responseBody) continue;
-      const ep = getEndpointKey(r.method, r.path);
-      if (seen.has(ep)) continue;
+    for (const request of ctx.nonStatic) {
+      if (isErrorStatus(request.statusCode) || !request.responseBody) continue;
+      const endpointKey = getEndpointKey(request.method, request.path);
+      if (seen.has(endpointKey)) continue;
 
       let parsed: unknown;
-      try { parsed = JSON.parse(r.responseBody); } catch { continue; }
+      try {
+        parsed = JSON.parse(request.responseBody);
+      } catch (e) {
+        brakitDebug(`json parse: ${getErrorMessage(e)}`);
+        continue;
+      }
 
       const target = unwrapResponse(parsed);
       const inspectObj = Array.isArray(target) && target.length > 0 ? target[0] : target;
@@ -52,12 +59,12 @@ export const responseOverfetchRule: InsightRule = {
       }
 
       if (reasons.length > 0) {
-        seen.add(ep);
+        seen.add(endpointKey);
         insights.push({
           severity: "info",
           type: "response-overfetch",
           title: "Response Overfetch",
-          desc: `${ep} — ${reasons.join(", ")}`,
+          desc: `${endpointKey} — ${reasons.join(", ")}`,
           hint: "This response returns more data than the client likely needs. Use a DTO or select only required fields to reduce payload size and avoid leaking internal structure.",
           nav: "requests",
         });
@@ -74,15 +81,15 @@ export const largeResponseRule: InsightRule = {
   check(ctx: PreparedInsightContext): Insight[] {
     const insights: Insight[] = [];
 
-    for (const [ep, g] of ctx.endpointGroups) {
-      if (g.total < OVERFETCH_MIN_REQUESTS) continue;
-      const avgSize = Math.round(g.totalSize / g.total);
+    for (const [endpointKey, group] of ctx.endpointGroups) {
+      if (group.total < OVERFETCH_MIN_REQUESTS) continue;
+      const avgSize = Math.round(group.totalSize / group.total);
       if (avgSize > LARGE_RESPONSE_BYTES) {
         insights.push({
           severity: "info",
           type: "large-response",
           title: "Large Response",
-          desc: `${ep} — avg ${formatSize(avgSize)} response`,
+          desc: `${endpointKey} — avg ${formatSize(avgSize)} response`,
           hint: "Large API responses increase network transfer time. Implement pagination, field filtering, or response compression.",
           nav: "requests",
         });
