@@ -109,15 +109,42 @@ function aggregateEndpointMetrics(
 }
 
 /**
+ * Collect request IDs that were marked as React Strict Mode duplicates.
+ * Queries and fetches associated with these requests should be excluded
+ * from insight analysis to avoid false positives.
+ */
+function collectStrictModeDupeIds(ctx: InsightContext): Set<string> {
+  const ids = new Set<string>();
+  for (const flow of ctx.flows) {
+    for (const req of flow.requests) {
+      if (req.isStrictModeDupe) ids.add(req.id);
+    }
+  }
+  return ids;
+}
+
+/**
  * Pre-computes lookup tables (queries-by-request, fetches-by-request,
  * request-by-id) and aggregated per-endpoint metrics used by all insight
  * rules, so each rule can focus on detection logic rather than data wrangling.
  */
 export function buildInsightContext(ctx: InsightContext): PreparedInsightContext {
-  const nonStatic = filterUserRequests(ctx.requests);
+  const strictModeDupeIds = collectStrictModeDupeIds(ctx);
 
-  const queriesByReq = groupBy(ctx.queries, (query) => query.parentRequestId);
-  const fetchesByReq = groupBy(ctx.fetches, (fetch) => fetch.parentRequestId);
+  // Exclude strict mode dupe requests from analysis
+  const nonStatic = filterUserRequests(ctx.requests)
+    .filter((req) => !strictModeDupeIds.has(req.id));
+
+  // Exclude queries and fetches belonging to strict mode dupe requests
+  const filteredQueries = strictModeDupeIds.size > 0
+    ? ctx.queries.filter((q) => !q.parentRequestId || !strictModeDupeIds.has(q.parentRequestId))
+    : ctx.queries;
+  const filteredFetches = strictModeDupeIds.size > 0
+    ? ctx.fetches.filter((f) => !f.parentRequestId || !strictModeDupeIds.has(f.parentRequestId))
+    : ctx.fetches;
+
+  const queriesByReq = groupBy(filteredQueries, (query) => query.parentRequestId);
+  const fetchesByReq = groupBy(filteredFetches, (fetch) => fetch.parentRequestId);
 
   const reqById = new Map(nonStatic.map((request) => [request.id, request]));
 

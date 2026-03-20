@@ -1,4 +1,21 @@
-/** Dashboard state types — all interfaces for data flowing through the store. */
+/**
+ * Dashboard client types.
+ *
+ * These mirror the server-side types but represent the JSON shapes received
+ * from the dashboard API. The server types live in src/types/ and include
+ * Node.js-specific concerns; these are the browser-side equivalents.
+ */
+
+// ---------------------------------------------------------------------------
+// Shared enums — keep in sync with src/types/telemetry.ts
+// ---------------------------------------------------------------------------
+
+export type DbDriver = "pg" | "mysql2" | "prisma" | "asyncpg" | "sqlalchemy" | "sdk";
+export type LogLevel = "log" | "warn" | "error" | "info" | "debug";
+export type NormalizedOp = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
+export type IssueState = "open" | "fixing" | "resolved" | "stale" | "regressed";
+export type IssueCategory = "security" | "performance" | "reliability";
+export type AiFixStatus = "fixed" | "wont_fix";
 
 // ---------------------------------------------------------------------------
 // Global config injected by the server into the HTML page.
@@ -16,7 +33,7 @@ declare global {
 }
 
 // ---------------------------------------------------------------------------
-// Core traced data shapes
+// Core traced data shapes (API response types)
 // ---------------------------------------------------------------------------
 
 export interface TracedRequest {
@@ -55,28 +72,26 @@ export interface TracedFetch {
   responseHeaders?: Record<string, string>;
 }
 
-/** Keep in sync with src/types/telemetry.ts (server types). */
 export interface TracedQuery {
   id: string;
   parentRequestId: string | null;
   parentFetchId?: string;
   sql?: string;
-  normalizedOp?: "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
+  normalizedOp?: NormalizedOp;
   operation?: string;
   table?: string;
   model?: string;
   durationMs: number;
   timestamp: number;
   rowCount?: number;
-  driver: "pg" | "mysql2" | "prisma" | "asyncpg" | "sqlalchemy" | "sdk";
+  driver: DbDriver;
   source?: string;
 }
 
-/** Keep in sync with src/types/telemetry.ts (server types). */
 export interface TracedLog {
   id: string;
   parentRequestId: string | null;
-  level: "log" | "warn" | "error" | "info" | "debug";
+  level: LogLevel;
   message: string;
   args?: unknown[];
   timestamp: number;
@@ -107,7 +122,6 @@ export interface RequestFlow {
   redundancyPct: number;
 }
 
-/** Extended request shape returned by the flows API (adds label + duplicate info). */
 export interface FlowRequest extends TracedRequest {
   label: string;
   isDuplicate?: boolean;
@@ -115,7 +129,6 @@ export interface FlowRequest extends TracedRequest {
   pollingDurationMs?: number;
 }
 
-/** Flow data as returned from the API. */
 export interface FlowData {
   label: string;
   requests: FlowRequest[];
@@ -138,9 +151,9 @@ export interface FlowInsight {
 
 export interface StatefulIssue {
   issueId: string;
-  state: "open" | "fixing" | "resolved" | "stale" | "regressed";
+  state: IssueState;
   source: string;
-  category: "security" | "performance" | "reliability";
+  category: IssueCategory;
   issue: {
     type: string;
     severity: string;
@@ -158,7 +171,7 @@ export interface StatefulIssue {
   resolvedAt: number | null;
   occurrences: number;
   cleanHitsSinceLastSeen: number;
-  aiStatus: "fixed" | "wont_fix" | null;
+  aiStatus: AiFixStatus | null;
   aiNotes: string | null;
 }
 
@@ -255,9 +268,17 @@ export interface TimelineData {
   timeline: TimelineEvent[];
 }
 
+/** Response from the batch activity API (?requestIds=...). */
+export interface FlowActivityData {
+  requestIds: string[];
+  activities: Record<string, TimelineData>;
+}
+
 // ---------------------------------------------------------------------------
 // Store state
 // ---------------------------------------------------------------------------
+
+export type ViewMode = "simple" | "detailed";
 
 export type StoreStateKey =
   | "flows" | "requests" | "fetches" | "errors"
@@ -273,6 +294,6 @@ export interface DashboardState {
   queries: TracedQuery[];
   issues: StatefulIssue[];
   metrics: EndpointMetrics[];
-  viewMode: "simple" | "detailed";
+  viewMode: ViewMode;
   activeView: string;
 }

@@ -61,6 +61,12 @@ export {
   SSE_MAX_RETRIES,
 } from "./constants/runtime.js";
 
+export {
+  WF_LABEL_WIDTH_PX,
+  WF_DUR_WIDTH_PX,
+  WF_TICK_COUNT,
+} from "./constants/layout.js";
+
 // ---------------------------------------------------------------------------
 // Display constants — kept inline since they're purely visual config.
 // ---------------------------------------------------------------------------

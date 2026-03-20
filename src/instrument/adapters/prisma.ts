@@ -57,7 +57,7 @@ export const prismaAdapter: BrakitAdapter = {
                     table: model,
                     durationMs: Math.round(performance.now() - start),
                     parentRequestId: requestId,
-                    timestamp: Date.now(),
+                    timestamp: performance.now(),
                   },
                 });
                 return result;

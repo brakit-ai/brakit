@@ -73,7 +73,7 @@ export function setupFetchHook(emit: (event: TelemetryEvent) => void): void {
         statusCode: msg.response.statusCode ?? 0,
         durationMs: Math.round(performance.now() - info.startTime),
         parentRequestId: info.parentRequestId,
-        timestamp: Date.now(),
+        timestamp: performance.now(),
       },
     });
   });
