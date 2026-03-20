@@ -1,11 +1,11 @@
 import pc from "picocolors";
 import { VERSION } from "../index.js";
 import { DASHBOARD_PREFIX } from "../constants/index.js";
-import { TERMINAL_TRUNCATE_LENGTH } from "../constants/limits.js";
-import { SEVERITY_ICON } from "../constants/severity.js";
+import { TERMINAL_TRUNCATE_LENGTH } from "../constants/config.js";
+import { SEVERITY_ICON } from "../constants/labels.js";
 import type { Severity } from "../types/security.js";
 import type { Issue } from "../types/issue-lifecycle.js";
-import type { ServiceRegistry } from "../core/service-registry.js";
+import type { Services } from "../core/services.js";
 import type { AnalysisUpdate } from "../core/event-bus.js";
 
 const SEVERITY_COLOR: Record<Severity, (s: string) => string> = {
@@ -59,11 +59,11 @@ function formatConsoleLine(issue: Issue, suffix?: string): string {
 }
 
 export function startTerminalInsights(
-  registry: ServiceRegistry,
+  services: Services,
   proxyPort: number,
 ): () => void {
-  const bus = registry.get("event-bus");
-  const metricsStore = registry.get("metrics-store");
+  const bus = services.bus;
+  const metricsStore = services.metricsStore;
   const printedKeys = new Set<string>();
   const resolvedKeys = new Set<string>();
   const dashUrl = `localhost:${proxyPort}${DASHBOARD_PREFIX}`;

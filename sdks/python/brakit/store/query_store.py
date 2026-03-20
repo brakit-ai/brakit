@@ -1,7 +1,5 @@
-"""Ring-buffer store for traced database queries."""
+"""Type alias — QueryStore is just TelemetryStore[TracedQuery]."""
 from brakit.store.base import TelemetryStore
 from brakit.types.telemetry import TracedQuery
 
-
-class QueryStore(TelemetryStore[TracedQuery]):
-    pass
+QueryStore = TelemetryStore[TracedQuery]

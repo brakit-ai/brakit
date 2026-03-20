@@ -23,6 +23,7 @@ export interface TracedRequest {
   durationMs: number;
   responseSize: number;
   isStatic: boolean;
+  isHealthCheck: boolean;
 }
 
 export type RequestListener = (req: TracedRequest) => void;

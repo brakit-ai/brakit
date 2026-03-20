@@ -1,9 +1,130 @@
 import type { SecurityRule } from "./rule.js";
 import type { SecurityFinding } from "../../types/index.js";
-import { EMAIL_RE, INTERNAL_ID_KEYS, INTERNAL_ID_SUFFIX, RULE_HINTS, SELF_SERVICE_PATH, SENSITIVE_FIELD_NAMES } from "./patterns.js";
+import {
+  STACK_TRACE_RE,
+  DB_CONN_RE,
+  SQL_FRAGMENT_RE,
+  SECRET_VAL_RE,
+  LOG_SECRET_RE,
+  EMAIL_RE,
+  INTERNAL_ID_KEYS,
+  INTERNAL_ID_SUFFIX,
+  SENSITIVE_FIELD_NAMES,
+  SELF_SERVICE_PATH,
+  RULE_HINTS,
+} from "./patterns.js";
 import { unwrapResponse } from "../../utils/response.js";
-import { PII_SCAN_ARRAY_LIMIT, FULL_RECORD_MIN_FIELDS, LIST_PII_MIN_ITEMS, MAX_OBJECT_SCAN_DEPTH } from "../../constants/limits.js";
+import { PII_SCAN_ARRAY_LIMIT, FULL_RECORD_MIN_FIELDS, LIST_PII_MIN_ITEMS, MAX_OBJECT_SCAN_DEPTH } from "../../constants/config.js";
 import { isErrorStatus } from "../../utils/http-status.js";
+
+// ── Stack Trace Leak Detection ──
+
+export const stackTraceLeakRule: SecurityRule = {
+  id: "stack-trace-leak",
+  severity: "critical",
+  name: "Stack Trace Leaked to Client",
+  hint: RULE_HINTS["stack-trace-leak"],
+
+  check(ctx) {
+    const findings: SecurityFinding[] = [];
+    const seen = new Map<string, SecurityFinding>();
+
+    for (const r of ctx.requests) {
+      if (!r.responseBody) continue;
+      if (!STACK_TRACE_RE.test(r.responseBody)) continue;
+      const ep = `${r.method} ${r.path}`;
+      const existing = seen.get(ep);
+      if (existing) { existing.count++; continue; }
+      const finding: SecurityFinding = {
+        severity: "critical",
+        rule: "stack-trace-leak",
+        title: "Stack Trace Leaked to Client",
+        desc: `${ep} — response exposes internal stack trace`,
+        hint: this.hint,
+        endpoint: ep,
+        count: 1,
+      };
+      seen.set(ep, finding);
+      findings.push(finding);
+    }
+    return findings;
+  },
+};
+
+// ── Error Info Leak Detection ──
+
+const CRITICAL_PATTERNS = [
+  { re: DB_CONN_RE, label: "database connection string" },
+  { re: SQL_FRAGMENT_RE, label: "SQL query fragment" },
+  { re: SECRET_VAL_RE, label: "secret value" },
+];
+
+export const errorInfoLeakRule: SecurityRule = {
+  id: "error-info-leak",
+  severity: "critical",
+  name: "Sensitive Data in Error Response",
+  hint: RULE_HINTS["error-info-leak"],
+
+  check(ctx) {
+    const findings: SecurityFinding[] = [];
+    const seen = new Map<string, SecurityFinding>();
+
+    for (const r of ctx.requests) {
+      if (r.statusCode < 400) continue;
+      if (!r.responseBody) continue;
+      if (r.responseHeaders["x-nextjs-error"] || r.responseHeaders["x-nextjs-matched-path"]) continue;
+      const ep = `${r.method} ${r.path}`;
+      for (const p of CRITICAL_PATTERNS) {
+        if (!p.re.test(r.responseBody)) continue;
+        const dedupKey = `${ep}:${p.label}`;
+        const existing = seen.get(dedupKey);
+        if (existing) { existing.count++; continue; }
+        const finding: SecurityFinding = {
+          severity: "critical",
+          rule: "error-info-leak",
+          title: "Sensitive Data in Error Response",
+          desc: `${ep} — error response exposes ${p.label}`,
+          hint: this.hint,
+          endpoint: ep,
+          count: 1,
+        };
+        seen.set(dedupKey, finding);
+        findings.push(finding);
+      }
+    }
+    return findings;
+  },
+};
+
+// ── Sensitive Logs Detection ──
+
+export const sensitiveLogsRule: SecurityRule = {
+  id: "sensitive-logs",
+  severity: "warning",
+  name: "Sensitive Data in Logs",
+  hint: RULE_HINTS["sensitive-logs"],
+
+  check(ctx) {
+    let count = 0;
+    for (const log of ctx.logs) {
+      if (!log.message) continue;
+      if (log.message.startsWith("[brakit]")) continue;
+      if (LOG_SECRET_RE.test(log.message)) count++;
+    }
+    if (count === 0) return [];
+    return [{
+      severity: "warning" as const,
+      rule: "sensitive-logs",
+      title: "Sensitive Data in Logs",
+      desc: `Console output contains secret/token values — ${count} occurrence${count !== 1 ? "s" : ""}`,
+      hint: this.hint,
+      endpoint: "console",
+      count,
+    }];
+  },
+};
+
+// ── Response PII Leak Detection ──
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH"]);
 

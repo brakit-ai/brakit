@@ -31,6 +31,7 @@ function makeRequest(overrides: Partial<TracedRequest> = {}): TracedRequest {
     durationMs: 50,
     responseSize: 100,
     isStatic: false,
+    isHealthCheck: false,
     ...overrides,
   };
 }

@@ -14,7 +14,7 @@ import {
   MCP_SERVER_VERSION,
   INITIAL_DISCOVERY_TIMEOUT_MS,
   LAZY_DISCOVERY_TIMEOUT_MS,
-} from "../constants/mcp.js";
+} from "../constants/features.js";
 import { SERVER_INSTRUCTIONS, PROMPTS, PROMPT_MESSAGES } from "./prompts.js";
 
 export async function startMcpServer(): Promise<void> {

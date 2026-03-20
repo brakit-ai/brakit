@@ -33,6 +33,7 @@ export interface TracedRequest {
   durationMs: number;
   responseSize: number;
   isStatic: boolean;
+  isHealthCheck?: boolean;
   category?: string;
   label?: string;
   isDuplicate?: boolean;

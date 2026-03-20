@@ -1,4 +1,4 @@
-import { OVERFETCH_UNWRAP_MIN_SIZE } from "../constants/thresholds.js";
+import { OVERFETCH_UNWRAP_MIN_SIZE } from "../constants/config.js";
 
 export function tryParseJson(body: string | null): unknown {
   if (!body) return null;

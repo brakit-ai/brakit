@@ -5,7 +5,7 @@ import { brakitDebug } from "../utils/log.js";
 import {
   DISCOVERY_POLL_INTERVAL_MS,
   MAX_DISCOVERY_DEPTH,
-} from "../constants/mcp.js";
+} from "../constants/features.js";
 
 export interface DiscoveryResult {
   port: number;

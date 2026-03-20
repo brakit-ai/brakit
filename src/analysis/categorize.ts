@@ -8,6 +8,7 @@ export function detectCategory(req: TracedRequest): RequestCategory {
   const { method, url, statusCode, responseHeaders } = req;
 
   if (req.isStatic) return "static";
+  if (req.isHealthCheck) return "health-check";
 
   // 307 redirect with Clerk auth handshake params
   if (

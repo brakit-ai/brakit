@@ -1,5 +1,2 @@
-"""Content-Encoding constants for response decompression."""
-
-ENCODING_GZIP: str = "gzip"
-ENCODING_DEFLATE: str = "deflate"
-ENCODING_BROTLI: str = "br"
+"""Content-Encoding constants — re-exported from general.py for backward compatibility."""
+from brakit.constants.general import ENCODING_GZIP, ENCODING_DEFLATE, ENCODING_BROTLI  # noqa: F401

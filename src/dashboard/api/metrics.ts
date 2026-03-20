@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { MetricsStoreInterface } from "../../types/services.js";
 import { sendJson, requireGet, parseRequestUrl } from "./shared.js";
-import { HTTP_OK } from "../../constants/http.js";
+import { HTTP_OK } from "../../constants/labels.js";
 
 export function createMetricsHandler(
   metricsStore: MetricsStoreInterface,

@@ -83,7 +83,7 @@ export class MetricsStore {
   }
 
   recordRequest(req: TracedRequest, metrics: RequestMetrics): void {
-    if (req.isStatic) return;
+    if (req.isStatic || req.isHealthCheck) return;
     this.dirty = true;
     const key = getEndpointKey(req.method, req.path);
 

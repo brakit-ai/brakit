@@ -3,20 +3,19 @@ from __future__ import annotations
 
 import logging
 import time
-import traceback
-import uuid
 from typing import Any, TYPE_CHECKING
 
 from brakit.constants.events import CHANNEL_REQUEST_COMPLETED, CHANNEL_TELEMETRY_ERROR
-from brakit.constants.headers import BRAKIT_FETCH_ID_HEADER, BRAKIT_REQUEST_ID_HEADER
 from brakit.constants.limits import MAX_BODY_CAPTURE
 from brakit.constants.logger import LOGGER_NAME
 from brakit.core.context import clear_request_id, set_request_id
 from brakit.core.decompress import decompress_body
-from brakit.core.sanitize import sanitize_headers, sanitize_stack_trace
-from brakit.frameworks._shared import is_static
-from brakit.types.http import TracedRequest
-from brakit.types.telemetry import TracedError
+from brakit.frameworks._shared import (
+    is_static,
+    propagate_request_id,
+    build_traced_request,
+    build_traced_error,
+)
 
 if TYPE_CHECKING:
     from brakit.core.registry import ServiceRegistry
@@ -102,10 +101,7 @@ def _install_middleware(app: Any, registry: ServiceRegistry) -> None:
                 for k, v in scope.get("headers", [])
             }
 
-            propagated = req_headers.get(BRAKIT_REQUEST_ID_HEADER)
-            fetch_id = req_headers.get(BRAKIT_FETCH_ID_HEADER)
-            rid = propagated if propagated else uuid.uuid4().hex
-            is_child = propagated is not None
+            rid, fetch_id, is_child = propagate_request_id(req_headers)
             set_request_id(rid, fetch_id=fetch_id)
             start = time.perf_counter()
 
@@ -149,14 +145,7 @@ def _install_middleware(app: Any, registry: ServiceRegistry) -> None:
                 await self.app(scope, receive_wrapper, send_wrapper)
             except Exception as exc:
                 status_code = 500
-                error_entry = TracedError(
-                    id=uuid.uuid4().hex,
-                    parent_request_id=rid,
-                    timestamp=time.time() * 1_000,
-                    name=type(exc).__name__,
-                    message=str(exc),
-                    stack=sanitize_stack_trace(traceback.format_exc()),
-                )
+                error_entry = build_traced_error(exc, rid)
                 registry.error_store.add(error_entry)
                 registry.bus.emit(CHANNEL_TELEMETRY_ERROR, error_entry)
                 raise
@@ -190,19 +179,18 @@ def _install_middleware(app: Any, registry: ServiceRegistry) -> None:
                         logger.debug("failed to decode response body", exc_info=True)
 
                     method = scope.get("method", "GET")
-                    entry = TracedRequest(
-                        id=rid,
+                    entry = build_traced_request(
+                        rid=rid,
                         method=method,
                         url=path,
+                        path=path,
                         status_code=status_code,
-                        duration_ms=round(duration_ms, 2),
-                        timestamp=time.time() * 1_000,
-                        headers=sanitize_headers(req_headers),
-                        response_headers=sanitize_headers(resp_headers),
+                        duration_ms=duration_ms,
+                        headers=req_headers,
+                        response_headers=resp_headers,
                         request_body=request_body,
                         response_body=response_body,
                         response_size=response_size,
-                        is_static=is_static(path),
                     )
 
                     registry.request_store.add(entry)

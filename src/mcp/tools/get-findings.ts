@@ -3,7 +3,7 @@ import type { McpTool } from "../types.js";
 import type { SecuritySeverity } from "../../types/security.js";
 import type { IssueState } from "../../types/issue-lifecycle.js";
 import { enrichFindings } from "../enrichment.js";
-import { VALID_SECURITY_SEVERITIES } from "../../constants/lifecycle.js";
+import { VALID_SECURITY_SEVERITIES } from "../../constants/config.js";
 import { isValidIssueState } from "../../utils/type-guards.js";
 
 export const getFindings = {

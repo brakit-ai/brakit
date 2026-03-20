@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { BrakitConfig } from "../types/index.js";
-import type { ServiceRegistry } from "../core/service-registry.js";
+import type { Services } from "../core/services.js";
 import {
   DASHBOARD_PREFIX,
   DASHBOARD_API_REQUESTS,
@@ -27,7 +27,7 @@ import {
   HTTP_OK,
   HTTP_NO_CONTENT,
   SECURITY_HEADERS,
-} from "../constants/http.js";
+} from "../constants/labels.js";
 import {
   createRequestsHandler,
   createFlowsHandler,
@@ -61,35 +61,33 @@ export function isDashboardRequest(url: string): boolean {
 }
 
 export function createDashboardHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse, config: BrakitConfig) => void {
-  const metricsStore = registry.get("metrics-store");
+  const metricsStore = services.metricsStore;
 
   const routes: Record<string, RouteHandler> = {
-    [DASHBOARD_API_REQUESTS]: createRequestsHandler(registry),
-    [DASHBOARD_API_EVENTS]: createSSEHandler(registry),
-    [DASHBOARD_API_FLOWS]: createFlowsHandler(registry),
-    [DASHBOARD_API_CLEAR]: createClearHandler(registry),
-    [DASHBOARD_API_LOGS]: createLogsHandler(registry),
-    [DASHBOARD_API_FETCHES]: createFetchesHandler(registry),
-    [DASHBOARD_API_ERRORS]: createErrorsHandler(registry),
-    [DASHBOARD_API_QUERIES]: createQueriesHandler(registry),
+    [DASHBOARD_API_REQUESTS]: createRequestsHandler(services),
+    [DASHBOARD_API_EVENTS]: createSSEHandler(services),
+    [DASHBOARD_API_FLOWS]: createFlowsHandler(services),
+    [DASHBOARD_API_CLEAR]: createClearHandler(services),
+    [DASHBOARD_API_LOGS]: createLogsHandler(services),
+    [DASHBOARD_API_FETCHES]: createFetchesHandler(services),
+    [DASHBOARD_API_ERRORS]: createErrorsHandler(services),
+    [DASHBOARD_API_QUERIES]: createQueriesHandler(services),
     [DASHBOARD_API_METRICS]: createMetricsHandler(metricsStore),
     [DASHBOARD_API_METRICS_LIVE]: createLiveMetricsHandler(metricsStore),
-    [DASHBOARD_API_INGEST]: createIngestHandler(registry),
-    [DASHBOARD_API_ACTIVITY]: createActivityHandler(registry),
+    [DASHBOARD_API_INGEST]: createIngestHandler(services),
+    [DASHBOARD_API_ACTIVITY]: createActivityHandler(services),
   };
 
-  if (registry.has("issue-store")) {
-    const issueStore = registry.get("issue-store");
-    routes[DASHBOARD_API_INSIGHTS] = createIssuesHandler(issueStore);
-    routes[DASHBOARD_API_SECURITY] = createIssuesHandler(issueStore);
-    routes[DASHBOARD_API_FINDINGS] = createFindingsHandler(issueStore);
-    routes[DASHBOARD_API_FINDINGS_REPORT] = createIssuesReportHandler(
-      issueStore,
-      registry.get("event-bus"),
-    );
-  }
+  const issueStore = services.issueStore;
+  routes[DASHBOARD_API_INSIGHTS] = createIssuesHandler(issueStore);
+  routes[DASHBOARD_API_SECURITY] = createIssuesHandler(issueStore);
+  routes[DASHBOARD_API_FINDINGS] = createFindingsHandler(issueStore);
+  routes[DASHBOARD_API_FINDINGS_REPORT] = createIssuesReportHandler(
+    issueStore,
+    services.bus,
+  );
 
   routes[DASHBOARD_API_TAB] = (req, res) => {
     const raw = (req.url ?? "").split("tab=")[1];

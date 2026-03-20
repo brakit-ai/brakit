@@ -21,3 +21,4 @@ class TracedRequest:
     response_body: str | None = None
     response_size: int = 0
     is_static: bool = False
+    is_health_check: bool = False

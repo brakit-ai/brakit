@@ -52,19 +52,31 @@
 
 ## Quick Start
 
+### Node.js
+
 ```bash
 npx brakit install
+npm run dev
 ```
 
-That's it. Brakit detects your framework, adds itself as a devDependency, and creates the instrumentation file. Start your app normally:
+### Python (FastAPI / Flask)
 
 ```bash
-npm run dev
+pip install brakit
+```
+
+```python
+import brakit  # must be before framework import
+from fastapi import FastAPI
+
+app = FastAPI()
 ```
 
 Dashboard at `http://localhost:<port>/__brakit`. Issues in the terminal.
 
-> **Requirements:** Node.js >= 18 and a project with `package.json`.
+> **Full setup guide:** [brakit.ai/docs/introduction](https://brakit.ai/docs/introduction)
+
+> **Requirements:** Node.js >= 18. Python SDK requires Python >= 3.9.
 
 ---
 

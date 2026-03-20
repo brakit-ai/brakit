@@ -6,7 +6,7 @@ import type {
   EndpointSortKey,
 } from "./types.js";
 import type { TracedRequest } from "../types/index.js";
-import { ENRICHMENT_SEVERITY_FILTER } from "../constants/mcp.js";
+import { ENRICHMENT_SEVERITY_FILTER } from "../constants/features.js";
 import { parseEndpointKey } from "../utils/endpoint.js";
 
 export async function enrichFindings(

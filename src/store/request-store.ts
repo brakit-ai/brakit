@@ -7,7 +7,7 @@ import type {
   RequestListener,
 } from "../types/index.js";
 import { MAX_REQUEST_ENTRIES } from "../constants/index.js";
-import { isStaticPath } from "../utils/static-patterns.js";
+import { isStaticPath, isHealthCheckPath } from "../utils/static-patterns.js";
 
 export function flattenHeaders(headers: IncomingHttpHeaders): FlatHeaders {
   const flat: FlatHeaders = {};
@@ -74,6 +74,7 @@ export class RequestStore {
       durationMs: Math.round((input.endTime ?? performance.now()) - input.startTime),
       responseSize: input.responseBody?.length ?? 0,
       isStatic: isStaticPath(path),
+      isHealthCheck: isHealthCheckPath(path),
     };
 
     this.requests.push(entry);
