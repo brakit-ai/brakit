@@ -33,6 +33,7 @@ export function makeRequest(
     durationMs: 50,
     responseSize: 100,
     isStatic: false,
+    isHealthCheck: false,
     ...overrides,
   };
 }
