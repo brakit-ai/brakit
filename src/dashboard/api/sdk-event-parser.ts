@@ -6,7 +6,8 @@ import { isString, isNumber, isBoolean } from "../../utils/type-guards.js";
 import {
   SDK_EVENT_DB_QUERY, SDK_EVENT_FETCH, SDK_EVENT_LOG, SDK_EVENT_ERROR,
   SDK_EVENT_REQUEST, SDK_EVENT_AUTH_CHECK,
-} from "../../constants/sdk-events.js";
+} from "../../constants/labels.js";
+import { isHealthCheckPath } from "../../utils/static-patterns.js";
 
 type OmitId<T extends TelemetryEntry> = Omit<T, "id">;
 
@@ -143,6 +144,7 @@ export function parseRequestEvent(
     durationMs: num(data.durationMs, 0),
     responseSize: num(data.responseSize, 0),
     isStatic: isBoolean(data.isStatic) ? data.isStatic : false,
+    isHealthCheck: isBoolean(data.isHealthCheck) ? data.isHealthCheck : isHealthCheckPath(url.split("?")[0]),
   };
 }
 

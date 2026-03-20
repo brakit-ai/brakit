@@ -22,7 +22,8 @@ import { isLocalRequest } from "./guard.js";
 import { captureInProcess } from "./capture.js";
 import type { BrakitConfig } from "../types/index.js";
 import type { RequestStoreInterface } from "../types/services.js";
-import { HTTP_NOT_FOUND } from "../constants/http.js";
+import { HTTP_NOT_FOUND } from "../constants/labels.js";
+import { BRAKIT_REQUEST_ID_HEADER } from "../constants/index.js";
 
 export interface InterceptorDeps {
   handleDashboard: (req: http.IncomingMessage, res: http.ServerResponse, config: BrakitConfig) => void;
@@ -75,14 +76,16 @@ export function installInterceptor(deps: InterceptorDeps): void {
         return true;
       }
 
-      const requestId = randomUUID();
+      const propagated = req.headers[BRAKIT_REQUEST_ID_HEADER] as string | undefined;
+      const requestId = propagated ?? randomUUID();
+      const isChild = propagated !== undefined;
       const ctx: RequestContext = {
         requestId,
         url,
         method: req.method ?? "GET",
       };
 
-      captureInProcess(req, res, requestId, deps.requestStore);
+      captureInProcess(req, res, requestId, deps.requestStore, isChild);
 
       return requestContextStorage.run(ctx, () =>
         original.apply(this, [event, ...args]),

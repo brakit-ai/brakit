@@ -3,14 +3,18 @@ import type { Insight, PreparedInsightContext } from "../types.js";
 import { getEndpointKey } from "../../../utils/endpoint.js";
 import { unwrapResponse } from "../../../utils/response.js";
 import { isErrorStatus } from "../../../utils/http-status.js";
+import { formatSize } from "../../../utils/format.js";
 import { INTERNAL_ID_SUFFIX } from "../../rules/patterns.js";
 import {
   OVERFETCH_MIN_FIELDS,
   OVERFETCH_MIN_INTERNAL_IDS,
   OVERFETCH_NULL_RATIO,
   OVERFETCH_MANY_FIELDS,
+  OVERFETCH_MIN_REQUESTS,
+  LARGE_RESPONSE_BYTES,
 } from "../../../constants/index.js";
 
+// ── Response Overfetch Detection ──
 export const responseOverfetchRule: InsightRule = {
   id: "response-overfetch",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -55,6 +59,31 @@ export const responseOverfetchRule: InsightRule = {
           title: "Response Overfetch",
           desc: `${ep} — ${reasons.join(", ")}`,
           hint: "This response returns more data than the client likely needs. Use a DTO or select only required fields to reduce payload size and avoid leaking internal structure.",
+          nav: "requests",
+        });
+      }
+    }
+
+    return insights;
+  },
+};
+
+// ── Large Response Detection ──
+export const largeResponseRule: InsightRule = {
+  id: "large-response",
+  check(ctx: PreparedInsightContext): Insight[] {
+    const insights: Insight[] = [];
+
+    for (const [ep, g] of ctx.endpointGroups) {
+      if (g.total < OVERFETCH_MIN_REQUESTS) continue;
+      const avgSize = Math.round(g.totalSize / g.total);
+      if (avgSize > LARGE_RESPONSE_BYTES) {
+        insights.push({
+          severity: "info",
+          type: "large-response",
+          title: "Large Response",
+          desc: `${ep} — avg ${formatSize(avgSize)} response`,
+          hint: "Large API responses increase network transfer time. Implement pagination, field filtering, or response compression.",
           nav: "requests",
         });
       }

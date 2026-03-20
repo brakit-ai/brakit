@@ -1,7 +1,6 @@
 import type { IssueState, IssueCategory, AiFixStatus, IssuesData } from "../types/issue-lifecycle.js";
 import type { MetricsData } from "../types/metrics.js";
-import { VALID_ISSUE_STATES, VALID_ISSUE_CATEGORIES, VALID_AI_FIX_STATUSES } from "../constants/lifecycle.js";
-import { ISSUES_DATA_VERSION } from "../constants/limits.js";
+import { VALID_ISSUE_STATES, VALID_ISSUE_CATEGORIES, VALID_AI_FIX_STATUSES, ISSUES_DATA_VERSION } from "../constants/config.js";
 
 export function isString(val: unknown): val is string {
   return typeof val === "string";

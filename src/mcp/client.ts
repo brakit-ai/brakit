@@ -9,8 +9,8 @@ import {
   DASHBOARD_API_FINDINGS,
   DASHBOARD_API_FINDINGS_REPORT,
   DASHBOARD_API_CLEAR,
-} from "../constants/routes.js";
-import { CLIENT_FETCH_TIMEOUT_MS, HEALTH_CHECK_TIMEOUT_MS } from "../constants/mcp.js";
+} from "../constants/labels.js";
+import { CLIENT_FETCH_TIMEOUT_MS, HEALTH_CHECK_TIMEOUT_MS } from "../constants/features.js";
 import type { TracedQuery, TracedFetch } from "../types/index.js";
 import type {
   RequestsResponse,

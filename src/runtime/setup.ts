@@ -7,12 +7,9 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { existsSync, unlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import { EventBus } from "../core/event-bus.js";
-import { ServiceRegistry } from "../core/service-registry.js";
+import type { Services } from "../core/services.js";
 import { RequestStore } from "../store/request-store.js";
-import { FetchStore } from "../store/fetch-store.js";
-import { LogStore } from "../store/log-store.js";
-import { ErrorStore } from "../store/error-store.js";
-import { QueryStore } from "../store/query-store.js";
+import { TelemetryStore } from "../store/telemetry-store.js";
 import { MetricsStore, FileMetricsPersistence } from "../store/index.js";
 import { IssueStore } from "../store/issue-store.js";
 import { AnalysisEngine } from "../analysis/engine.js";
@@ -28,6 +25,10 @@ import type {
   TelemetryEvent,
   BrakitConfig,
   Framework,
+  TracedFetch,
+  TracedLog,
+  TracedError,
+  TracedQuery,
 } from "../types/index.js";
 import type { ChannelMap } from "../core/event-bus.js";
 import { health } from "./health.js";
@@ -61,25 +62,18 @@ export function setup(): Promise<void> {
 
 interface Stores {
   requestStore: RequestStore;
-  fetchStore: FetchStore;
-  logStore: LogStore;
-  errorStore: ErrorStore;
-  queryStore: QueryStore;
+  fetchStore: TelemetryStore<TracedFetch>;
+  logStore: TelemetryStore<TracedLog>;
+  errorStore: TelemetryStore<TracedError>;
+  queryStore: TelemetryStore<TracedQuery>;
 }
 
-function createStores(bus: EventBus, registry: ServiceRegistry): Stores {
+function createStores(bus: EventBus): Stores {
   const requestStore = new RequestStore();
-  const fetchStore = new FetchStore();
-  const logStore = new LogStore();
-  const errorStore = new ErrorStore();
-  const queryStore = new QueryStore();
-
-  registry.register("event-bus", bus);
-  registry.register("request-store", requestStore);
-  registry.register("fetch-store", fetchStore);
-  registry.register("log-store", logStore);
-  registry.register("error-store", errorStore);
-  registry.register("query-store", queryStore);
+  const fetchStore = new TelemetryStore<TracedFetch>();
+  const logStore = new TelemetryStore<TracedLog>();
+  const errorStore = new TelemetryStore<TracedError>();
+  const queryStore = new TelemetryStore<TracedQuery>();
 
   bus.on("telemetry:fetch", (data) => fetchStore.add(data));
   bus.on("telemetry:query", (data) => queryStore.add(data));
@@ -142,23 +136,24 @@ interface AnalysisServices {
 }
 
 function startAnalysis(
-  registry: ServiceRegistry,
+  bus: EventBus,
   stores: Stores,
   dataDir: string,
+  services: Services,
 ): AnalysisServices {
-  const bus = registry.get("event-bus");
-
   const metricsStore = new MetricsStore(new FileMetricsPersistence(dataDir));
   metricsStore.start();
-  registry.register("metrics-store", metricsStore);
 
   const issueStore = new IssueStore(dataDir);
   issueStore.start();
-  registry.register("issue-store", issueStore);
 
-  const analysisEngine = new AnalysisEngine(registry);
+  // Mutate the services object so AnalysisEngine can read all fields.
+  services.metricsStore = metricsStore;
+  services.issueStore = issueStore;
+
+  const analysisEngine = new AnalysisEngine(services);
   analysisEngine.start();
-  registry.register("analysis-engine", analysisEngine);
+  services.analysisEngine = analysisEngine;
 
   bus.on("request:completed", (req) => {
     const queries = stores.queryStore.getByRequest(req.id);
@@ -178,7 +173,7 @@ function startAnalysis(
 /* ------------------------------------------------------------------ */
 
 function registerLifecycle(
-  registry: ServiceRegistry,
+  allServices: Services,
   stores: Stores,
   services: AnalysisServices,
   cwd: string,
@@ -194,7 +189,7 @@ function registerLifecycle(
     recordRulesTriggered(
       services.analysisEngine.getFindings().map((f) => f.rule),
     );
-    trackSession(registry);
+    trackSession(allServices);
   };
 
   let teardownCalled = false;
@@ -238,20 +233,26 @@ async function doSetup(): Promise<void> {
   brakitDebug(`[setup] doSetup called at ${new Date().toISOString()}`);
 
   const bus = new EventBus();
-  const registry = new ServiceRegistry();
   const cwd = process.cwd();
 
   // Phase 1 — stores & event wiring
-  const stores = createStores(bus, registry);
+  const stores = createStores(bus);
+
+  // Build the services object incrementally — metricsStore, issueStore, and
+  // analysisEngine are assigned in startAnalysis once they're created.
+  const services = {
+    bus,
+    ...stores,
+  } as Services;
 
   // Phase 2 — instrumentation hooks
   const { framework, adapterNames } = installHooks(bus);
 
   initSession(framework, detectPackageManagerSync(cwd), false, adapterNames);
 
-  // Phase 3 — analysis, metrics & issues
+  // Phase 3 — analysis, metrics & issues (mutates `services` to fill remaining fields)
   const dataDir = getProjectDataDir(cwd);
-  const services = startAnalysis(registry, stores, dataDir);
+  const analysisServices = startAnalysis(bus, stores, dataDir, services);
 
   // Phase 4 — HTTP interceptor + dashboard
   const config: BrakitConfig = {
@@ -261,7 +262,7 @@ async function doSetup(): Promise<void> {
     maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE,
   };
 
-  const handleDashboard = createDashboardHandler(registry);
+  const handleDashboard = createDashboardHandler(services);
 
   installInterceptor({
     handleDashboard,
@@ -298,7 +299,7 @@ async function doSetup(): Promise<void> {
         }
       })();
 
-      startTerminalInsights(registry, port);
+      startTerminalInsights(services, port);
       process.stdout.write(
         `  brakit v${VERSION} — http://localhost:${port}${DASHBOARD_PREFIX}\n`,
       );
@@ -306,5 +307,5 @@ async function doSetup(): Promise<void> {
   });
 
   // Phase 5 — lifecycle (teardown + process handlers)
-  registerLifecycle(registry, stores, services, cwd);
+  registerLifecycle(services, stores, analysisServices, cwd);
 }

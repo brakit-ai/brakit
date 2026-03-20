@@ -1,12 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { exposedSecretRule } from "../../src/analysis/rules/exposed-secret.js";
-import { tokenInUrlRule } from "../../src/analysis/rules/token-in-url.js";
-import { stackTraceLeakRule } from "../../src/analysis/rules/stack-trace-leak.js";
-import { errorInfoLeakRule } from "../../src/analysis/rules/error-info-leak.js";
-import { insecureCookieRule } from "../../src/analysis/rules/insecure-cookie.js";
-import { sensitiveLogsRule } from "../../src/analysis/rules/sensitive-logs.js";
-import { corsCredentialsRule } from "../../src/analysis/rules/cors-credentials.js";
-import { responsePiiLeakRule } from "../../src/analysis/rules/response-pii-leak.js";
+import { exposedSecretRule, tokenInUrlRule, insecureCookieRule, corsCredentialsRule } from "../../src/analysis/rules/auth-rules.js";
+import { stackTraceLeakRule, errorInfoLeakRule, sensitiveLogsRule, responsePiiLeakRule } from "../../src/analysis/rules/data-rules.js";
 import { makeRequest, makeLog, makeSecurityContext } from "../helpers/index.js";
 
 describe("exposedSecretRule", () => {

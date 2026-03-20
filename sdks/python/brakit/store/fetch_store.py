@@ -1,7 +1,5 @@
-"""Ring-buffer store for traced outgoing HTTP fetches."""
+"""Type alias — FetchStore is just TelemetryStore[TracedFetch]."""
 from brakit.store.base import TelemetryStore
 from brakit.types.telemetry import TracedFetch
 
-
-class FetchStore(TelemetryStore[TracedFetch]):
-    pass
+FetchStore = TelemetryStore[TracedFetch]

@@ -3,20 +3,19 @@ from __future__ import annotations
 
 import logging
 import time
-import traceback
-import uuid
 from typing import Any, TYPE_CHECKING
 
 from brakit.constants.events import CHANNEL_REQUEST_COMPLETED, CHANNEL_TELEMETRY_ERROR
-from brakit.constants.headers import BRAKIT_REQUEST_ID_HEADER
 from brakit.constants.limits import MAX_BODY_CAPTURE
 from brakit.constants.logger import LOGGER_NAME
 from brakit.core.context import clear_request_id, set_request_id
 from brakit.core.decompress import decompress_body
-from brakit.core.sanitize import sanitize_headers, sanitize_stack_trace
-from brakit.frameworks._shared import is_static
-from brakit.types.http import TracedRequest
-from brakit.types.telemetry import TracedError
+from brakit.frameworks._shared import (
+    is_static,
+    propagate_request_id,
+    build_traced_request,
+    build_traced_error,
+)
 
 if TYPE_CHECKING:
     from brakit.core.registry import ServiceRegistry
@@ -86,11 +85,13 @@ def _install_hooks(app: Any, registry: ServiceRegistry) -> None:
                 from brakit.transport.port_file import write_port_if_needed
                 write_port_if_needed(int(port_str))
 
-        propagated = flask.request.headers.get(BRAKIT_REQUEST_ID_HEADER)
-        rid = propagated if propagated else uuid.uuid4().hex
+        req_headers = dict(flask.request.headers)
+        # Flask headers are case-insensitive; lower-case them for propagate_request_id
+        lower_headers = {k.lower(): v for k, v in req_headers.items()}
+        rid, _fetch_id, is_child = propagate_request_id(lower_headers)
         set_request_id(rid)
         setattr(flask.g, _FLASK_G_REQUEST_ID, rid)
-        setattr(flask.g, _FLASK_G_IS_CHILD, propagated is not None)
+        setattr(flask.g, _FLASK_G_IS_CHILD, is_child)
         setattr(flask.g, _FLASK_G_START, time.perf_counter())
 
     @app.after_request
@@ -132,19 +133,18 @@ def _install_hooks(app: Any, registry: ServiceRegistry) -> None:
         is_child: bool = getattr(flask.g, _FLASK_G_IS_CHILD, False)
 
         if not is_child:
-            entry = TracedRequest(
-                id=rid,
+            entry = build_traced_request(
+                rid=rid,
                 method=flask.request.method,
                 url=path,
+                path=path,
                 status_code=response.status_code,
-                duration_ms=round(duration_ms, 2),
-                timestamp=time.time() * 1_000,
-                headers=sanitize_headers(dict(flask.request.headers)),
-                response_headers=sanitize_headers(dict(response.headers)),
+                duration_ms=duration_ms,
+                headers=dict(flask.request.headers),
+                response_headers=dict(response.headers),
                 request_body=request_body,
                 response_body=response_body,
                 response_size=response_size,
-                is_static=is_static(path),
             )
 
             registry.request_store.add(entry)
@@ -158,13 +158,6 @@ def _install_hooks(app: Any, registry: ServiceRegistry) -> None:
         if exc is None:
             return
         rid: str | None = getattr(flask.g, _FLASK_G_REQUEST_ID, None)
-        error_entry = TracedError(
-            id=uuid.uuid4().hex,
-            parent_request_id=rid,
-            timestamp=time.time() * 1_000,
-            name=type(exc).__name__,
-            message=str(exc),
-            stack=sanitize_stack_trace(traceback.format_exc()),
-        )
+        error_entry = build_traced_error(exc, rid)
         registry.error_store.add(error_entry)
         registry.bus.emit(CHANNEL_TELEMETRY_ERROR, error_entry)

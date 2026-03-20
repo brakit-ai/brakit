@@ -1,14 +1,14 @@
 import { platform, release, arch } from "node:os";
 import { spawn } from "node:child_process";
 import { VERSION } from "../index.js";
-import type { ServiceRegistry } from "../core/service-registry.js";
+import type { Services } from "../core/services.js";
 import { readConfig, getOrCreateConfig, isTelemetryEnabled } from "./config.js";
 import {
   POSTHOG_HOST,
   POSTHOG_CAPTURE_PATH,
   POSTHOG_REQUEST_TIMEOUT_MS,
   SPEED_BUCKET_THRESHOLDS,
-} from "../constants/telemetry.js";
+} from "../constants/labels.js";
 
 export { isTelemetryEnabled, setTelemetryEnabled } from "./config.js";
 
@@ -89,13 +89,13 @@ function speedBucket(ms: number): string {
   return `>${t[t.length - 1]}ms`;
 }
 
-export function trackSession(registry: ServiceRegistry): void {
+export function trackSession(services: Services): void {
   if (!isTelemetryEnabled()) return;
 
   const isFirstSession = readConfig() === null;
   const config = getOrCreateConfig();
-  const metricsStore = registry.get("metrics-store");
-  const analysisEngine = registry.get("analysis-engine");
+  const metricsStore = services.metricsStore;
+  const analysisEngine = services.analysisEngine;
   const live = metricsStore.getLiveEndpoints();
   const insights = analysisEngine.getInsights();
   const findings = analysisEngine.getFindings();
@@ -126,9 +126,9 @@ export function trackSession(registry: ServiceRegistry): void {
       first_session: isFirstSession,
       adapters_detected: session.adapters,
       request_count: session.requestCount,
-      error_count: registry.get("error-store").getAll().length,
-      query_count: registry.get("query-store").getAll().length,
-      fetch_count: registry.get("fetch-store").getAll().length,
+      error_count: services.errorStore.getAll().length,
+      query_count: services.queryStore.getAll().length,
+      fetch_count: services.fetchStore.getAll().length,
       insight_count: insights.length,
       finding_count: findings.length,
       insight_types: [...session.insightTypes],

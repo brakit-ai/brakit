@@ -1,7 +1,5 @@
-"""Ring-buffer store for traced application errors."""
+"""Type alias — ErrorStore is just TelemetryStore[TracedError]."""
 from brakit.store.base import TelemetryStore
 from brakit.types.telemetry import TracedError
 
-
-class ErrorStore(TelemetryStore[TracedError]):
-    pass
+ErrorStore = TelemetryStore[TracedError]

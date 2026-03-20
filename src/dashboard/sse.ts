@@ -1,14 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { ServiceRegistry } from "../core/service-registry.js";
+import type { Services } from "../core/services.js";
 import { SSE_HEARTBEAT_INTERVAL_MS } from "../constants/index.js";
-import { HTTP_OK } from "../constants/http.js";
-import {
-  SSE_EVENT_FETCH,
-  SSE_EVENT_LOG,
-  SSE_EVENT_ERROR,
-  SSE_EVENT_QUERY,
-  SSE_EVENT_ISSUES,
-} from "../constants/events.js";
+import { HTTP_OK, SSE_EVENT_FETCH, SSE_EVENT_LOG, SSE_EVENT_ERROR, SSE_EVENT_QUERY, SSE_EVENT_ISSUES } from "../constants/labels.js";
 import { getCorsOrigin } from "./api/shared.js";
 
 interface SSEClient {
@@ -17,7 +10,7 @@ interface SSEClient {
 }
 
 export function createSSEHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   const clients = new Set<SSEClient>();
 
@@ -39,7 +32,7 @@ export function createSSEHandler(
     }
   }
 
-  const bus = registry.get("event-bus");
+  const bus = services.bus;
 
   bus.on("request:completed", (r) => broadcast(null, JSON.stringify(r)));
   bus.on("telemetry:fetch", (e) => broadcast(SSE_EVENT_FETCH, JSON.stringify(e)));

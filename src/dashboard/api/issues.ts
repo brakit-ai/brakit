@@ -3,7 +3,7 @@ import type { IssueStoreInterface } from "../../types/services.js";
 import type { EventBus } from "../../core/event-bus.js";
 import { sendJson, requireGet, parseRequestUrl, readJsonBody } from "./shared.js";
 import { isValidIssueState, isValidIssueCategory, isValidAiFixStatus } from "../../utils/type-guards.js";
-import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_NOT_FOUND, HTTP_METHOD_NOT_ALLOWED } from "../../constants/http.js";
+import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_NOT_FOUND, HTTP_METHOD_NOT_ALLOWED } from "../../constants/labels.js";
 
 export function createIssuesHandler(
   issueStore: IssueStoreInterface,

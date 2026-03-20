@@ -86,6 +86,8 @@ app = Flask(__name__)
 
 That's it. Start both apps normally. The Python SDK auto-detects your framework, instruments queries and fetches, and forwards everything to the Brakit dashboard at `http://localhost:<port>/__brakit`.
 
+> **Full setup guide:** [brakit.ai/docs/introduction](https://brakit.ai/docs/introduction)
+
 ---
 
 ## What You Get

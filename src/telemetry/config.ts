@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { DIR_MODE_OWNER_ONLY, FILE_MODE_OWNER_ONLY } from "../constants/network.js";
+import { DIR_MODE_OWNER_ONLY, FILE_MODE_OWNER_ONLY } from "../constants/features.js";
 
 export interface TelemetryConfig {
   telemetry: boolean;

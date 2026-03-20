@@ -1,6 +1,6 @@
 import type { BrakitClient } from "../client.js";
 import type { McpTool } from "../types.js";
-import { MAX_RESOLVED_DISPLAY } from "../../constants/mcp.js";
+import { MAX_RESOLVED_DISPLAY } from "../../constants/features.js";
 
 export const getReport = {
   name: "get_report",

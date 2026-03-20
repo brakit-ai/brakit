@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ReadonlyTelemetryStore } from "../../store/index.js";
 import { LOCALHOST_HOSTNAMES, SENSITIVE_HEADER_NAMES, URL_PARSE_BASE } from "../../constants/index.js";
-import { SENSITIVE_MASK_MIN_LENGTH, SENSITIVE_MASK_VISIBLE_CHARS, MAX_JSON_BODY_BYTES, SENSITIVE_MASK_PLACEHOLDER } from "../../constants/limits.js";
-import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_METHOD_NOT_ALLOWED, HTTP_PAYLOAD_TOO_LARGE } from "../../constants/http.js";
+import { SENSITIVE_MASK_MIN_LENGTH, SENSITIVE_MASK_VISIBLE_CHARS, MAX_JSON_BODY_BYTES, SENSITIVE_MASK_PLACEHOLDER } from "../../constants/config.js";
+import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_METHOD_NOT_ALLOWED, HTTP_PAYLOAD_TOO_LARGE } from "../../constants/labels.js";
 
 export function maskSensitiveHeaders(
   headers: Record<string, string>,

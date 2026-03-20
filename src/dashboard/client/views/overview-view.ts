@@ -57,7 +57,7 @@ export class OverviewView extends LitElement {
   render() {
     const s = this.store.state;
     const nonStatic = s.requests.filter(
-      (r) => !r.isStatic && (!r.path || r.path.indexOf(DASHBOARD_PREFIX) !== 0),
+      (r) => !r.isStatic && !r.isHealthCheck && (!r.path || r.path.indexOf(DASHBOARD_PREFIX) !== 0),
     );
     const hasData = nonStatic.length > 0 || s.queries.length > 0 || s.errors.length > 0;
 
@@ -69,9 +69,16 @@ export class OverviewView extends LitElement {
     }
 
     const errCount = nonStatic.filter((r) => r.statusCode >= 400).length;
+    const MEANINGFUL_CATEGORIES = new Set([
+      "data-fetch", "api-call", "server-action", "page-load",
+    ]);
+    const meaningful = nonStatic.filter(
+      (r) => r.category && MEANINGFUL_CATEGORIES.has(r.category),
+    );
+    const avgSource = meaningful.length > 0 ? meaningful : nonStatic;
     const avgMs =
-      nonStatic.length > 0
-        ? Math.round(nonStatic.reduce((sum, r) => sum + r.durationMs, 0) / nonStatic.length)
+      avgSource.length > 0
+        ? Math.round(avgSource.reduce((sum, r) => sum + r.durationMs, 0) / avgSource.length)
         : 0;
 
     const all = s.issues || [];

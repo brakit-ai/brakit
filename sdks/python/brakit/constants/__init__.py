@@ -1,5 +1,5 @@
-"""SDK constants — barrel re-export from domain-specific modules."""
-from brakit.constants.events import (
+"""SDK constants — barrel re-export from consolidated modules."""
+from brakit.constants.general import (
     CHANNEL_REQUEST_COMPLETED,
     CHANNEL_TELEMETRY_ERROR,
     CHANNEL_TELEMETRY_FETCH,
@@ -10,17 +10,18 @@ from brakit.constants.events import (
     EVENT_TYPE_LOG,
     EVENT_TYPE_QUERY,
     EVENT_TYPE_REQUEST,
-)
-from brakit.constants.encoding import (
     ENCODING_BROTLI,
     ENCODING_DEFLATE,
     ENCODING_GZIP,
-)
-from brakit.constants.headers import (
     BRAKIT_FETCH_ID_HEADER,
     BRAKIT_REQUEST_ID_HEADER,
     SENSITIVE_HEADER_NAMES,
     SENSITIVE_QUERY_PARAMS,
+    LOGGER_NAME,
+    DASHBOARD_PREFIX,
+    ROUTE_INGEST,
+    STATIC_EXTENSIONS,
+    HEALTH_CHECK_PATTERNS,
 )
 from brakit.constants.limits import (
     MAX_BODY_CAPTURE,
@@ -28,9 +29,14 @@ from brakit.constants.limits import (
     MAX_SQL_LENGTH,
     MAX_STORE_ENTRIES,
     MAX_TASK_CONTEXT_ENTRIES,
-)
-from brakit.constants.logger import LOGGER_NAME
-from brakit.constants.network import (
+    MASK_MIN_LENGTH,
+    MASK_VISIBLE_CHARS,
+    BATCH_SIZE,
+    FLUSH_INTERVAL_S,
+    MAX_QUEUE_SIZE,
+    PORT_RETRY_COUNT,
+    PORT_RETRY_INTERVAL_S,
+    TRANSPORT_TIMEOUT_S,
     BRAKIT_DIR_NAME,
     CI_SIGNALS,
     CLOUD_SIGNALS,
@@ -41,19 +47,6 @@ from brakit.constants.network import (
     PRODUCTION_SIGNALS,
     PRODUCTION_VALUES,
     PRODUCTION_VALUES_SET,
-)
-from brakit.constants.patterns import STATIC_EXTENSIONS
-from brakit.constants.routes import (
-    DASHBOARD_PREFIX,
-    ROUTE_INGEST,
-)
-from brakit.constants.transport import (
-    BATCH_SIZE,
-    FLUSH_INTERVAL_S,
-    MAX_QUEUE_SIZE,
-    PORT_RETRY_COUNT,
-    PORT_RETRY_INTERVAL_S,
-    TRANSPORT_TIMEOUT_S,
 )
 
 __all__ = [
@@ -80,7 +73,10 @@ __all__ = [
     "EVENT_TYPE_QUERY",
     "EVENT_TYPE_REQUEST",
     "FLUSH_INTERVAL_S",
+    "HEALTH_CHECK_PATTERNS",
     "LOGGER_NAME",
+    "MASK_MIN_LENGTH",
+    "MASK_VISIBLE_CHARS",
     "MAX_BODY_CAPTURE",
     "MAX_HEALTH_ERRORS",
     "MAX_PARENT_DEPTH",

@@ -5,7 +5,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { resolve, join } from "node:path";
-import { PROJECT_HASH_LENGTH } from "../constants/limits.js";
+import { PROJECT_HASH_LENGTH } from "../constants/config.js";
 import { brakitDebug } from "./log.js";
 import { getErrorMessage } from "./type-guards.js";
 

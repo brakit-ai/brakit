@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Issue } from "../types/issue-lifecycle.js";
-import { ISSUE_ID_HASH_LENGTH } from "../constants/limits.js";
+import { ISSUE_ID_HASH_LENGTH } from "../constants/config.js";
 
 /**
  * Compute a stable issue ID by hashing rule + endpoint + description.

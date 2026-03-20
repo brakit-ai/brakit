@@ -16,4 +16,4 @@ export {
   LARGE_RESPONSE_BYTES,
   SLOW_REQUEST_THRESHOLD_MS,
   CLEAN_HITS_FOR_RESOLUTION,
-} from "../../../constants/thresholds.js";
+} from "../../../constants/config.js";

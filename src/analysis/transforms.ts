@@ -3,6 +3,7 @@ import {
   SLOW_REQUEST_THRESHOLD_MS,
   MIN_POLLING_SEQUENCE,
 } from "../constants/index.js";
+import { STRICT_MODE_MAX_GAP_MS } from "../constants/config.js";
 import { getEffectivePath } from "./categorize.js";
 import { prettifyEndpoint } from "./label.js";
 import { isServerError } from "../utils/http-status.js";
@@ -18,8 +19,25 @@ export function markDuplicates(requests: LabeledRequest[]): void {
 
   // React Strict Mode doubles ALL effects — every endpoint appears exactly 2x.
   // Mark the second occurrences as Strict Mode dupes instead of real duplicates.
-  const isStrictMode =
+  // Additionally validate temporal proximity: Strict Mode fires effects almost
+  // instantly, so both requests in each pair must be within a small time gap.
+  let isStrictMode =
     counts.size > 0 && [...counts.values()].every((c) => c === 2);
+
+  if (isStrictMode) {
+    const firstByKey = new Map<string, LabeledRequest>();
+    for (const req of requests) {
+      if (req.category !== "data-fetch" && req.category !== "auth-check") continue;
+      const key = `${req.method} ${getEffectivePath(req).split("?")[0]}`;
+      const first = firstByKey.get(key);
+      if (!first) {
+        firstByKey.set(key, req);
+      } else if (Math.abs(req.startedAt - first.startedAt) > STRICT_MODE_MAX_GAP_MS) {
+        isStrictMode = false;
+        break;
+      }
+    }
+  }
 
   const seen = new Set<string>();
   for (const req of requests) {

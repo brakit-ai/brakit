@@ -1,6 +1,6 @@
 import type { BrakitClient } from "../client.js";
 import type { McpTool } from "../types.js";
-import { MAX_TIMELINE_EVENTS } from "../../constants/mcp.js";
+import { MAX_TIMELINE_EVENTS } from "../../constants/features.js";
 import { enrichRequestDetail } from "../enrichment.js";
 
 export const getRequestDetail = {

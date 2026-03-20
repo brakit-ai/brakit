@@ -1,5 +1,2 @@
-"""Dashboard and API route prefixes."""
-from __future__ import annotations
-
-DASHBOARD_PREFIX: str = "/__brakit"
-ROUTE_INGEST: str = "/__brakit/api/ingest"
+"""Route constants — re-exported from general.py for backward compatibility."""
+from brakit.constants.general import DASHBOARD_PREFIX, ROUTE_INGEST  # noqa: F401

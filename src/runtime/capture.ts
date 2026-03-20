@@ -70,6 +70,7 @@ export function captureInProcess(
   res: ServerResponse,
   requestId: string,
   requestStore: RequestStoreInterface,
+  isChild = false,
 ): void {
   const startTime = performance.now();
   const method = req.method ?? "GET";
@@ -125,31 +126,33 @@ export function captureInProcess(
     const responseContentType = String(res.getHeader("content-type") ?? "");
 
     const capturedChunks = resChunks.slice();
-    void (async () => {
-      try {
-        let body = capturedChunks.length > 0 ? Buffer.concat(capturedChunks) : null;
-        if (body && encoding && !truncated) {
-          body = await decompressAsync(body, encoding);
-        }
+    if (!isChild) {
+      void (async () => {
+        try {
+          let body = capturedChunks.length > 0 ? Buffer.concat(capturedChunks) : null;
+          if (body && encoding && !truncated) {
+            body = await decompressAsync(body, encoding);
+          }
 
-        requestStore.capture({
-          requestId,
-          method,
-          url: req.url ?? "/",
-          requestHeaders: req.headers,
-          requestBody: null,
-          statusCode,
-          responseHeaders,
-          responseBody: body,
-          responseContentType,
-          startTime,
-          endTime,
-          config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
-        });
-      } catch (e) {
-        brakitDebug(`capture store: ${getErrorMessage(e)}`);
-      }
-    })();
+          requestStore.capture({
+            requestId,
+            method,
+            url: req.url ?? "/",
+            requestHeaders: req.headers,
+            requestBody: null,
+            statusCode,
+            responseHeaders,
+            responseBody: body,
+            responseContentType,
+            startTime,
+            endTime,
+            config: { maxBodyCapture: DEFAULT_MAX_BODY_CAPTURE },
+          });
+        } catch (e) {
+          brakitDebug(`capture store: ${getErrorMessage(e)}`);
+        }
+      })();
+    }
 
     return result;
   } as typeof res.end;

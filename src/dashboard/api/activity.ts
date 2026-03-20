@@ -1,13 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { ServiceRegistry } from "../../core/service-registry.js";
+import type { Services } from "../../core/services.js";
 import type { TimelineEvent } from "../../types/api-contracts.js";
 import { sendJson, requireGet, parseRequestUrl } from "./shared.js";
-import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_INTERNAL_ERROR } from "../../constants/http.js";
-import { TIMELINE_FETCH, TIMELINE_LOG, TIMELINE_ERROR, TIMELINE_QUERY } from "../../constants/timeline.js";
+import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_INTERNAL_ERROR, TIMELINE_FETCH, TIMELINE_LOG, TIMELINE_ERROR, TIMELINE_QUERY } from "../../constants/labels.js";
 import { brakitDebug } from "../../utils/log.js";
 
 export function createActivityHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;
@@ -21,10 +20,10 @@ export function createActivityHandler(
         return;
       }
 
-      const fetches = registry.get("fetch-store").getByRequest(requestId);
-      const logs = registry.get("log-store").getByRequest(requestId);
-      const errors = registry.get("error-store").getByRequest(requestId);
-      const queries = registry.get("query-store").getByRequest(requestId);
+      const fetches = services.fetchStore.getByRequest(requestId);
+      const logs = services.logStore.getByRequest(requestId);
+      const errors = services.errorStore.getByRequest(requestId);
+      const queries = services.queryStore.getByRequest(requestId);
 
       const timeline: TimelineEvent[] = [];
 

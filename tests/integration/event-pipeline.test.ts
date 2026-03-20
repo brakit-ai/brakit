@@ -1,15 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { QueryStore } from "../../src/store/query-store.js";
-import { FetchStore } from "../../src/store/fetch-store.js";
-import { LogStore } from "../../src/store/log-store.js";
-import { ErrorStore } from "../../src/store/error-store.js";
+import { TelemetryStore } from "../../src/store/telemetry-store.js";
+import type { TracedQuery, TracedFetch, TracedLog, TracedError } from "../../src/types/index.js";
 import { InsightRunner } from "../../src/analysis/insights/runner.js";
-import { n1Rule } from "../../src/analysis/insights/rules/n1.js";
-import { errorRule } from "../../src/analysis/insights/rules/error.js";
-import { redundantQueryRule } from "../../src/analysis/insights/rules/redundant-query.js";
+import { n1Rule, redundantQueryRule } from "../../src/analysis/insights/rules/query-rules.js";
+import { errorRule } from "../../src/analysis/insights/rules/reliability-rules.js";
 import { SecurityScanner } from "../../src/analysis/rules/scanner.js";
-import { exposedSecretRule } from "../../src/analysis/rules/exposed-secret.js";
-import { tokenInUrlRule } from "../../src/analysis/rules/token-in-url.js";
+import { exposedSecretRule, tokenInUrlRule } from "../../src/analysis/rules/auth-rules.js";
 import type { TelemetryEvent } from "../../src/types/index.js";
 import { makeRequest, makeQuery, makeError, makeFetch, makeInsightContext } from "../helpers/index.js";
 
@@ -19,10 +15,10 @@ import { makeRequest, makeQuery, makeError, makeFetch, makeInsightContext } from
  */
 
 describe("event pipeline: stores → analysis", () => {
-  let queryStore: QueryStore;
-  let fetchStore: FetchStore;
-  let logStore: LogStore;
-  let errorStore: ErrorStore;
+  let queryStore: TelemetryStore<TracedQuery>;
+  let fetchStore: TelemetryStore<TracedFetch>;
+  let logStore: TelemetryStore<TracedLog>;
+  let errorStore: TelemetryStore<TracedError>;
 
   function routeEvent(event: TelemetryEvent): void {
     switch (event.type) {
@@ -34,10 +30,10 @@ describe("event pipeline: stores → analysis", () => {
   }
 
   beforeEach(() => {
-    queryStore = new QueryStore();
-    fetchStore = new FetchStore();
-    logStore = new LogStore();
-    errorStore = new ErrorStore();
+    queryStore = new TelemetryStore<TracedQuery>();
+    fetchStore = new TelemetryStore<TracedFetch>();
+    logStore = new TelemetryStore<TracedLog>();
+    errorStore = new TelemetryStore<TracedError>();
   });
 
   it("routes query events to the query store", () => {

@@ -3,6 +3,7 @@ import type { TracedRequest } from "./http.js";
 export type RequestCategory =
   | "auth-handshake"
   | "auth-check"
+  | "health-check"
   | "middleware"
   | "server-action"
   | "api-call"

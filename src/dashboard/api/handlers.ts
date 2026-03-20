@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { groupRequestsIntoFlows } from "../../analysis/group.js";
 import { DEFAULT_API_LIMIT, MAX_API_LIMIT } from "../../constants/index.js";
-import { HTTP_OK, HTTP_METHOD_NOT_ALLOWED } from "../../constants/http.js";
-import type { ServiceRegistry } from "../../core/service-registry.js";
+import { HTTP_OK, HTTP_METHOD_NOT_ALLOWED } from "../../constants/labels.js";
+import type { Services } from "../../core/services.js";
 import { sendJson, requireGet, handleTelemetryGet, maskSensitiveHeaders, parseRequestUrl } from "./shared.js";
 import type { TracedRequest } from "../../types/index.js";
 
@@ -15,7 +15,7 @@ function sanitizeRequest(r: TracedRequest): TracedRequest {
 }
 
 export function createRequestsHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;
@@ -28,7 +28,7 @@ export function createRequestsHandler(
     const limit = Math.min(Math.max(rawLimit || DEFAULT_API_LIMIT, 1), MAX_API_LIMIT);
     const offset = Math.max(parseInt(url.searchParams.get("offset") ?? "0", 10) || 0, 0);
 
-    let results = [...registry.get("request-store").getAll()].reverse();
+    let results = [...services.requestStore.getAll()].reverse();
 
     if (method) {
       results = results.filter((r) => r.method === method.toUpperCase());
@@ -65,11 +65,11 @@ export function createRequestsHandler(
 }
 
 export function createFlowsHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (!requireGet(req, res)) return;
-    const flows = groupRequestsIntoFlows(registry.get("request-store").getAll())
+    const flows = groupRequestsIntoFlows(services.requestStore.getAll())
       .reverse()
       .map((flow) => ({
         ...flow,
@@ -80,45 +80,45 @@ export function createFlowsHandler(
 }
 
 export function createClearHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (req.method !== "POST") {
       sendJson(req, res, HTTP_METHOD_NOT_ALLOWED, { error: "Method not allowed" });
       return;
     }
-    registry.get("request-store").clear();
-    registry.get("fetch-store").clear();
-    registry.get("log-store").clear();
-    registry.get("error-store").clear();
-    registry.get("query-store").clear();
-    registry.get("metrics-store").reset();
-    if (registry.has("issue-store")) registry.get("issue-store").clear();
-    registry.get("event-bus").emit("store:cleared", undefined);
+    services.requestStore.clear();
+    services.fetchStore.clear();
+    services.logStore.clear();
+    services.errorStore.clear();
+    services.queryStore.clear();
+    services.metricsStore.reset();
+    services.issueStore.clear();
+    services.bus.emit("store:cleared", undefined);
     sendJson(req, res, HTTP_OK, { cleared: true });
   };
 }
 
 export function createFetchesHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
-  return (req, res) => handleTelemetryGet(req, res, registry.get("fetch-store"));
+  return (req, res) => handleTelemetryGet(req, res, services.fetchStore);
 }
 
 export function createLogsHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
-  return (req, res) => handleTelemetryGet(req, res, registry.get("log-store"));
+  return (req, res) => handleTelemetryGet(req, res, services.logStore);
 }
 
 export function createErrorsHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
-  return (req, res) => handleTelemetryGet(req, res, registry.get("error-store"));
+  return (req, res) => handleTelemetryGet(req, res, services.errorStore);
 }
 
 export function createQueriesHandler(
-  registry: ServiceRegistry,
+  services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
-  return (req, res) => handleTelemetryGet(req, res, registry.get("query-store"));
+  return (req, res) => handleTelemetryGet(req, res, services.queryStore);
 }
