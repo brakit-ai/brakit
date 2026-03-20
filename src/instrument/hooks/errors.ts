@@ -12,7 +12,7 @@ function createCaptureError(emit: (event: TelemetryEvent) => void) {
         message: error.message,
         stack: error.stack ?? "",
         parentRequestId: ctx?.requestId ?? null,
-        timestamp: Date.now(),
+        timestamp: performance.now(),
       },
     });
   };

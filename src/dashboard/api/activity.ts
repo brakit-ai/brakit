@@ -5,6 +5,46 @@ import { sendJson, requireGet, parseRequestUrl } from "./shared.js";
 import { HTTP_OK, HTTP_BAD_REQUEST, HTTP_INTERNAL_ERROR, TIMELINE_FETCH, TIMELINE_LOG, TIMELINE_ERROR, TIMELINE_QUERY } from "../../constants/labels.js";
 import { brakitDebug } from "../../utils/log.js";
 
+/** Prevent abuse — cap the number of request IDs in a single batch call. */
+const MAX_BATCH_IDS = 50;
+
+interface TimelineResult {
+  total: number;
+  timeline: TimelineEvent[];
+  counts: { fetches: number; logs: number; errors: number; queries: number };
+}
+
+function buildTimeline(services: Services, requestId: string): TimelineResult {
+  const fetches = services.fetchStore.getByRequest(requestId);
+  const logs = services.logStore.getByRequest(requestId);
+  const errors = services.errorStore.getByRequest(requestId);
+  const queries = services.queryStore.getByRequest(requestId);
+
+  const timeline: TimelineEvent[] = [];
+
+  for (const fetch of fetches)
+    timeline.push({ type: TIMELINE_FETCH, timestamp: fetch.timestamp, data: fetch });
+  for (const log of logs)
+    timeline.push({ type: TIMELINE_LOG, timestamp: log.timestamp, data: log });
+  for (const error of errors)
+    timeline.push({ type: TIMELINE_ERROR, timestamp: error.timestamp, data: error });
+  for (const query of queries)
+    timeline.push({ type: TIMELINE_QUERY, timestamp: query.timestamp, data: query });
+
+  timeline.sort((a, b) => a.timestamp - b.timestamp);
+
+  return {
+    total: timeline.length,
+    timeline,
+    counts: {
+      fetches: fetches.length,
+      logs: logs.length,
+      errors: errors.length,
+      queries: queries.length,
+    },
+  };
+}
+
 export function createActivityHandler(
   services: Services,
 ): (req: IncomingMessage, res: ServerResponse) => void {
@@ -14,41 +54,26 @@ export function createActivityHandler(
     try {
       const url = parseRequestUrl(req);
       const requestId = url.searchParams.get("requestId");
+      const requestIds = url.searchParams.get("requestIds");
 
-      if (!requestId) {
-        sendJson(req, res, HTTP_BAD_REQUEST, { error: "requestId parameter required" });
+      if (!requestId && !requestIds) {
+        sendJson(req, res, HTTP_BAD_REQUEST, { error: "requestId or requestIds parameter required" });
         return;
       }
 
-      const fetches = services.fetchStore.getByRequest(requestId);
-      const logs = services.logStore.getByRequest(requestId);
-      const errors = services.errorStore.getByRequest(requestId);
-      const queries = services.queryStore.getByRequest(requestId);
+      if (requestId) {
+        const result = buildTimeline(services, requestId);
+        sendJson(req, res, HTTP_OK, { requestId, ...result });
+        return;
+      }
 
-      const timeline: TimelineEvent[] = [];
+      const ids = (requestIds || "").split(",").filter(Boolean).slice(0, MAX_BATCH_IDS);
+      const activities: Record<string, TimelineResult> = {};
+      for (const id of ids) {
+        activities[id] = buildTimeline(services, id);
+      }
 
-      for (const fetch of fetches)
-        timeline.push({ type: TIMELINE_FETCH, timestamp: fetch.timestamp, data: fetch });
-      for (const log of logs)
-        timeline.push({ type: TIMELINE_LOG, timestamp: log.timestamp, data: log });
-      for (const error of errors)
-        timeline.push({ type: TIMELINE_ERROR, timestamp: error.timestamp, data: error });
-      for (const query of queries)
-        timeline.push({ type: TIMELINE_QUERY, timestamp: query.timestamp, data: query });
-
-      timeline.sort((a, b) => a.timestamp - b.timestamp);
-
-      sendJson(req, res, HTTP_OK, {
-        requestId,
-        total: timeline.length,
-        timeline,
-        counts: {
-          fetches: fetches.length,
-          logs: logs.length,
-          errors: errors.length,
-          queries: queries.length,
-        },
-      });
+      sendJson(req, res, HTTP_OK, { requestIds: ids, activities });
     } catch (err) {
       brakitDebug(`activity handler error: ${err}`);
       if (!res.headersSent) {

@@ -53,7 +53,13 @@ function buildQueryEvent(
   return {
     type: "query",
     data: {
-      driver: config.driver as "pg" | "mysql2" | "prisma" | "asyncpg" | "sqlalchemy" | "sdk",
+      driver: config.driver as
+        | "pg"
+        | "mysql2"
+        | "prisma"
+        | "asyncpg"
+        | "sqlalchemy"
+        | "sdk",
       source: config.driver,
       sql,
       normalizedOp: op,
@@ -61,7 +67,7 @@ function buildQueryEvent(
       durationMs: Math.round(performance.now() - start),
       rowCount: rowCount ?? undefined,
       parentRequestId: requestId,
-      timestamp: Date.now(),
+      timestamp: performance.now(),
     },
   };
 }
@@ -89,7 +95,9 @@ export function wrapQueryMethod(
     // Callback-based
     const lastIdx = args.length - 1;
     if (lastIdx >= 0 && typeof args[lastIdx] === "function") {
-      const originalCallback = args[lastIdx] as (...cbArgs: unknown[]) => unknown;
+      const originalCallback = args[lastIdx] as (
+        ...cbArgs: unknown[]
+      ) => unknown;
       args[lastIdx] = function (this: unknown, ...callbackArgs: unknown[]) {
         emitQuery(callbackArgs[1]);
         return originalCallback.apply(this, callbackArgs);
@@ -112,8 +120,15 @@ export function wrapQueryMethod(
     }
 
     // EventEmitter-based
-    if (config.supportsEventEmitter && result && typeof (result as { on?: unknown }).on === "function") {
-      (result as { on(event: string, fn: (res: unknown) => void): void }).on("end", (res) => emitQuery(res));
+    if (
+      config.supportsEventEmitter &&
+      result &&
+      typeof (result as { on?: unknown }).on === "function"
+    ) {
+      (result as { on(event: string, fn: (res: unknown) => void): void }).on(
+        "end",
+        (res) => emitQuery(res),
+      );
       return result;
     }
 

@@ -83,7 +83,12 @@ export const MAX_DUPLICATE_INSIGHTS = 3;
 export const INSIGHT_WINDOW_PER_ENDPOINT = 20;
 export const CLEAN_HITS_FOR_RESOLUTION = 5;
 export const STALE_ISSUE_TTL_MS = 30 * 60 * 1_000;
-export const STRICT_MODE_MAX_GAP_MS = 500;
+/**
+ * Maximum gap between paired requests for React Strict Mode detection.
+ * Set to 2s to accommodate Next.js App Router where hydration + strict mode
+ * remount (mount → unmount → remount) can take longer than expected.
+ */
+export const STRICT_MODE_MAX_GAP_MS = 2000;
 
 // ── Metrics ──
 

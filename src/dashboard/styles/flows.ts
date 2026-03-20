@@ -13,8 +13,8 @@ export function getFlowStyles(): string {
 .flow-req-count{font-family:var(--mono);font-size:12px;color:var(--text-muted);flex-shrink:0;text-align:right}
 .flow-badge-pill{font-size:11px;flex-shrink:0;font-family:var(--mono);font-weight:600;padding:2px 10px;border-radius:10px;text-align:center}
 .flow-badge-pill.badge-clean{background:var(--green-bg);color:var(--green)}
-.flow-badge-pill.badge-warn{background:rgba(217,119,6,0.07);color:var(--amber)}
-.flow-badge-pill.badge-error{background:rgba(220,38,38,0.07);color:var(--red)}
+.flow-badge-pill.badge-warn{background:var(--amber-bg);color:var(--amber)}
+.flow-badge-pill.badge-error{background:var(--red-bg);color:var(--red)}
 .flow-duration{font-family:var(--mono);font-size:12px;color:var(--text-muted);flex-shrink:0;width:60px;text-align:right}
 
 /* Flow expand panel */
@@ -33,23 +33,23 @@ export function getFlowStyles(): string {
 /* Method badges */
 .method-badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;font-family:var(--mono);letter-spacing:.3px;flex-shrink:0}
 .method-badge-GET{background:var(--green-bg);color:var(--green)}
-.method-badge-POST{background:rgba(37,99,235,0.08);color:var(--blue)}
-.method-badge-PUT,.method-badge-PATCH{background:rgba(217,119,6,0.08);color:var(--amber)}
-.method-badge-DELETE{background:rgba(220,38,38,0.08);color:var(--red)}
+.method-badge-POST{background:var(--blue-bg);color:var(--blue)}
+.method-badge-PUT,.method-badge-PATCH{background:var(--amber-bg);color:var(--amber)}
+.method-badge-DELETE{background:var(--red-bg);color:var(--red)}
 .method-badge-HEAD,.method-badge-OPTIONS{background:var(--bg-muted);color:var(--text-muted)}
 
 /* Status pills */
 .status-pill{display:inline-flex;align-items:center;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600;font-family:var(--mono);flex-shrink:0}
 .status-pill-2xx{background:var(--green-bg);color:var(--green)}
-.status-pill-3xx{background:rgba(8,145,178,0.07);color:var(--cyan)}
-.status-pill-4xx{background:rgba(217,119,6,0.07);color:var(--amber)}
-.status-pill-5xx{background:rgba(220,38,38,0.07);color:var(--red)}
+.status-pill-3xx{background:var(--cyan-bg);color:var(--cyan)}
+.status-pill-4xx{background:var(--amber-bg);color:var(--amber)}
+.status-pill-5xx{background:var(--red-bg);color:var(--red)}
 
 .traffic-card-path{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-weight:500;font-size:13px}
 .traffic-card-path.is-dup{color:var(--text-muted);font-weight:400}
 .traffic-card-dur{color:var(--text-muted);font-size:12px;flex-shrink:0}
 .traffic-card-size{color:var(--text-muted);font-size:11px;flex-shrink:0}
-.traffic-card-dup{font-size:10px;color:var(--amber);flex-shrink:0;font-weight:600;background:rgba(217,119,6,0.07);padding:1px 7px;border-radius:4px}
+.traffic-card-dup{font-size:10px;color:var(--amber);flex-shrink:0;font-weight:600;background:var(--amber-bg);padding:1px 7px;border-radius:4px}
 
 /* Body toggles */
 .traffic-body{padding:0;margin-top:8px}
@@ -78,7 +78,7 @@ export function getFlowStyles(): string {
 .flow-subreq .subreq-label.is-dup{color:var(--text-muted);font-weight:400}
 .flow-subreq .subreq-status{flex-shrink:0}
 .flow-subreq .subreq-dur{color:var(--text-muted);font-size:12px;text-align:right;flex-shrink:0}
-.flow-subreq .subreq-dup-tag{font-size:10px;color:var(--amber);flex-shrink:0;font-weight:600;background:rgba(217,119,6,0.07);padding:1px 7px;border-radius:4px}
+.flow-subreq .subreq-dup-tag{font-size:10px;color:var(--amber);flex-shrink:0;font-weight:600;background:var(--amber-bg);padding:1px 7px;border-radius:4px}
 .flow-subreq-detail{display:none;padding:12px 0;border-bottom:1px solid var(--border-subtle)}
 .flow-subreq-detail.open{display:block}
 
@@ -107,5 +107,40 @@ export function getFlowStyles(): string {
 /* Strict Mode duplicate banner */
 .strict-mode-dupe{opacity:0.55}
 .strict-mode-banner{font-size:11px;color:var(--text-muted);padding:6px 0 0;font-family:var(--mono)}
+
+/* Flow detail tabs */
+.flow-detail-tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.flow-tab{padding:8px 16px;font-size:12px;font-family:var(--mono);font-weight:600;color:var(--text-muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .15s;letter-spacing:.3px}
+.flow-tab:hover{color:var(--text)}
+.flow-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Waterfall chart — request bars on time axis, sub-events as text rows */
+.flow-waterfall{padding:0;font-family:var(--mono);font-size:11px}
+.wf-time-axis{display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);padding:0 0 6px;margin-left:180px;margin-right:56px;border-bottom:1px solid var(--border);margin-bottom:2px}
+.wf-rows{display:flex;flex-direction:column;gap:0}
+
+/* Request group — request bar + its sub-events */
+.wf-request-group{border-bottom:1px solid var(--border-subtle);padding:2px 0}
+.wf-request-group:last-child{border-bottom:none}
+
+/* Request row — label | bar on time axis | duration */
+.wf-req-row{display:flex;align-items:center;gap:0;height:24px;transition:background .1s}
+.wf-req-row:hover{background:var(--bg-hover)}
+.wf-req-label{width:180px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-weight:500;padding:0 10px 0 0;font-size:11px}
+.wf-bar-track{flex:1;position:relative;height:14px;min-width:0;overflow:hidden}
+.wf-bar{position:absolute;top:1px;height:12px;border-radius:3px;opacity:0.8;min-width:3px}
+.wf-req-row:hover .wf-bar{opacity:1}
+.wf-req-dur{width:56px;flex-shrink:0;text-align:right;color:var(--text-muted);font-size:10px;padding-left:8px}
+
+/* Sub-event rows — same layout as request rows: label | bar track | duration */
+.wf-sub-row{display:flex;align-items:center;gap:0;height:20px;transition:background .1s}
+.wf-sub-row:hover{background:var(--bg-hover)}
+.wf-sub-label{width:180px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:10px;padding-left:14px;display:flex;align-items:center;gap:6px}
+.wf-sub-dot{width:6px;height:6px;border-radius:2px;flex-shrink:0}
+.wf-sub-bar-sized{height:8px !important;top:3px !important;opacity:0.65}
+.wf-sub-row:hover .wf-sub-bar-sized{opacity:0.9}
+.wf-sub-dur{width:56px;flex-shrink:0;text-align:right;color:var(--text-dim);font-size:9px;padding-left:8px}
+
+.wf-loading{color:var(--text-muted);padding:12px 0;font-size:11px;font-family:var(--mono)}
 `;
 }
