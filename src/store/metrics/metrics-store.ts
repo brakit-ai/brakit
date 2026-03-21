@@ -14,6 +14,8 @@ import {
   METRICS_MAX_DATA_POINTS,
   MAX_UNIQUE_ENDPOINTS,
   MAX_ACCUMULATOR_ENTRIES,
+  BASELINE_MIN_SESSIONS,
+  BASELINE_MIN_REQUESTS_PER_SESSION,
 } from "../../constants/index.js";
 import { percentile } from "../../utils/math.js";
 import { isErrorStatus } from "../../utils/http-status.js";
@@ -140,6 +142,67 @@ export class MetricsStore {
     return this.endpointIndex.get(endpoint);
   }
 
+  /**
+   * Compute the adaptive performance baseline for an endpoint.
+   * Returns the median p95 across historical sessions, or null when
+   * there isn't enough data to establish a meaningful baseline.
+   */
+  /**
+   * Cached baselines — invalidated on flush (when sessions change) and
+   * on new request recordings (when pending points grow). Avoids recomputing
+   * on every getLiveEndpoints() API call.
+   */
+  private baselineCache = new Map<string, { value: number | null; pointCount: number }>();
+
+  getEndpointBaseline(endpoint: string): number | null {
+    const pending = this.pendingPoints.get(endpoint);
+    const pointCount = pending?.length ?? 0;
+    const cached = this.baselineCache.get(endpoint);
+
+    // Cache hit — return if pending point count hasn't changed
+    if (cached && cached.pointCount === pointCount) return cached.value;
+
+    const value = this.computeBaseline(endpoint, pending);
+    this.baselineCache.set(endpoint, { value, pointCount });
+    return value;
+  }
+
+  private computeBaseline(
+    endpoint: string,
+    pending: LiveRequestPoint[] | undefined,
+  ): number | null {
+    const ep = this.endpointIndex.get(endpoint);
+
+    // Multiple historical sessions → use median p95 across them
+    if (ep && ep.sessions.length >= BASELINE_MIN_SESSIONS) {
+      const validSessions = ep.sessions.filter(
+        (s) => s.requestCount >= BASELINE_MIN_REQUESTS_PER_SESSION,
+      );
+      if (validSessions.length >= BASELINE_MIN_SESSIONS) {
+        const p95s = validSessions.map((s) => s.p95DurationMs).sort((a, b) => a - b);
+        return p95s[Math.floor(p95s.length / 2)];
+      }
+    }
+
+    // Single session that's been flushed (has enough requests) → use its p95.
+    // This handles the common case: app running for a while in a single session,
+    // pendingPoints cleared by flush, but the session's aggregate stats are valid.
+    if (ep && ep.sessions.length === 1) {
+      const session = ep.sessions[0];
+      if (session.requestCount >= BASELINE_MIN_REQUESTS_PER_SESSION) {
+        return session.p95DurationMs;
+      }
+    }
+
+    // No flushed sessions yet — use pending points from current session
+    if (pending && pending.length >= 3) {
+      const warmDurations = pending.slice(1).map((r) => r.durationMs).sort((a, b) => a - b);
+      return warmDurations[Math.floor(warmDurations.length / 2)];
+    }
+
+    return null;
+  }
+
   getLiveEndpoints(): LiveEndpointData[] {
     const merged = new Map<string, LiveRequestPoint[]>();
 
@@ -159,29 +222,41 @@ export class MetricsStore {
     for (const [endpoint, requests] of merged) {
       if (requests.length === 0) continue;
 
-      const durations = requests.map((r) => r.durationMs);
-      const errors = requests.filter((r) => isErrorStatus(r.statusCode)).length;
-      const totalQueries = requests.reduce((s, r) => s + r.queryCount, 0);
-      const totalQueryTime = requests.reduce((s, r) => s + (r.queryTimeMs ?? 0), 0);
-      const totalFetchTime = requests.reduce((s, r) => s + (r.fetchTimeMs ?? 0), 0);
-      const n = requests.length;
+      // Exclude the first request (cold start) from aggregate stats when
+      // there are 2+ requests. The first request is always an outlier due
+      // to server compilation, connection pooling, and JIT warmup.
+      const warmRequests = requests.length > 1 ? requests.slice(1) : requests;
+      const warmDurations = warmRequests.map((r) => r.durationMs);
 
-      const avgDurationMs = Math.round(durations.reduce((s, d) => s + d, 0) / n);
+      const errors = requests.filter((r) => isErrorStatus(r.statusCode)).length;
+      const totalQueries = warmRequests.reduce((s, r) => s + r.queryCount, 0);
+      const totalQueryTime = warmRequests.reduce((s, r) => s + (r.queryTimeMs ?? 0), 0);
+      const totalFetchTime = warmRequests.reduce((s, r) => s + (r.fetchTimeMs ?? 0), 0);
+      const n = warmRequests.length;
+
+      const avgDurationMs = Math.round(warmDurations.reduce((s, d) => s + d, 0) / n);
       const avgQueryTimeMs = Math.round(totalQueryTime / n);
       const avgFetchTimeMs = Math.round(totalFetchTime / n);
 
+      const p95Ms = percentile(warmDurations, 0.95);
+      const medianMs = percentile(warmDurations, 0.5);
+
+      const epData = this.endpointIndex.get(endpoint);
       endpoints.push({
         endpoint,
         requests,
         summary: {
-          p95Ms: percentile(durations, 0.95),
-          errorRate: errors / n,
+          p95Ms,
+          medianMs,
+          errorRate: errors / requests.length, // Error rate uses ALL requests
           avgQueryCount: Math.round(totalQueries / n),
-          totalRequests: n,
+          totalRequests: requests.length,
           avgQueryTimeMs,
           avgFetchTimeMs,
           avgAppTimeMs: Math.max(0, avgDurationMs - avgQueryTimeMs - avgFetchTimeMs),
         },
+        sessions: epData?.sessions,
+        baselineP95Ms: this.getEndpointBaseline(endpoint),
       });
     }
 
@@ -194,6 +269,7 @@ export class MetricsStore {
     this.endpointIndex.clear();
     this.accumulators.clear();
     this.pendingPoints.clear();
+    this.baselineCache.clear();
     this.dirty = false;
     this.persistence.remove();
   }
@@ -243,6 +319,7 @@ export class MetricsStore {
       epMetrics.dataPoints = existing.concat(points).slice(-METRICS_MAX_DATA_POINTS);
     }
     this.pendingPoints.clear();
+    this.baselineCache.clear();
 
     if (!this.dirty) return;
 

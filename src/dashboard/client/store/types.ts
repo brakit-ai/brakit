@@ -10,7 +10,13 @@
 // Shared enums — keep in sync with src/types/telemetry.ts
 // ---------------------------------------------------------------------------
 
-export type DbDriver = "pg" | "mysql2" | "prisma" | "asyncpg" | "sqlalchemy" | "sdk";
+export type DbDriver =
+  | "pg"
+  | "mysql2"
+  | "prisma"
+  | "asyncpg"
+  | "sqlalchemy"
+  | "sdk";
 export type LogLevel = "log" | "warn" | "error" | "info" | "debug";
 export type NormalizedOp = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
 export type IssueState = "open" | "fixing" | "resolved" | "stale" | "regressed";
@@ -214,6 +220,7 @@ export interface LiveRequestPoint {
 
 export interface LiveEndpointSummary {
   p95Ms: number;
+  medianMs: number;
   errorRate: number;
   avgQueryCount: number;
   totalRequests: number;
@@ -226,6 +233,20 @@ export interface LiveEndpointData {
   endpoint: string;
   requests: LiveRequestPoint[];
   summary: LiveEndpointSummary;
+  sessions?: SessionMetric[];
+  baselineP95Ms: number | null;
+}
+
+export interface SessionMetric {
+  sessionId: string;
+  startedAt: number;
+  avgDurationMs: number;
+  p95DurationMs: number;
+  requestCount: number;
+  errorCount: number;
+  avgQueryCount: number;
+  avgQueryTimeMs: number;
+  avgFetchTimeMs: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -281,9 +302,17 @@ export interface FlowActivityData {
 export type ViewMode = "simple" | "detailed";
 
 export type StoreStateKey =
-  | "flows" | "requests" | "fetches" | "errors"
-  | "logs" | "queries" | "issues" | "metrics"
-  | "viewMode" | "activeView" | "all";
+  | "flows"
+  | "requests"
+  | "fetches"
+  | "errors"
+  | "logs"
+  | "queries"
+  | "issues"
+  | "metrics"
+  | "viewMode"
+  | "activeView"
+  | "all";
 
 export interface DashboardState {
   flows: RequestFlow[];

@@ -7,9 +7,7 @@ import { DashboardStore, dashboardContext } from "../store/dashboard-store.js";
 import { formatDuration } from "../utils/format.js";
 import {
   SEVERITY_MAP,
-  VIEW_TITLES,
   DASHBOARD_PREFIX,
-  NAV_LABELS,
   CLEAN_HITS_FOR_RESOLUTION,
 } from "../constants.js";
 import type { StatefulIssue } from "../store/types.js";
@@ -30,27 +28,7 @@ export class OverviewView extends LitElement {
     this.store.addEventListener("state-changed", () => this.requestUpdate());
   }
 
-  private navigateToView(view: string) {
-    const buttons = document.querySelectorAll<HTMLElement>(".sidebar-item");
-    for (const btn of buttons) {
-      const label = btn.querySelector(".item-label");
-      if (label && label.textContent?.trim() === (VIEW_TITLES[view] || view)) {
-        btn.click();
-        return;
-      }
-    }
-  }
-
-  private toggleCard(idx: number, e: Event) {
-    let target = e.target as HTMLElement | null;
-    while (target && target !== e.currentTarget) {
-      if (target.classList?.contains("ov-card-link")) {
-        const nav = target.getAttribute("data-nav");
-        if (nav) this.navigateToView(nav);
-        return;
-      }
-      target = target.parentElement;
-    }
+  private toggleCard(idx: number) {
     this.expandedCardIdx = this.expandedCardIdx === idx ? -1 : idx;
   }
 
@@ -149,21 +127,16 @@ export class OverviewView extends LitElement {
         : nothing;
 
     return html`
-      <div class="ov-card ${isExpanded ? "expanded" : ""}" @click=${(e: Event) => this.toggleCard(idx, e)}>
+      <div class="ov-card ${isExpanded ? "expanded" : ""}" @click=${() => this.toggleCard(idx)}>
         <span class="ov-card-icon ${sevCfg.cls}">${sevCfg.icon}</span>
         <div class="ov-card-body">
           <div class="ov-card-title">${issue.title}${aiBadge}</div>
           <div class="ov-card-desc">${issue.desc}</div>
+          ${issue.detail ? html`<div class="ov-card-detail">${issue.detail}</div>` : nothing}
           ${resolvingHtml}
-          <div class="ov-card-expand" style="display:${isExpanded ? "block" : "none"}">
-            ${issue.detail ? html`<div .innerHTML=${issue.detail}></div>` : nothing}
-            ${issue.hint ? html`<div class="ov-card-hint">${issue.hint}</div>` : nothing}
-            ${issue.nav
-              ? html`<span class="ov-card-link" data-nav=${issue.nav}>View in ${NAV_LABELS[issue.nav] || issue.nav} \u2192</span>`
-              : nothing}
-          </div>
+          ${isExpanded && issue.hint ? html`<div class="ov-card-hint">${issue.hint}</div>` : nothing}
         </div>
-        <span class="ov-card-arrow">${isExpanded ? "\u2193" : "\u2192"}</span>
+        ${issue.hint ? html`<span class="ov-card-arrow">${isExpanded ? "\u2193" : "\u2192"}</span>` : nothing}
       </div>
     `;
   }

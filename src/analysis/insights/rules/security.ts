@@ -6,13 +6,13 @@ export const securityRule: InsightRule = {
   check(ctx: PreparedInsightContext): Insight[] {
     if (!ctx.securityFindings) return [];
 
-    return ctx.securityFindings.map((f) => ({
-      severity: f.severity,
+    return ctx.securityFindings.map((finding) => ({
+      severity: finding.severity,
       type: "security" as const,
-      title: f.title,
-      desc: f.desc,
-      hint: f.hint,
-      nav: "security",
+      title: finding.title,
+      desc: finding.desc,
+      hint: finding.hint,
+      detail: finding.detail,
     }));
   },
 };

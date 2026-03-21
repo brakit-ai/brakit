@@ -1,14 +1,16 @@
 import type { InsightRule } from "../rule.js";
 import type { Insight, PreparedInsightContext } from "../types.js";
+import type { EndpointMetrics } from "../../../types/index.js";
 import { formatDuration, pct } from "../../../utils/format.js";
 import {
   MIN_REQUESTS_FOR_INSIGHT,
   ERROR_RATE_THRESHOLD_PCT,
-  SLOW_ENDPOINT_THRESHOLD_MS,
   REGRESSION_PCT_THRESHOLD,
   REGRESSION_MIN_INCREASE_MS,
   REGRESSION_MIN_REQUESTS,
   QUERY_COUNT_REGRESSION_RATIO,
+  BASELINE_MIN_SESSIONS,
+  BASELINE_MIN_REQUESTS_PER_SESSION,
 } from "../../../constants/index.js";
 
 // ── Unhandled Error Detection ──
@@ -31,7 +33,7 @@ export const errorRule: InsightRule = {
         title: "Unhandled Error",
         desc: `${name} — occurred ${cnt} time${cnt !== 1 ? "s" : ""}`,
         hint: "Unhandled errors crash request handlers. Wrap async code in try/catch or add error-handling middleware.",
-        nav: "errors",
+        detail: ctx.errors.find((e) => e.name === name)?.message,
       });
     }
 
@@ -55,7 +57,6 @@ export const errorHotspotRule: InsightRule = {
           title: "Error Hotspot",
           desc: `${endpointKey} — ${errorRate}% error rate (${group.errors}/${group.total} requests)`,
           hint: "This endpoint frequently returns errors. Check the response bodies for error details and stack traces.",
-          nav: "requests",
         });
       }
     }
@@ -91,7 +92,6 @@ export const regressionRule: InsightRule = {
           title: "Performance Regression",
           desc: `${epMetrics.endpoint} p95 degraded ${formatDuration(prev.p95DurationMs)} \u2192 ${formatDuration(current.p95DurationMs)} (+${p95PctChange}%)`,
           hint: "This endpoint is slower than the previous session. Check if recent code changes added queries or processing.",
-          nav: "graph",
         });
       }
 
@@ -102,7 +102,6 @@ export const regressionRule: InsightRule = {
           title: "Query Count Regression",
           desc: `${epMetrics.endpoint} queries/request increased ${prev.avgQueryCount} \u2192 ${current.avgQueryCount}`,
           hint: "This endpoint is making more database queries than before. Check for new N+1 patterns or removed query optimizations.",
-          nav: "queries",
         });
       }
     }
@@ -110,6 +109,29 @@ export const regressionRule: InsightRule = {
     return insights;
   },
 };
+
+/**
+ * Compute per-endpoint adaptive slow threshold from session history.
+ * Returns null when insufficient data — the rule should skip the endpoint
+ * rather than judging it against arbitrary absolute thresholds.
+ */
+function getAdaptiveSlowThreshold(
+  endpointKey: string,
+  previousMetrics: readonly EndpointMetrics[] | undefined,
+): number | null {
+  if (!previousMetrics) return null;
+
+  const ep = previousMetrics.find((m) => m.endpoint === endpointKey);
+  if (!ep || ep.sessions.length < BASELINE_MIN_SESSIONS) return null;
+
+  const valid = ep.sessions.filter((s) => s.requestCount >= BASELINE_MIN_REQUESTS_PER_SESSION);
+  if (valid.length < BASELINE_MIN_SESSIONS) return null;
+
+  const p95s = valid.map((s) => s.p95DurationMs).sort((a, b) => a - b);
+  const medianP95 = p95s[Math.floor(p95s.length / 2)];
+
+  return medianP95 * 2;
+}
 
 // ── Slow Endpoint Detection ──
 export const slowRule: InsightRule = {
@@ -120,7 +142,11 @@ export const slowRule: InsightRule = {
     for (const [endpointKey, group] of ctx.endpointGroups) {
       if (group.total < MIN_REQUESTS_FOR_INSIGHT) continue;
       const avgMs = Math.round(group.totalDuration / group.total);
-      if (avgMs < SLOW_ENDPOINT_THRESHOLD_MS) continue;
+
+      // Only flag as slow when we have a baseline to compare against.
+      // Without historical data, we can't know if this is normal for this endpoint.
+      const threshold = getAdaptiveSlowThreshold(endpointKey, ctx.previousMetrics);
+      if (threshold === null || avgMs < threshold) continue;
 
       const avgQueryMs = Math.round(group.totalQueryTimeMs / group.total);
       const avgFetchMs = Math.round(group.totalFetchTimeMs / group.total);
@@ -154,7 +180,6 @@ export const slowRule: InsightRule = {
             ? "Most time is in outbound HTTP calls. Check if upstream services are slow or if calls can be parallelized."
             : "Most time is in application code. Profile the handler for CPU-heavy operations or blocking calls.",
         detail,
-        nav: "requests",
       });
     }
 

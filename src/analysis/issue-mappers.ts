@@ -31,7 +31,7 @@ export function securityFindingToIssue(finding: SecurityFinding): Issue {
     title: finding.title,
     desc: finding.desc,
     hint: finding.hint,
+    detail: finding.detail,
     endpoint: finding.endpoint,
-    nav: "security",
   };
 }

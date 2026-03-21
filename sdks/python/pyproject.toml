@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brakit"
-version = "0.1.2"
+version = "0.1.3"
 description = "Zero-config observability for Python web frameworks"
 readme = "README.md"
 license = "MIT"

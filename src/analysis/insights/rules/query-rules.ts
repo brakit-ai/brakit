@@ -49,7 +49,7 @@ export const n1Rule: InsightRule = {
           title: "N+1 Query Pattern",
           desc: `${endpoint} runs ${sg.count}x ${info.op} ${info.table} with different params in a single request`,
           hint: "This typically happens when fetching related data in a loop. Use a batch query, JOIN, or include/eager-load to fetch all records at once.",
-          nav: "queries",
+          detail: `${sg.count} queries with ${sg.distinctSql.size} distinct param variations. Example: ${[...sg.distinctSql][0]?.slice(0, 100) ?? info.op + " " + info.table}`,
         });
       }
     }
@@ -94,7 +94,7 @@ export const redundantQueryRule: InsightRule = {
           title: "Redundant Query",
           desc: `${label} runs ${entry.count}x with identical params in ${endpoint}.`,
           hint: "The exact same query with identical parameters runs multiple times in one request. Cache the first result or lift the query to a shared function.",
-          nav: "queries",
+          detail: entry.first.sql ? `Query: ${entry.first.sql.slice(0, 120)}` : undefined,
         });
       }
     }
@@ -191,7 +191,7 @@ export const queryHeavyRule: InsightRule = {
           title: "Query-Heavy Endpoint",
           desc: `${endpointKey} — avg ${avgQueries} queries/request`,
           hint: "Too many queries per request increases latency. Combine queries with JOINs, use batch operations, or reduce the number of data fetches.",
-          nav: "queries",
+
         });
       }
     }

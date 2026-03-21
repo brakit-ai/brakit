@@ -9,6 +9,7 @@ export interface SecurityFinding {
   title: string;
   desc: string;
   hint: string;
+  detail?: string;
   endpoint: string;
   count: number;
 }

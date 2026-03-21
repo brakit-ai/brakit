@@ -4,9 +4,10 @@ export function getOverviewStyles(): string {
 .ov-container{padding:24px 28px}
 
 /* Summary banner */
-.ov-summary{display:flex;gap:24px;padding:16px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:24px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
-.ov-stat{display:flex;flex-direction:column;gap:2px}
-.ov-stat-value{font-size:19px;font-weight:700;font-family:var(--mono);color:var(--text)}
+.ov-summary{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.ov-stat{display:flex;flex-direction:column;gap:4px;flex:1;min-width:100px;padding:16px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);transition:box-shadow var(--transition, .15s ease)}
+.ov-stat:hover{box-shadow:var(--shadow-md)}
+.ov-stat-value{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1.2}
 .ov-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);font-weight:600}
 
 /* Section header */
@@ -15,8 +16,8 @@ export function getOverviewStyles(): string {
 
 /* Insight cards */
 .ov-cards{display:flex;flex-direction:column;gap:8px}
-.ov-card{display:flex;align-items:flex-start;gap:14px;padding:14px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s;box-shadow:var(--shadow-sm)}
-.ov-card:hover{background:var(--bg-hover);border-color:var(--border-light);box-shadow:var(--shadow-md)}
+.ov-card{display:flex;align-items:flex-start;gap:14px;padding:16px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all var(--transition, .15s ease);box-shadow:var(--shadow-sm)}
+.ov-card:hover{background:var(--bg-hover);border-color:var(--border-light);box-shadow:var(--shadow-md);transform:translateY(-1px)}
 .ov-card-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;border-radius:50%;margin-top:2px}
 .ov-card-icon.critical{background:rgba(220,38,38,.08);color:var(--red)}
 .ov-card-icon.warning{background:rgba(217,119,6,.08);color:var(--amber)}
@@ -25,6 +26,7 @@ export function getOverviewStyles(): string {
 .ov-card-body{flex:1;min-width:0}
 .ov-card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
 .ov-card-desc{font-size:12px;color:var(--text-dim);line-height:1.5}
+.ov-card-detail{font-size:11px;font-family:var(--mono);color:var(--text-muted);margin-top:6px;padding:8px 10px;background:var(--bg-muted);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);line-height:1.5}
 .ov-card-desc strong{color:var(--text);font-family:var(--mono);font-weight:600}
 .ov-card-arrow{color:var(--text-muted);font-size:12px;flex-shrink:0;margin-top:2px;font-family:var(--mono);transition:transform .15s}
 
