@@ -19,7 +19,6 @@ export function insightToIssue(insight: Insight): Issue {
     hint: insight.hint,
     detail: insight.detail,
     endpoint: extractEndpointFromDesc(insight.desc) ?? undefined,
-    nav: insight.nav,
   };
 }
 
@@ -31,7 +30,7 @@ export function securityFindingToIssue(finding: SecurityFinding): Issue {
     title: finding.title,
     desc: finding.desc,
     hint: finding.hint,
+    detail: finding.detail,
     endpoint: finding.endpoint,
-    nav: "security",
   };
 }

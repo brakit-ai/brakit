@@ -66,7 +66,6 @@ export const responseOverfetchRule: InsightRule = {
           title: "Response Overfetch",
           desc: `${endpointKey} — ${reasons.join(", ")}`,
           hint: "This response returns more data than the client likely needs. Use a DTO or select only required fields to reduce payload size and avoid leaking internal structure.",
-          nav: "requests",
         });
       }
     }
@@ -91,7 +90,6 @@ export const largeResponseRule: InsightRule = {
           title: "Large Response",
           desc: `${endpointKey} — avg ${formatSize(avgSize)} response`,
           hint: "Large API responses increase network transfer time. Implement pagination, field filtering, or response compression.",
-          nav: "requests",
         });
       }
     }

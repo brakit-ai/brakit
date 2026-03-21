@@ -124,15 +124,26 @@ describe("duplicateRule", () => {
 });
 
 describe("slowRule", () => {
-  it("detects slow endpoints exceeding threshold", () => {
+  it("detects slow endpoints exceeding adaptive baseline", () => {
     const runner = new InsightRunner();
     runner.register(slowRule);
+
+    // Provide historical sessions so a baseline exists (median p95 = 300ms).
+    // Current requests at 1500-2000ms are far above 2x baseline (600ms).
+    const previousMetrics: EndpointMetrics[] = [{
+      endpoint: "GET /api/posts",
+      sessions: [
+        { sessionId: "s1", startedAt: 0, avgDurationMs: 250, p95DurationMs: 300, requestCount: 10, errorCount: 0, avgQueryCount: 1, avgQueryTimeMs: 50, avgFetchTimeMs: 0 },
+        { sessionId: "s2", startedAt: 1000, avgDurationMs: 280, p95DurationMs: 320, requestCount: 8, errorCount: 0, avgQueryCount: 1, avgQueryTimeMs: 55, avgFetchTimeMs: 0 },
+      ],
+    }];
 
     const ctx = makeCtx({
       requests: [
         makeRequest({ id: "req-1", url: "/api/posts", path: "/api/posts", durationMs: 1500, responseSize: 200 }),
         makeRequest({ id: "req-2", url: "/api/posts", path: "/api/posts", durationMs: 2000, responseSize: 200 }),
       ],
+      previousMetrics,
     });
 
     const insights = runner.run(ctx);

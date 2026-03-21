@@ -23,5 +23,9 @@ export const WF_PROPORTIONAL_SPREAD = 85;
 
 // Scatter chart (performance view)
 export const SCATTER_CHART_HEIGHT_PX = 240;
-export const RECENT_REQUESTS_LIMIT = 50;
 export const CLICK_TOLERANCE_PX = 16;
+
+// Performance view limits
+export const HISTORY_TABLE_LIMIT = 50;
+export const RECENT_SESSIONS_LIMIT = 10;
+export const QUERY_BREAKDOWN_REQUEST_LIMIT = 20;

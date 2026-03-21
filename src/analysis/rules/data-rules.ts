@@ -31,6 +31,7 @@ export const stackTraceLeakRule: SecurityRule = {
       if (!request.responseBody) return null;
       if (!STACK_TRACE_RE.test(request.responseBody)) return null;
       const ep = `${request.method} ${request.path}`;
+      const firstLine = request.responseBody.split("\n").find((l) => STACK_TRACE_RE.test(l))?.trim() ?? "";
       return {
         key: ep,
         finding: {
@@ -39,6 +40,7 @@ export const stackTraceLeakRule: SecurityRule = {
           title: "Stack Trace Leaked to Client",
           desc: `${ep} — response exposes internal stack trace`,
           hint: this.hint,
+          detail: firstLine ? `Stack trace: ${firstLine.slice(0, 120)}` : undefined,
           endpoint: ep,
           count: 1,
         },
@@ -84,6 +86,7 @@ export const errorInfoLeakRule: SecurityRule = {
           title: "Sensitive Data in Error Response",
           desc: `${ep} — error response exposes ${pattern.label}`,
           hint: this.hint,
+          detail: `Detected: ${pattern.label} in error response body`,
           endpoint: ep,
           count: 1,
         },
@@ -267,6 +270,11 @@ export const responsePiiLeakRule: SecurityRule = {
       if (!detection) return null;
 
       const ep = `${request.method} ${request.path}`;
+      const fieldCount = topLevelFieldCount(resJson);
+      const detailParts = [`Pattern: ${REASON_LABELS[detection.reason]}`];
+      if (detection.emailCount > 0) detailParts.push(`${detection.emailCount} email${detection.emailCount !== 1 ? "s" : ""} detected`);
+      if (fieldCount > 0) detailParts.push(`${fieldCount} fields per record`);
+
       return {
         key: ep,
         finding: {
@@ -274,7 +282,8 @@ export const responsePiiLeakRule: SecurityRule = {
           rule: "response-pii-leak",
           title: "PII Leak in Response",
           desc: `${ep} — exposes PII in response`,
-          hint: `Detection: ${REASON_LABELS[detection.reason]}. ${this.hint}`,
+          hint: this.hint,
+          detail: detailParts.join(". "),
           endpoint: ep,
           count: 1,
         },

@@ -90,6 +90,22 @@ export const STALE_ISSUE_TTL_MS = 30 * 60 * 1_000;
  */
 export const STRICT_MODE_MAX_GAP_MS = 2000;
 
+// ── Adaptive baseline ──
+
+/** Minimum sessions needed to compute a per-endpoint performance baseline. */
+export const BASELINE_MIN_SESSIONS = 2;
+/** Minimum requests per session for the session to count toward the baseline. */
+export const BASELINE_MIN_REQUESTS_PER_SESSION = 3;
+/** Ratio thresholds for adaptive health grading (current p95 / baseline p95). */
+export const BASELINE_FAST_RATIO = 0.7;
+export const BASELINE_GOOD_RATIO = 1.2;
+export const BASELINE_OK_RATIO = 2.0;
+export const BASELINE_SLOW_RATIO = 3.0;
+/** Minimum requests before p95 becomes statistically meaningful over median. */
+export const P95_MIN_SAMPLE_SIZE = 20;
+/** Minimum pending points (pre-flush) to compute an intra-session baseline. */
+export const BASELINE_PENDING_POINTS_MIN = 3;
+
 // ── Metrics ──
 
 export const METRICS_DIR = ".brakit";

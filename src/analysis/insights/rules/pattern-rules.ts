@@ -44,7 +44,6 @@ export const duplicateRule: InsightRule = {
         title: "Duplicate API Call",
         desc: `${duplicate.key} loaded ${duplicate.count}x as duplicate across ${duplicate.flows} action${duplicate.flows !== 1 ? "s" : ""}`,
         hint: "Multiple components independently fetch the same endpoint. Lift the fetch to a parent component, use a data cache, or deduplicate with React Query / SWR.",
-        nav: "actions",
       });
     }
 
@@ -96,7 +95,7 @@ export const crossEndpointRule: InsightRule = {
           title: "Repeated Query Across Endpoints",
           desc: `${label} runs on ${queryMetric.endpoints.size} of ${allEndpoints.size} endpoints (${coveragePct}%).`,
           hint: "This query runs on most of your endpoints. Load it once in middleware or cache the result to avoid redundant database calls.",
-          nav: "queries",
+          detail: `Endpoints: ${[...queryMetric.endpoints].slice(0, 5).join(", ")}${queryMetric.endpoints.size > 5 ? ` +${queryMetric.endpoints.size - 5} more` : ""}. Total: ${queryMetric.count} executions.`,
         });
       }
     }

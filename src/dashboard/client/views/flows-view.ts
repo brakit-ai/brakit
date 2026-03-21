@@ -53,7 +53,7 @@ export class FlowsView extends LitElement {
   }
 
   private get flows(): FlowData[] {
-    return this.store.state.flows as FlowData[];
+    return this.store.state.flows;
   }
 
   private get viewMode() {

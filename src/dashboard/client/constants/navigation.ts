@@ -1,29 +1,5 @@
 /** View navigation labels, containers, titles, and subtitles. */
 
-export const NAV_LABELS: Record<string, string> = {
-  overview: "Overview",
-  queries: "Queries",
-  requests: "Requests",
-  actions: "Actions",
-  errors: "Errors",
-  security: "Security",
-  fetches: "Fetches",
-  logs: "Logs",
-  performance: "Performance",
-};
-
-export const VIEW_CONTAINERS: Record<string, string> = {
-  overview: "overview-container",
-  actions: "flow-container",
-  requests: "request-container",
-  fetches: "fetch-container",
-  queries: "query-container",
-  errors: "error-container",
-  logs: "log-container",
-  performance: "performance-container",
-  security: "security-container",
-};
-
 export const VIEW_TITLES: Record<string, string> = {
   overview: "Overview",
   actions: "Actions",

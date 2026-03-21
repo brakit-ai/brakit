@@ -16,9 +16,10 @@ export function getBaseStyles(): string {
   --amber-bg:rgba(217,119,6,0.07);--red-bg:rgba(220,38,38,0.07);--blue-bg:rgba(37,99,235,0.08);--cyan-bg:rgba(8,145,178,0.07);
   --sidebar-width:232px;--header-height:52px;
   --radius:8px;--radius-sm:6px;
-  --shadow-sm:0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
-  --shadow-lg:0 4px 12px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.04);
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.03);
+  --shadow-md:0 2px 6px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lg:0 4px 16px rgba(0,0,0,0.1),0 2px 6px rgba(0,0,0,0.05);
+  --transition:0.15s ease;
   --breakdown-db:#6366f1;--breakdown-fetch:#f59e0b;--breakdown-app:#94a3b8;
   --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
   --sans:Inter,system-ui,-apple-system,sans-serif;

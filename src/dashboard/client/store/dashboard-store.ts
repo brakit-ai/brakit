@@ -10,7 +10,7 @@ import type {
   TracedQuery,
   TracedLog,
   TracedError,
-  RequestFlow,
+  FlowData,
   StatefulIssue,
   EndpointMetrics,
 } from "./types.js";
@@ -37,7 +37,7 @@ export class DashboardStore extends EventTarget {
 
   // -- Bulk setters (initial load) --
 
-  setFlows(flows: RequestFlow[]): void {
+  setFlows(flows: FlowData[]): void {
     this._state = { ...this._state, flows };
     this.notify("flows");
   }

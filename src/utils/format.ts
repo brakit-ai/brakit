@@ -12,3 +12,7 @@ export function formatSize(bytes: number): string {
 export function pct(part: number, total: number): number {
   return total > 0 ? Math.round((part / total) * 100) : 0;
 }
+
+export function plural(count: number, word: string): string {
+  return `${count} ${word}${count !== 1 ? "s" : ""}`;
+}

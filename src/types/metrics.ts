@@ -32,6 +32,7 @@ export interface LiveRequestPoint {
 
 export interface LiveEndpointSummary {
   p95Ms: number;
+  medianMs: number;
   errorRate: number;
   avgQueryCount: number;
   totalRequests: number;
@@ -44,6 +45,8 @@ export interface LiveEndpointData {
   endpoint: string;
   requests: LiveRequestPoint[];
   summary: LiveEndpointSummary;
+  sessions?: SessionMetric[];
+  baselineP95Ms: number | null;
 }
 
 export interface RequestMetrics {
