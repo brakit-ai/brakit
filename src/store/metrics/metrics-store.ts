@@ -16,6 +16,7 @@ import {
   MAX_ACCUMULATOR_ENTRIES,
   BASELINE_MIN_SESSIONS,
   BASELINE_MIN_REQUESTS_PER_SESSION,
+  BASELINE_PENDING_POINTS_MIN,
 } from "../../constants/index.js";
 import { percentile } from "../../utils/math.js";
 import { isErrorStatus } from "../../utils/http-status.js";
@@ -195,7 +196,7 @@ export class MetricsStore {
     }
 
     // No flushed sessions yet — use pending points from current session
-    if (pending && pending.length >= 3) {
+    if (pending && pending.length >= BASELINE_PENDING_POINTS_MIN) {
       const warmDurations = pending.slice(1).map((r) => r.durationMs).sort((a, b) => a - b);
       return warmDurations[Math.floor(warmDurations.length / 2)];
     }

@@ -315,7 +315,7 @@ export type StoreStateKey =
   | "all";
 
 export interface DashboardState {
-  flows: RequestFlow[];
+  flows: FlowData[];
   requests: TracedRequest[];
   fetches: TracedFetch[];
   errors: TracedError[];

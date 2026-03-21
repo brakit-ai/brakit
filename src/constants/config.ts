@@ -101,6 +101,10 @@ export const BASELINE_FAST_RATIO = 0.7;
 export const BASELINE_GOOD_RATIO = 1.2;
 export const BASELINE_OK_RATIO = 2.0;
 export const BASELINE_SLOW_RATIO = 3.0;
+/** Minimum requests before p95 becomes statistically meaningful over median. */
+export const P95_MIN_SAMPLE_SIZE = 20;
+/** Minimum pending points (pre-flush) to compute an intra-session baseline. */
+export const BASELINE_PENDING_POINTS_MIN = 3;
 
 // ── Metrics ──
 

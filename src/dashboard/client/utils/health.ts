@@ -10,18 +10,18 @@
  * normal for it.
  *
  * Uses median instead of p95 for health grading when there are fewer than
- * 20 requests, since p95 with small sample sizes is essentially the max.
+ * P95_MIN_SAMPLE_SIZE requests, since p95 with small samples is the max.
  */
 
 import { HEALTH_GRADES } from "../constants.js";
 import type { HealthGrade } from "../constants.js";
-
-const FAST_RATIO = 0.7;
-const GOOD_RATIO = 1.2;
-const OK_RATIO = 2.0;
-const SLOW_RATIO = 3.0;
-
-const P95_MIN_SAMPLE_SIZE = 20;
+import {
+  BASELINE_FAST_RATIO,
+  BASELINE_GOOD_RATIO,
+  BASELINE_OK_RATIO,
+  BASELINE_SLOW_RATIO,
+  P95_MIN_SAMPLE_SIZE,
+} from "../../../constants/config.js";
 
 /** Neutral grade shown when insufficient data to judge performance. */
 const PENDING_GRADE: HealthGrade = {
@@ -44,13 +44,12 @@ export function adaptiveHealthGrade(
   currentMs: number,
   baselineMs: number | null | undefined,
 ): HealthGrade {
-  // No baseline = not enough data to judge. Show neutral.
   if (!baselineMs || baselineMs <= 0) return PENDING_GRADE;
 
   const ratio = currentMs / baselineMs;
-  if (ratio < FAST_RATIO) return HEALTH_GRADES[0];
-  if (ratio < GOOD_RATIO) return HEALTH_GRADES[1];
-  if (ratio < OK_RATIO) return HEALTH_GRADES[2];
-  if (ratio < SLOW_RATIO) return HEALTH_GRADES[3];
+  if (ratio < BASELINE_FAST_RATIO) return HEALTH_GRADES[0];
+  if (ratio < BASELINE_GOOD_RATIO) return HEALTH_GRADES[1];
+  if (ratio < BASELINE_OK_RATIO) return HEALTH_GRADES[2];
+  if (ratio < BASELINE_SLOW_RATIO) return HEALTH_GRADES[3];
   return HEALTH_GRADES[4];
 }

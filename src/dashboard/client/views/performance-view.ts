@@ -11,15 +11,19 @@ import {
   HIGH_QUERY_COUNT_PER_REQ,
   API,
 } from "../constants.js";
+import {
+  HISTORY_TABLE_LIMIT,
+  RECENT_SESSIONS_LIMIT,
+  QUERY_BREAKDOWN_REQUEST_LIMIT,
+  CLICK_TOLERANCE_PX,
+} from "../constants/layout.js";
 import type { HealthGrade } from "../constants.js";
 import type {
   LiveRequestPoint,
   LiveEndpointData,
   LiveEndpointSummary,
-  FlowData,
   TracedRequest,
   FlowActivityData,
-  TimelineData,
 } from "../store/types.js";
 import { drawScatterChart, type ScatterDot } from "../utils/scatter-chart.js";
 import { adaptiveHealthGrade, representativeLatency } from "../utils/health.js";
@@ -88,7 +92,7 @@ export class PerformanceView extends LitElement {
   }
 
   private getCallers(endpointKey: string): CallerInfo[] {
-    const flows = this.store.state.flows as FlowData[];
+    const flows = this.store.state.flows;
     const callerMap = new Map<string, { count: number; totalMs: number }>();
 
     for (const flow of flows) {
@@ -131,7 +135,7 @@ export class PerformanceView extends LitElement {
         const key = `${request.method} ${request.path}`;
         return key === endpointKey || this.normalizeEndpoint(request) === endpointKey;
       })
-      .slice(-20)
+      .slice(-QUERY_BREAKDOWN_REQUEST_LIMIT)
       .map((request: TracedRequest) => request.id)
       .filter(Boolean);
 
@@ -151,7 +155,7 @@ export class PerformanceView extends LitElement {
 
       const shapeMap = new Map<string, { label: string; totalMs: number; count: number }>();
       for (const activity of Object.values(activityData.activities)) {
-        for (const event of (activity as TimelineData).timeline) {
+        for (const event of activity.timeline) {
           if (event.type !== "query") continue;
           const query = event.data;
           const operation = (query.normalizedOp || query.operation || "QUERY").toUpperCase();
@@ -189,7 +193,7 @@ export class PerformanceView extends LitElement {
         const dist = Math.sqrt((dot.x - mouseX) ** 2 + (dot.y - mouseY) ** 2);
         if (dist < closestDist) { closestDist = dist; closestDot = dot; }
       }
-      if (closestDot && closestDist < 16) this.highlightRow(closestDot.idx);
+      if (closestDot && closestDist < CLICK_TOLERANCE_PX) this.highlightRow(closestDot.idx);
     };
   }
 
@@ -451,7 +455,7 @@ export class PerformanceView extends LitElement {
     const sessions = endpointData.sessions;
     if (!sessions || sessions.length === 0) return nothing;
 
-    const recentSessions = sessions.slice(-10);
+    const recentSessions = sessions.slice(-RECENT_SESSIONS_LIMIT);
 
     return html`
       <div class="perf-trends">
@@ -508,7 +512,7 @@ export class PerformanceView extends LitElement {
     if (endpointData.requests.length === 0) return nothing;
 
     const recentRequests: { point: LiveRequestPoint; originalIndex: number }[] = [];
-    for (let i = endpointData.requests.length - 1; i >= 0 && recentRequests.length < 50; i--) {
+    for (let i = endpointData.requests.length - 1; i >= 0 && recentRequests.length < HISTORY_TABLE_LIMIT; i--) {
       recentRequests.push({ point: endpointData.requests[i], originalIndex: i });
     }
 

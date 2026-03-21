@@ -19,7 +19,6 @@ export function insightToIssue(insight: Insight): Issue {
     hint: insight.hint,
     detail: insight.detail,
     endpoint: extractEndpointFromDesc(insight.desc) ?? undefined,
-    nav: insight.nav,
   };
 }
 

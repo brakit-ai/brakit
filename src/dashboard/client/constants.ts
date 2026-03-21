@@ -24,8 +24,6 @@ export {
 } from "./constants/events.js";
 
 export {
-  NAV_LABELS,
-  VIEW_CONTAINERS,
   VIEW_TITLES,
   VIEW_SUBTITLES,
 } from "./constants/navigation.js";
