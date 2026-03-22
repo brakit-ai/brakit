@@ -23,6 +23,8 @@ import {
 } from "../templates.js";
 import { brakitDebug } from "../../utils/log.js";
 import { getErrorMessage } from "../../utils/type-guards.js";
+import { trackEvent } from "../../telemetry/index.js";
+import { TELEMETRY_EVENT_CLI_UNINSTALL } from "../../constants/config.js";
 
 /**
  * Entry point files where brakit may have prepended an import line.
@@ -68,22 +70,25 @@ export default defineCommand({
     console.log(pc.bold("  ◆ brakit uninstall"));
     console.log();
 
+    let anyInstrumentationRemoved = false;
+    let anyPackageRemoved = false;
+
     for (const project of projects) {
       const suffix = projects.length > 1
         ? ` in ${relative(rootDir, project.dir) || "."}`
         : "";
 
-      // 1. Remove instrumentation file or import line
       const removed = await removeInstrumentation(project.dir);
       if (removed) {
+        anyInstrumentationRemoved = true;
         console.log(pc.green(`  ✓ ${removed}${suffix}`));
       } else {
         console.log(pc.dim(`  No brakit instrumentation files found${suffix}.`));
       }
 
-      // 2. Uninstall package
       const uninstalled = await uninstallPackage(project.dir, project.pm);
       if (uninstalled === true) {
+        anyPackageRemoved = true;
         console.log(pc.green(`  ✓ Removed brakit from devDependencies${suffix}`));
       } else if (uninstalled === "failed") {
         // Warning already printed by uninstallPackage
@@ -113,6 +118,13 @@ export default defineCommand({
     if (cacheCleared) {
       console.log(pc.green("  ✓ Cleared build cache"));
     }
+
+    trackEvent(TELEMETRY_EVENT_CLI_UNINSTALL, {
+      instrumentation_removed: anyInstrumentationRemoved,
+      package_removed: anyPackageRemoved,
+      mcp_removed: mcpRemoved,
+      data_removed: dataRemoved,
+    });
 
     console.log();
   },

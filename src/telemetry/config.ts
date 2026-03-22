@@ -1,8 +1,10 @@
-import { homedir } from "node:os";
+import { homedir, platform } from "node:os";
 import { join } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { DIR_MODE_OWNER_ONLY, FILE_MODE_OWNER_ONLY } from "../constants/features.js";
+
+const IS_WINDOWS = platform() === "win32";
 
 export interface TelemetryConfig {
   telemetry: boolean;
@@ -24,12 +26,17 @@ export function readConfig(): TelemetryConfig | null {
 export function writeConfig(config: TelemetryConfig): void {
   try {
     if (!existsSync(CONFIG_DIR))
-      mkdirSync(CONFIG_DIR, { recursive: true, mode: DIR_MODE_OWNER_ONLY });
-    writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n", {
-      mode: FILE_MODE_OWNER_ONLY,
-    });
-  } catch {
-    // non-critical
+      mkdirSync(CONFIG_DIR, { recursive: true, ...(IS_WINDOWS ? {} : { mode: DIR_MODE_OWNER_ONLY }) });
+    writeFileSync(
+      CONFIG_PATH,
+      JSON.stringify(config, null, 2) + "\n",
+      IS_WINDOWS ? {} : { mode: FILE_MODE_OWNER_ONLY },
+    );
+  } catch (err) {
+    // Log at debug level so Windows/permission issues are diagnosable
+    if (process.env.BRAKIT_DEBUG) {
+      process.stderr.write(`[brakit] config write failed: ${(err as Error)?.message ?? err}\n`);
+    }
   }
 }
 

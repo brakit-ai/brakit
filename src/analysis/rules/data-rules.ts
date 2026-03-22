@@ -14,11 +14,10 @@ import {
   RULE_HINTS,
 } from "./patterns.js";
 import { unwrapResponse } from "../../utils/response.js";
-import { PII_SCAN_ARRAY_LIMIT, FULL_RECORD_MIN_FIELDS, LIST_PII_MIN_ITEMS, MAX_OBJECT_SCAN_DEPTH } from "../../constants/config.js";
+import { PII_SCAN_ARRAY_LIMIT, FULL_RECORD_MIN_FIELDS, LIST_PII_MIN_ITEMS, MAX_OBJECT_SCAN_DEPTH, DETAIL_PREVIEW_LENGTH } from "../../constants/config.js";
 import { isErrorStatus } from "../../utils/http-status.js";
 import { collectFromObject } from "../../utils/object-scan.js";
 
-// ── Stack Trace Leak Detection ──
 
 export const stackTraceLeakRule: SecurityRule = {
   id: "stack-trace-leak",
@@ -40,7 +39,7 @@ export const stackTraceLeakRule: SecurityRule = {
           title: "Stack Trace Leaked to Client",
           desc: `${ep} — response exposes internal stack trace`,
           hint: this.hint,
-          detail: firstLine ? `Stack trace: ${firstLine.slice(0, 120)}` : undefined,
+          detail: firstLine ? `Stack trace: ${firstLine.slice(0, DETAIL_PREVIEW_LENGTH)}` : undefined,
           endpoint: ep,
           count: 1,
         },
@@ -49,7 +48,6 @@ export const stackTraceLeakRule: SecurityRule = {
   },
 };
 
-// ── Error Info Leak Detection ──
 
 const CRITICAL_PATTERNS = [
   { re: DB_CONN_RE, label: "database connection string" },
@@ -95,7 +93,6 @@ export const errorInfoLeakRule: SecurityRule = {
   },
 };
 
-// ── Sensitive Logs Detection ──
 
 export const sensitiveLogsRule: SecurityRule = {
   id: "sensitive-logs",
@@ -123,7 +120,6 @@ export const sensitiveLogsRule: SecurityRule = {
   },
 };
 
-// ── Response PII Leak Detection ──
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH"]);
 

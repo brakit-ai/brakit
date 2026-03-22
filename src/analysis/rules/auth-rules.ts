@@ -6,7 +6,6 @@ import { isErrorStatus, isRedirect } from "../../utils/http-status.js";
 import { deduplicateFindings } from "../../utils/collections.js";
 import { collectFromObject } from "../../utils/object-scan.js";
 
-// ── Exposed Secret Detection ──
 
 function findSecretKeys(obj: unknown): string[] {
   return collectFromObject(obj, (key, val) =>
@@ -47,7 +46,6 @@ export const exposedSecretRule: SecurityRule = {
   },
 };
 
-// ── Token in URL Detection ──
 
 export const tokenInUrlRule: SecurityRule = {
   id: "token-in-url",
@@ -88,7 +86,6 @@ export const tokenInUrlRule: SecurityRule = {
   },
 };
 
-// ── Insecure Cookie Detection ──
 
 function isFrameworkResponse(request: TracedRequest): boolean {
   if (isRedirect(request.statusCode)) return true;
@@ -140,7 +137,6 @@ export const insecureCookieRule: SecurityRule = {
   },
 };
 
-// ── CORS Credentials with Wildcard Detection ──
 
 export const corsCredentialsRule: SecurityRule = {
   id: "cors-credentials",

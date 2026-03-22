@@ -134,3 +134,31 @@ export const VALID_ISSUE_STATES = new Set<IssueState>(["open", "fixing", "resolv
 export const VALID_ISSUE_CATEGORIES = new Set<IssueCategory>(["security", "performance", "reliability"]);
 export const VALID_AI_FIX_STATUSES = new Set<AiFixStatus>(["fixed", "wont_fix"]);
 export const VALID_SECURITY_SEVERITIES = new Set<SecuritySeverity>(["critical", "warning"]);
+
+// ── Telemetry ──
+
+export const TELEMETRY_EVENT_CLI_INVOKED = "cli_invoked" as const;
+export const TELEMETRY_EVENT_CLI_UNINSTALL = "cli_uninstall" as const;
+export const TELEMETRY_EVENT_SETUP_COMPLETED = "setup_completed" as const;
+export const TELEMETRY_EVENT_FIRST_REQUEST = "first_request" as const;
+export const TELEMETRY_EVENT_DASHBOARD_VIEWED = "dashboard_viewed" as const;
+export const TELEMETRY_EVENT_SESSION = "session" as const;
+
+export const EXIT_REASON_CLEAN = "clean" as const;
+export const EXIT_REASON_SIGINT = "sigint" as const;
+export const EXIT_REASON_SIGTERM = "sigterm" as const;
+export const EXIT_REASON_UNKNOWN = "unknown" as const;
+
+/** Max characters for SQL/query detail preview in insight cards. */
+export const DETAIL_PREVIEW_LENGTH = 120;
+
+/**
+ * Known dependency names to check for framework/ORM detection.
+ * Used for telemetry diagnostics — captures which deps exist in
+ * the user's package.json (names only, no versions or paths).
+ */
+export const KNOWN_DEPENDENCY_NAMES = [
+  "next", "@remix-run/dev", "nuxt", "vite", "astro",
+  "express", "fastify", "hono", "koa", "nest",
+  "prisma", "drizzle-orm", "typeorm", "sequelize",
+] as const;

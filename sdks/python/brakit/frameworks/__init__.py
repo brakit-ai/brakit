@@ -12,13 +12,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(LOGGER_NAME)
 
 
-def detect_and_patch(registry: ServiceRegistry) -> None:
+def detect_and_patch(registry: ServiceRegistry) -> str:
     from brakit.frameworks.flask import FlaskAdapter
     from brakit.frameworks.fastapi import FastAPIAdapter
 
+    detected = "unknown"
     for adapter in (FlaskAdapter(), FastAPIAdapter()):
         if adapter.detect():
             try:
                 adapter.patch(registry)
+                detected = adapter.name
             except Exception:
                 logger.debug("failed to patch %s", adapter.name, exc_info=True)
+    return detected

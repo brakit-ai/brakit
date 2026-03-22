@@ -20,6 +20,12 @@ import {
   DEFAULT_MAX_BODY_CAPTURE,
   METRICS_DIR,
   PORT_FILE,
+  KNOWN_DEPENDENCY_NAMES,
+  EXIT_REASON_SIGINT,
+  EXIT_REASON_SIGTERM,
+  EXIT_REASON_CLEAN,
+  TELEMETRY_EVENT_SETUP_COMPLETED,
+  TELEMETRY_EVENT_FIRST_REQUEST,
 } from "../constants/index.js";
 import type {
   TelemetryEvent,
@@ -43,9 +49,13 @@ import {
 import {
   initSession,
   trackSession,
+  trackEvent,
   recordRequestCount,
   recordInsightTypes,
   recordRulesTriggered,
+  recordSetupCompleted,
+  recordFirstRequest,
+  recordExitReason,
 } from "../telemetry/index.js";
 
 let initPromise: Promise<void> | null = null;
@@ -56,9 +66,7 @@ export function setup(): Promise<void> {
   return initPromise;
 }
 
-/* ------------------------------------------------------------------ */
 /*  Phase 1 — Create stores & wire event subscriptions                */
-/* ------------------------------------------------------------------ */
 
 interface Stores {
   requestStore: RequestStore;
@@ -85,13 +93,13 @@ function createStores(bus: EventBus): Stores {
   return { requestStore, fetchStore, logStore, errorStore, queryStore };
 }
 
-/* ------------------------------------------------------------------ */
 /*  Phase 2 — Install instrumentation hooks                           */
-/* ------------------------------------------------------------------ */
 
 function installHooks(bus: EventBus): {
   framework: Framework;
   adapterNames: string[];
+  adaptersFailed: string[];
+  frameworkCandidates: string[];
 } {
   const telemetryEmit = (event: TelemetryEvent): void => {
     const channel = `telemetry:${event.type}` as keyof ChannelMap;
@@ -108,13 +116,15 @@ function installHooks(bus: EventBus): {
   const cwd = process.cwd();
 
   let framework: Framework = "unknown";
+  let frameworkCandidates: string[] = [];
   try {
     const pkg = JSON.parse(
-      // readFileSync is acceptable here — runs once at startup
       require("node:fs").readFileSync(resolve(cwd, "package.json"), "utf-8"),
     );
     const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
     framework = detectFrameworkFromDeps(allDeps);
+    // Capture which deps were found for telemetry diagnostics (no PII — just package names)
+    frameworkCandidates = KNOWN_DEPENDENCY_NAMES.filter((dep) => dep in allDeps);
   } catch {
     /* no package.json */
   }
@@ -122,12 +132,12 @@ function installHooks(bus: EventBus): {
   return {
     framework,
     adapterNames: adapterRegistry.getActive().map((a) => a.name),
+    adaptersFailed: [...adapterRegistry.getFailed()],
+    frameworkCandidates,
   };
 }
 
-/* ------------------------------------------------------------------ */
 /*  Phase 3 — Start analysis, metrics & issue tracking                */
-/* ------------------------------------------------------------------ */
 
 interface AnalysisServices {
   analysisEngine: AnalysisEngine;
@@ -168,9 +178,7 @@ function startAnalysis(
   return { analysisEngine, metricsStore, issueStore };
 }
 
-/* ------------------------------------------------------------------ */
 /*  Phase 4 — Register lifecycle (teardown + process handlers)        */
-/* ------------------------------------------------------------------ */
 
 function registerLifecycle(
   allServices: Services,
@@ -213,23 +221,21 @@ function registerLifecycle(
 
   health.setTeardown(runTeardown);
 
-  // Send telemetry while async operations still work (before 'exit').
+  process.on("SIGINT", () => { recordExitReason(EXIT_REASON_SIGINT); });
+  process.on("SIGTERM", () => { recordExitReason(EXIT_REASON_SIGTERM); });
   process.on("beforeExit", () => {
+    recordExitReason(EXIT_REASON_CLEAN);
     sendTelemetry();
   });
-  // Run full teardown on exit — only sync code runs here, which is fine
-  // because runTeardown is fully synchronous. Do NOT call process.exit()
-  // — let the host app control its own shutdown lifecycle.
   process.on("exit", () => {
     runTeardown();
   });
 }
 
-/* ------------------------------------------------------------------ */
 /*  Orchestrator                                                       */
-/* ------------------------------------------------------------------ */
 
 async function doSetup(): Promise<void> {
+  const setupStart = Date.now();
   brakitDebug(`[setup] doSetup called at ${new Date().toISOString()}`);
 
   const bus = new EventBus();
@@ -238,17 +244,27 @@ async function doSetup(): Promise<void> {
   // Phase 1 — stores & event wiring
   const stores = createStores(bus);
 
-  // Build the services object incrementally — metricsStore, issueStore, and
-  // analysisEngine are assigned in startAnalysis once they're created.
   const services = {
     bus,
     ...stores,
   } as Services;
 
   // Phase 2 — instrumentation hooks
-  const { framework, adapterNames } = installHooks(bus);
+  const { framework, adapterNames, adaptersFailed, frameworkCandidates } = installHooks(bus);
 
   initSession(framework, detectPackageManagerSync(cwd), false, adapterNames);
+
+  const setupDurationMs = Date.now() - setupStart;
+  recordSetupCompleted({ frameworkCandidates, adaptersFailed, setupDurationMs });
+
+  trackEvent(TELEMETRY_EVENT_SETUP_COMPLETED, {
+    framework,
+    framework_detection_candidates: frameworkCandidates,
+    adapters_detected: adapterNames,
+    adapters_failed: adaptersFailed,
+    hooks_installed: ["fetch", "console", "error"],
+    setup_duration_ms: setupDurationMs,
+  });
 
   // Phase 3 — analysis, metrics & issues (mutates `services` to fill remaining fields)
   const dataDir = getProjectDataDir(cwd);
@@ -271,6 +287,11 @@ async function doSetup(): Promise<void> {
     onFirstRequest(port) {
       setBrakitPort(port);
       brakitDebug(`[setup] onFirstRequest fired, port=${port}`);
+      recordFirstRequest();
+      trackEvent(TELEMETRY_EVENT_FIRST_REQUEST, {
+        port,
+        time_to_first_request_ms: Date.now() - setupStart,
+      });
 
       void (async () => {
         try {

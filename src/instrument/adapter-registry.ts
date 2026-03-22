@@ -4,6 +4,7 @@ import type { TelemetryEvent } from "../types/index.js";
 export class AdapterRegistry {
   private adapters: BrakitAdapter[] = [];
   private active: BrakitAdapter[] = [];
+  private failed: string[] = [];
 
   register(adapter: BrakitAdapter): void {
     this.adapters.push(adapter);
@@ -17,7 +18,7 @@ export class AdapterRegistry {
           this.active.push(adapter);
         }
       } catch {
-        // One adapter failing doesn't stop others
+        this.failed.push(adapter.name);
       }
     }
   }
@@ -35,5 +36,9 @@ export class AdapterRegistry {
 
   getActive(): readonly BrakitAdapter[] {
     return this.active;
+  }
+
+  getFailed(): readonly string[] {
+    return this.failed;
   }
 }

@@ -10,7 +10,6 @@ import {
   CROSS_ENDPOINT_MIN_OCCURRENCES,
 } from "../../../constants/index.js";
 
-// ── Duplicate API Call Detection ──
 export const duplicateRule: InsightRule = {
   id: "duplicate",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -51,7 +50,6 @@ export const duplicateRule: InsightRule = {
   },
 };
 
-// ── Cross-Endpoint Query Detection ──
 export const crossEndpointRule: InsightRule = {
   id: "cross-endpoint",
   check(ctx: PreparedInsightContext): Insight[] {
