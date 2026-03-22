@@ -13,7 +13,6 @@ import {
   BASELINE_MIN_REQUESTS_PER_SESSION,
 } from "../../../constants/index.js";
 
-// ── Unhandled Error Detection ──
 export const errorRule: InsightRule = {
   id: "error",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -41,7 +40,6 @@ export const errorRule: InsightRule = {
   },
 };
 
-// ── Error Hotspot Detection ──
 export const errorHotspotRule: InsightRule = {
   id: "error-hotspot",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -65,7 +63,6 @@ export const errorHotspotRule: InsightRule = {
   },
 };
 
-// ── Performance Regression Detection ──
 export const regressionRule: InsightRule = {
   id: "regression",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -133,7 +130,6 @@ function getAdaptiveSlowThreshold(
   return medianP95 * 2;
 }
 
-// ── Slow Endpoint Detection ──
 export const slowRule: InsightRule = {
   id: "slow",
   check(ctx: PreparedInsightContext): Insight[] {

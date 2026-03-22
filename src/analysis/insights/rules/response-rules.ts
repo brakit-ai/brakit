@@ -16,7 +16,6 @@ import {
   LARGE_RESPONSE_BYTES,
 } from "../../../constants/index.js";
 
-// ── Response Overfetch Detection ──
 export const responseOverfetchRule: InsightRule = {
   id: "response-overfetch",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -74,7 +73,6 @@ export const responseOverfetchRule: InsightRule = {
   },
 };
 
-// ── Large Response Detection ──
 export const largeResponseRule: InsightRule = {
   id: "large-response",
   check(ctx: PreparedInsightContext): Insight[] {

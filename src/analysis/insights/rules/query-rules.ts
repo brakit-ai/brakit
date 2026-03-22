@@ -8,12 +8,12 @@ import {
   REDUNDANT_QUERY_MIN_COUNT,
   OVERFETCH_MIN_REQUESTS,
   HIGH_ROW_COUNT,
+  DETAIL_PREVIEW_LENGTH,
   MIN_REQUESTS_FOR_INSIGHT,
   HIGH_QUERY_COUNT_PER_REQ,
 } from "../../../constants/index.js";
 import { SELECT_STAR_RE, SELECT_DOT_STAR_RE } from "../../rules/patterns.js";
 
-// ── N+1 Query Detection ──
 export const n1Rule: InsightRule = {
   id: "n1",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -49,7 +49,7 @@ export const n1Rule: InsightRule = {
           title: "N+1 Query Pattern",
           desc: `${endpoint} runs ${shapeGroup.count}x ${info.op} ${info.table} with different params in a single request`,
           hint: "This typically happens when fetching related data in a loop. Use a batch query, JOIN, or include/eager-load to fetch all records at once.",
-          detail: `${shapeGroup.count} queries with ${shapeGroup.distinctSql.size} distinct param variations. Example: ${[...shapeGroup.distinctSql][0]?.slice(0, 100) ?? info.op + " " + info.table}`,
+          detail: `${shapeGroup.count} queries with ${shapeGroup.distinctSql.size} distinct param variations. Example: ${[...shapeGroup.distinctSql][0]?.slice(0, DETAIL_PREVIEW_LENGTH) ?? info.op + " " + info.table}`,
         });
       }
     }
@@ -58,7 +58,6 @@ export const n1Rule: InsightRule = {
   },
 };
 
-// ── Redundant Query Detection ──
 export const redundantQueryRule: InsightRule = {
   id: "redundant-query",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -94,7 +93,7 @@ export const redundantQueryRule: InsightRule = {
           title: "Redundant Query",
           desc: `${label} runs ${entry.count}x with identical params in ${endpoint}.`,
           hint: "The exact same query with identical parameters runs multiple times in one request. Cache the first result or lift the query to a shared function.",
-          detail: entry.first.sql ? `Query: ${entry.first.sql.slice(0, 120)}` : undefined,
+          detail: entry.first.sql ? `Query: ${entry.first.sql.slice(0, DETAIL_PREVIEW_LENGTH)}` : undefined,
         });
       }
     }
@@ -103,7 +102,6 @@ export const redundantQueryRule: InsightRule = {
   },
 };
 
-// ── SELECT * Detection ──
 export const selectStarRule: InsightRule = {
   id: "select-star",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -136,7 +134,6 @@ export const selectStarRule: InsightRule = {
   },
 };
 
-// ── High Row Count Detection ──
 export const highRowsRule: InsightRule = {
   id: "high-rows",
   check(ctx: PreparedInsightContext): Insight[] {
@@ -173,7 +170,6 @@ export const highRowsRule: InsightRule = {
   },
 };
 
-// ── Query-Heavy Endpoint Detection ──
 export const queryHeavyRule: InsightRule = {
   id: "query-heavy",
   check(ctx: PreparedInsightContext): Insight[] {

@@ -46,8 +46,13 @@ def _auto_setup() -> None:
     _install_hooks(registry)
     adapters = _install_adapters(registry)
     logger.debug("adapters: %s", adapters)
+
     _start_transport(registry)
-    _install_frameworks(registry)
+    detected_framework = _install_frameworks(registry)
+
+    # Initialize telemetry after framework detection
+    from brakit._telemetry import init_session as _init_telemetry
+    _init_telemetry(framework=detected_framework, adapters=adapters)
 
     logger.debug("initialized")
 
@@ -114,7 +119,9 @@ def _start_transport(registry: "ServiceRegistry") -> None:
 
 def _setup_forwarder(registry: "ServiceRegistry", port: int) -> None:
     from brakit.transport.forwarder import Forwarder
+    from brakit._telemetry import record_node_connected
 
+    record_node_connected()
     forwarder = Forwarder(port=port)
     forwarder.start()
 
@@ -127,10 +134,10 @@ def _setup_forwarder(registry: "ServiceRegistry", port: int) -> None:
     logger.debug("transport ready on port %d", port)
 
 
-def _install_frameworks(registry: "ServiceRegistry") -> None:
+def _install_frameworks(registry: "ServiceRegistry") -> str:
     from brakit.frameworks import detect_and_patch as detect_frameworks
 
-    detect_frameworks(registry)
+    return detect_frameworks(registry)
 
 
 def _forward_request(forwarder: "Forwarder", request: TracedRequest) -> None:
