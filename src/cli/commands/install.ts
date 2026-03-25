@@ -2,7 +2,7 @@ import { defineCommand } from "citty";
 import { resolve, join, dirname } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import pc from "picocolors";
 import { VERSION } from "../../index.js";
 import { scanForProjects } from "../../detect/project.js";
@@ -47,6 +47,16 @@ export default defineCommand({
       } else {
         console.error(pc.red("  No project found. Run this from your project directory."));
       }
+      process.exit(1);
+    }
+
+    // Detect frontend-only projects and warn — exit early
+    const firstNode = nodeProjects[0]!;
+    if (isFrontendOnly(firstNode.dir)) {
+      console.log(pc.yellow("  ⚠ This looks like a frontend-only app (React, Vue, etc.)."));
+      console.log(pc.dim("    Brakit instruments your backend server, not the browser."));
+      console.log(pc.dim("    Install brakit in your backend project instead (Express, Fastify, Next.js, etc.)."));
+      console.log();
       process.exit(1);
     }
 
@@ -96,9 +106,8 @@ export default defineCommand({
 
     // Print next steps
     console.log();
-    const port = nodeProjects[0]!.node?.defaultPort ?? 3000;
     console.log(pc.dim("  Start your app and visit:"));
-    console.log(pc.bold(`  http://localhost:${port}/__brakit`));
+    console.log(pc.bold("  http://localhost:<your-port>/__brakit"));
 
     // Hint about detected Python projects
     if (pythonProjects.length > 0) {
@@ -280,6 +289,22 @@ function findGitRoot(startDir: string): string | null {
     const parent = dirname(dir);
     if (parent === dir) return null;
     dir = parent;
+  }
+}
+
+const FRONTEND_ONLY_DEPS = ["react", "vue", "svelte", "@angular/core", "solid-js", "preact"];
+const SERVER_DEPS = ["express", "fastify", "hono", "koa", "nest", "next", "@remix-run/dev", "nuxt", "astro"];
+
+function isFrontendOnly(rootDir: string): boolean {
+  try {
+    const raw = readFileSync(join(rootDir, "package.json"), "utf-8");
+    const pkg = JSON.parse(raw);
+    const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+    const hasFrontend = FRONTEND_ONLY_DEPS.some((d) => d in allDeps);
+    const hasServer = SERVER_DEPS.some((d) => d in allDeps);
+    return hasFrontend && !hasServer;
+  } catch {
+    return false;
   }
 }
 
