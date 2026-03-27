@@ -143,6 +143,7 @@ export const TELEMETRY_EVENT_SETUP_COMPLETED = "setup_completed" as const;
 export const TELEMETRY_EVENT_FIRST_REQUEST = "first_request" as const;
 export const TELEMETRY_EVENT_DASHBOARD_VIEWED = "dashboard_viewed" as const;
 export const TELEMETRY_EVENT_SESSION = "session" as const;
+export const TELEMETRY_EVENT_GRAPH_FEATURE = "graph_feature" as const;
 
 export const EXIT_REASON_CLEAN = "clean" as const;
 export const EXIT_REASON_SIGINT = "sigint" as const;

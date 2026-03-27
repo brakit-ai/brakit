@@ -54,6 +54,7 @@ import { getDashboardHtml } from "./page.js";
 import {
   recordTabViewed,
   recordDashboardOpened,
+  recordGraphFeature,
   isTelemetryEnabled,
 } from "../telemetry/index.js";
 
@@ -95,10 +96,17 @@ export function createDashboardHandler(
   routes[DASHBOARD_API_GRAPH] = createGraphHandler(services);
 
   routes[DASHBOARD_API_TAB] = (req, res) => {
-    const raw = (req.url ?? "").split("tab=")[1];
-    if (raw) {
-      const tab = decodeURIComponent(raw).slice(0, MAX_TAB_NAME_LENGTH);
-      if (VALID_TABS.has(tab) && isTelemetryEnabled()) recordTabViewed(tab);
+    if (isTelemetryEnabled()) {
+      const url = new URL(req.url ?? "/", "http://localhost");
+      const tab = url.searchParams.get("tab");
+      if (tab && tab.length <= MAX_TAB_NAME_LENGTH && VALID_TABS.has(tab)) {
+        recordTabViewed(tab);
+      }
+      const event = url.searchParams.get("event");
+      if (event && event.length <= MAX_TAB_NAME_LENGTH) {
+        const detail = url.searchParams.get("detail") ?? undefined;
+        recordGraphFeature(event, detail?.slice(0, MAX_TAB_NAME_LENGTH));
+      }
     }
     res.writeHead(HTTP_NO_CONTENT);
     res.end();

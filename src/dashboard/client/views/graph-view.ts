@@ -56,6 +56,11 @@ import {
 import { computeLayout, type GraphLayout } from "../graph/layout.js";
 import { mergeFlowsAndGraph, consolidateFlows } from "../graph/merge-flows.js";
 
+function trackGraphEvent(feature: string, detail?: string): void {
+  const params = `event=${encodeURIComponent(feature)}${detail ? `&detail=${encodeURIComponent(detail)}` : ""}`;
+  fetch(`${API.tab}?${params}`).catch(() => {});
+}
+
 // ── Component ──
 
 @customElement("bk-graph-view")
@@ -277,6 +282,7 @@ export class GraphView extends LitElement {
     try { localStorage.removeItem(this.getPositionStorageKey()); } catch { /* ignore */ }
     this.viewTransform = { x: 0, y: 0, scale: 1 };
     this.requestUpdate();
+    trackGraphEvent("layout_reset");
   }
 
   // ── Node drag ──
@@ -459,6 +465,7 @@ export class GraphView extends LitElement {
         ${this.consolidatedFlows.length > 0 ? html`
           <select class="graph-flow-picker" @change=${(e: Event) => {
             this.activeFlowIdx = parseInt((e.target as HTMLSelectElement).value, 10);
+            if (this.activeFlowIdx >= 0) trackGraphEvent("flow_traced");
           }}>
             <option value="-1">Trace flow…</option>
             ${this.consolidatedFlows.map((f, i) => html`
@@ -503,6 +510,7 @@ export class GraphView extends LitElement {
   }
 
   private async captureScreenshot(): Promise<void> {
+    trackGraphEvent("screenshot_captured");
     const svgEl = this.querySelector(".graph-svg") as SVGSVGElement | null;
     if (!svgEl) return;
 
@@ -566,7 +574,7 @@ export class GraphView extends LitElement {
   private toggleLayer(layer: OverlayLayer): void {
     const next = new Set(this.activeLayers);
     if (next.has(layer)) next.delete(layer);
-    else next.add(layer);
+    else { next.add(layer); trackGraphEvent("layer_toggled", layer); }
     this.activeLayers = next;
   }
 
