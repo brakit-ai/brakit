@@ -15,8 +15,8 @@ const SQL_KEYWORDS = new Set([
 ]);
 
 export function extractOp(sql: string): string {
-  const m = sql.trim().match(/^(\w+)/);
-  return m ? m[1].toUpperCase() : "?";
+  const first = sql.trimStart().split(/\s/)[0];
+  return first ? first.toUpperCase() : "?";
 }
 
 export function extractTable(sql: string): string {

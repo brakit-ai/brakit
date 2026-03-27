@@ -1,4 +1,5 @@
 import { LitElement, html, nothing } from "lit";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, state } from "lit/decorators.js";
 import { consume } from "@lit/context";
 import { DashboardStore, dashboardContext } from "../store/dashboard-store.js";
@@ -60,7 +61,7 @@ export class QueriesView extends LitElement {
         <div class="query-detail ${expanded ? "open" : ""}">
           ${expanded
             ? html`
-                <pre class="query-detail-sql" .innerHTML=${highlightSql(sqlText)}></pre>
+                <pre class="query-detail-sql">${unsafeHTML(highlightSql(sqlText))}</pre>
                 <bk-copy-button .text=${sqlText} label="Copy"></bk-copy-button>
               `
             : nothing}

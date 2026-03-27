@@ -139,7 +139,8 @@ async function detectPythonFramework(
       const content = await readFile(join(rootDir, "requirements.txt"), "utf-8");
       const lines = content.toLowerCase().split("\n");
       for (const [dep, fw] of Object.entries(PYTHON_FRAMEWORK_MAP)) {
-        if (lines.some((l) => l.startsWith(dep) && (l.length === dep.length || /[=<>~![]/u.test(l[dep.length]!)))) {
+        const versionChars = new Set(["=", "<", ">", "~", "!", "["]);
+        if (lines.some((l) => l.startsWith(dep) && (l.length === dep.length || versionChars.has(l[dep.length]!)))) {
           return fw;
         }
       }
@@ -192,10 +193,8 @@ export interface ScannedProject {
 export async function scanForProjects(rootDir: string): Promise<ScannedProject[]> {
   const projects: ScannedProject[] = [];
 
-  // Check rootDir itself
   await detectInDir(rootDir, rootDir, projects);
 
-  // Scan immediate children
   try {
     const entries = await readdir(rootDir, { withFileTypes: true });
     for (const entry of entries) {
@@ -213,7 +212,6 @@ export async function scanForProjects(rootDir: string): Promise<ScannedProject[]
 async function detectInDir(dir: string, rootDir: string, projects: ScannedProject[]): Promise<void> {
   const rel = dir === rootDir ? "." : `./${relative(rootDir, dir)}`;
 
-  // Check for Node.js project
   if (await fileExists(join(dir, "package.json"))) {
     try {
       const node = await detectProject(dir);
@@ -223,7 +221,6 @@ async function detectInDir(dir: string, rootDir: string, projects: ScannedProjec
     }
   }
 
-  // Check for Python project
   const python = await detectPythonProject(dir);
   if (python) {
     projects.push({ dir, relDir: rel, type: "python", python });

@@ -135,13 +135,11 @@ export default defineCommand({
  * Returns a human-readable description of what was removed, or null.
  */
 async function removeInstrumentation(projectDir: string): Promise<string | null> {
-  // Pass 1: Check known created files (instrumentation.ts/.js, plugins)
   for (const relPath of CREATED_FILES) {
     const result = await tryRemoveBrakitFromFile(projectDir, relPath);
     if (result) return result;
   }
 
-  // Pass 2: Check entry files for prepended import line
   const candidates = [...PREPENDED_FILES];
   try {
     const pkgRaw = await readFile(join(projectDir, "package.json"), "utf-8");
@@ -154,7 +152,6 @@ async function removeInstrumentation(projectDir: string): Promise<string | null>
     if (result) return result;
   }
 
-  // Pass 3: Broad fallback — scan src/ and root for any file importing brakit
   const result = await fallbackSearchAndRemove(projectDir);
   if (result) return result;
 

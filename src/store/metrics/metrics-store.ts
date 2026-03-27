@@ -160,7 +160,6 @@ export class MetricsStore {
     const pointCount = pending?.length ?? 0;
     const cached = this.baselineCache.get(endpoint);
 
-    // Cache hit — return if pending point count hasn't changed
     if (cached && cached.pointCount === pointCount) return cached.value;
 
     const value = this.computeBaseline(endpoint, pending);

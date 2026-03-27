@@ -17,12 +17,44 @@ import {
   API,
 } from "../constants.js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- SSE payloads are untyped at the boundary
+function safeParse(data: string): any {
+  try {
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
 export class SSEController implements ReactiveController {
   private eventSource?: EventSource;
   private reloadTimer?: ReturnType<typeof setTimeout>;
   private perfReloadTimer?: ReturnType<typeof setTimeout>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private retryCount = 0;
+
+  private readonly boundHandlers = {
+    fetch: (e: Event) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (data) this.store.prependFetch(data);
+    },
+    log: (e: Event) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (data) this.store.prependLog(data);
+    },
+    error: (e: Event) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (data) this.store.prependError(data);
+    },
+    query: (e: Event) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (data) this.store.prependQuery(data);
+    },
+    issues: (e: Event) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (data) this.store.setIssues(data);
+    },
+  };
 
   constructor(
     private host: ReactiveControllerHost & HTMLElement,
@@ -36,13 +68,24 @@ export class SSEController implements ReactiveController {
   }
 
   hostDisconnected(): void {
+    this.removeListeners();
     this.eventSource?.close();
     clearTimeout(this.reloadTimer);
     clearTimeout(this.perfReloadTimer);
     clearTimeout(this.reconnectTimer);
   }
 
+  private removeListeners(): void {
+    if (!this.eventSource) return;
+    this.eventSource.removeEventListener(SSE_EVENT_FETCH, this.boundHandlers.fetch);
+    this.eventSource.removeEventListener(SSE_EVENT_LOG, this.boundHandlers.log);
+    this.eventSource.removeEventListener(SSE_EVENT_ERROR, this.boundHandlers.error);
+    this.eventSource.removeEventListener(SSE_EVENT_QUERY, this.boundHandlers.query);
+    this.eventSource.removeEventListener(SSE_EVENT_ISSUES, this.boundHandlers.issues);
+  }
+
   private connect(): void {
+    this.removeListeners();
     this.eventSource?.close();
     this.eventSource = new EventSource(API.events);
 
@@ -56,8 +99,9 @@ export class SSEController implements ReactiveController {
     };
 
     this.eventSource.onmessage = (e) => {
-      const req = JSON.parse(e.data);
-      if (req.path?.startsWith(DASHBOARD_PREFIX)) return;
+      const req = safeParse(e.data);
+      if (!req) return;
+      if ((req as { path?: string }).path?.startsWith(DASHBOARD_PREFIX)) return;
       this.store.prependRequest(req);
       clearTimeout(this.reloadTimer);
       this.reloadTimer = setTimeout(() => this.reloadFlows(), CLIENT_RELOAD_DEBOUNCE_MS);
@@ -67,21 +111,11 @@ export class SSEController implements ReactiveController {
       }
     };
 
-    this.eventSource.addEventListener(SSE_EVENT_FETCH, (e) => {
-      this.store.prependFetch(JSON.parse((e as MessageEvent).data));
-    });
-    this.eventSource.addEventListener(SSE_EVENT_LOG, (e) => {
-      this.store.prependLog(JSON.parse((e as MessageEvent).data));
-    });
-    this.eventSource.addEventListener(SSE_EVENT_ERROR, (e) => {
-      this.store.prependError(JSON.parse((e as MessageEvent).data));
-    });
-    this.eventSource.addEventListener(SSE_EVENT_QUERY, (e) => {
-      this.store.prependQuery(JSON.parse((e as MessageEvent).data));
-    });
-    this.eventSource.addEventListener(SSE_EVENT_ISSUES, (e) => {
-      this.store.setIssues(JSON.parse((e as MessageEvent).data));
-    });
+    this.eventSource.addEventListener(SSE_EVENT_FETCH, this.boundHandlers.fetch);
+    this.eventSource.addEventListener(SSE_EVENT_LOG, this.boundHandlers.log);
+    this.eventSource.addEventListener(SSE_EVENT_ERROR, this.boundHandlers.error);
+    this.eventSource.addEventListener(SSE_EVENT_QUERY, this.boundHandlers.query);
+    this.eventSource.addEventListener(SSE_EVENT_ISSUES, this.boundHandlers.issues);
   }
 
   /** Exponential backoff: base * 2^retry, capped at max. */

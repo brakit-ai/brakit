@@ -120,9 +120,15 @@ export class PerformanceView extends LitElement {
   }
 
   private normalizeEndpoint(request: TracedRequest): string {
-    const normalized = request.path
-      .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "/:id")
-      .replace(/\/\d+/g, "/:id");
+    const segments = request.path.split("?")[0].split("/");
+    const normalized = segments.map((s) => {
+      if (!s) return s;
+      let allDigits = s.length > 0;
+      for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); if (c < 48 || c > 57) { allDigits = false; break; } }
+      if (allDigits) return ":id";
+      if (s.length === 36 && s[8] === "-" && s[13] === "-" && s[18] === "-" && s[23] === "-") return ":id";
+      return s;
+    }).join("/");
     return `${request.method} ${normalized}`;
   }
 

@@ -35,8 +35,6 @@ export class DashboardStore extends EventTarget {
     return this._state;
   }
 
-  // -- Bulk setters (initial load) --
-
   setFlows(flows: FlowData[]): void {
     this._state = { ...this._state, flows };
     this.notify("flows");
@@ -77,8 +75,6 @@ export class DashboardStore extends EventTarget {
     this.notify("metrics");
   }
 
-  // -- Incremental updates (SSE) — immutable prepends --
-
   prependRequest(req: TracedRequest): void {
     const requests = [req, ...this._state.requests.slice(0, CLIENT_MAX_REQUESTS - 1)];
     this._state = { ...this._state, requests };
@@ -86,26 +82,28 @@ export class DashboardStore extends EventTarget {
   }
 
   prependFetch(f: TracedFetch): void {
-    this._state = { ...this._state, fetches: [f, ...this._state.fetches] };
+    const fetches = [f, ...this._state.fetches.slice(0, CLIENT_MAX_REQUESTS - 1)];
+    this._state = { ...this._state, fetches };
     this.notify("fetches");
   }
 
   prependError(e: TracedError): void {
-    this._state = { ...this._state, errors: [e, ...this._state.errors] };
+    const errors = [e, ...this._state.errors.slice(0, CLIENT_MAX_REQUESTS - 1)];
+    this._state = { ...this._state, errors };
     this.notify("errors");
   }
 
   prependLog(l: TracedLog): void {
-    this._state = { ...this._state, logs: [l, ...this._state.logs] };
+    const logs = [l, ...this._state.logs.slice(0, CLIENT_MAX_REQUESTS - 1)];
+    this._state = { ...this._state, logs };
     this.notify("logs");
   }
 
   prependQuery(q: TracedQuery): void {
-    this._state = { ...this._state, queries: [q, ...this._state.queries] };
+    const queries = [q, ...this._state.queries.slice(0, CLIENT_MAX_REQUESTS - 1)];
+    this._state = { ...this._state, queries };
     this.notify("queries");
   }
-
-  // -- View state --
 
   setActiveView(view: string): void {
     this._state = { ...this._state, activeView: view };
@@ -116,8 +114,6 @@ export class DashboardStore extends EventTarget {
     this._state = { ...this._state, viewMode: mode };
     this.notify("viewMode");
   }
-
-  // -- Clear all --
 
   clearAll(): void {
     this._state = {

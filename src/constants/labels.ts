@@ -18,10 +18,11 @@ export const DASHBOARD_API_SECURITY = `${DASHBOARD_PREFIX}/api/security` as cons
 export const DASHBOARD_API_TAB = `${DASHBOARD_PREFIX}/api/tab` as const;
 export const DASHBOARD_API_FINDINGS = `${DASHBOARD_PREFIX}/api/findings` as const;
 export const DASHBOARD_API_FINDINGS_REPORT = `${DASHBOARD_PREFIX}/api/findings/report` as const;
+export const DASHBOARD_API_GRAPH = `${DASHBOARD_PREFIX}/api/graph` as const;
 
 const VALID_TABS_TUPLE = [
   "overview", "actions", "requests", "fetches", "queries",
-  "errors", "logs", "performance", "security",
+  "errors", "logs", "performance", "security", "graph",
 ] as const;
 
 export const VALID_TABS: Set<string> = new Set(VALID_TABS_TUPLE);
@@ -55,7 +56,7 @@ export const SECURITY_HEADERS = {
   "x-frame-options": "DENY",
   "referrer-policy": "no-referrer",
   "content-security-policy":
-    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:",
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data: blob:",
 } as const;
 
 // ── Encoding ──

@@ -10,6 +10,7 @@ export const VIEW_TITLES: Record<string, string> = {
   logs: "Logs",
   performance: "Performance",
   security: "Security",
+  graph: "Graph",
 };
 
 export const VIEW_SUBTITLES: Record<string, string> = {
@@ -22,4 +23,5 @@ export const VIEW_SUBTITLES: Record<string, string> = {
   logs: "Console output from your application",
   performance: "Endpoint health and response time trends",
   security: "Security findings and recommendations",
+  graph: "Runtime dependency graph of your application",
 };

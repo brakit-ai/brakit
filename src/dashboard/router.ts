@@ -21,6 +21,7 @@ import {
   DASHBOARD_API_TAB,
   DASHBOARD_API_FINDINGS,
   DASHBOARD_API_FINDINGS_REPORT,
+  DASHBOARD_API_GRAPH,
   MAX_TAB_NAME_LENGTH,
   VALID_TABS,
 } from "../constants/index.js";
@@ -47,6 +48,7 @@ import {
   createFindingsHandler,
   createIssuesReportHandler,
 } from "./api/issues.js";
+import { createGraphHandler } from "./api/graph.js";
 import { createSSEHandler } from "./sse.js";
 import { getDashboardHtml } from "./page.js";
 import {
@@ -89,6 +91,8 @@ export function createDashboardHandler(
     issueStore,
     services.bus,
   );
+
+  routes[DASHBOARD_API_GRAPH] = createGraphHandler(services);
 
   routes[DASHBOARD_API_TAB] = (req, res) => {
     const raw = (req.url ?? "").split("tab=")[1];

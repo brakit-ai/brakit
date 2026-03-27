@@ -13,6 +13,7 @@ import { TelemetryStore } from "../store/telemetry-store.js";
 import { MetricsStore, FileMetricsPersistence } from "../store/index.js";
 import { IssueStore } from "../store/issue-store.js";
 import { AnalysisEngine } from "../analysis/engine.js";
+import { GraphBuilder } from "../graph/graph-builder.js";
 import { startTerminalInsights } from "../output/terminal.js";
 import { VERSION } from "../index.js";
 import {
@@ -266,7 +267,12 @@ async function doSetup(): Promise<void> {
     setup_duration_ms: setupDurationMs,
   });
 
-  // Phase 3 — analysis, metrics & issues (mutates `services` to fill remaining fields)
+  // Phase 3 — graph builder
+  const graphBuilder = new GraphBuilder(bus, stores.requestStore);
+  graphBuilder.start();
+  services.graphBuilder = graphBuilder;
+
+  // Phase 3b — analysis, metrics & issues (mutates `services` to fill remaining fields)
   const dataDir = getProjectDataDir(cwd);
   const analysisServices = startAnalysis(bus, stores, dataDir, services);
 
