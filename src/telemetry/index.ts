@@ -12,6 +12,7 @@ import {
 import {
   TELEMETRY_EVENT_DASHBOARD_VIEWED,
   TELEMETRY_EVENT_SESSION,
+  TELEMETRY_EVENT_GRAPH_FEATURE,
 } from "../constants/config.js";
 
 export { isTelemetryEnabled, setTelemetryEnabled } from "./config.js";
@@ -167,6 +168,13 @@ export function recordDashboardOpened(): void {
 
 export function recordExplainUsed(): void {
   session.explainUsed = true;
+}
+
+export function recordGraphFeature(feature: string, detail?: string): void {
+  trackEvent(TELEMETRY_EVENT_GRAPH_FEATURE, {
+    feature,
+    ...(detail ? { detail } : {}),
+  });
 }
 
 export function recordSetupCompleted(info: {
