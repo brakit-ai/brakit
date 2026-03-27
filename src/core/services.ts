@@ -4,6 +4,7 @@ import type { TelemetryStore } from "../store/telemetry-store.js";
 import type { MetricsStore } from "../store/metrics/metrics-store.js";
 import type { IssueStore } from "../store/issue-store.js";
 import type { AnalysisEngine } from "../analysis/engine.js";
+import type { GraphBuilder } from "../graph/graph-builder.js";
 import type {
   TracedFetch,
   TracedQuery,
@@ -21,4 +22,5 @@ export interface Services {
   metricsStore: MetricsStore;
   issueStore: IssueStore;
   analysisEngine: AnalysisEngine;
+  graphBuilder: GraphBuilder;
 }

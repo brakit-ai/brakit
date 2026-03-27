@@ -10,7 +10,7 @@ import { copyAsCurl } from "./utils/curl.js";
 import { API, DASHBOARD_PREFIX, VIEW_TITLES, VIEW_SUBTITLES } from "./constants.js";
 import {
   iconOverview, iconActions, iconRequests, iconFetches,
-  iconQueries, iconErrors, iconLogs, iconSecurity, iconPerformance,
+  iconQueries, iconErrors, iconLogs, iconSecurity, iconPerformance, iconGraph,
 } from "./components/icons.js";
 import type { TracedRequest } from "./store/types.js";
 
@@ -132,6 +132,12 @@ export class Dashboard extends LitElement {
             ${this.renderSidebarItem("logs", "Logs", iconLogs(), s.logs.length)}
             ${this.renderSidebarItem("security", "Security", iconSecurity(), openIssues, openIssues === 0)}
             ${this.renderSidebarItem("performance", "Performance", iconPerformance(), undefined)}
+            <div class="sidebar-section">Topology</div>
+            <button class="sidebar-item ${this.activeView === "graph" ? "active" : ""}" @click=${() => this.switchView("graph")}>
+              <span class="item-icon">${iconGraph()}</span>
+              <span class="item-label">Graph</span>
+              <span class="sidebar-beta">beta</span>
+            </button>
           </nav>
           <div class="sidebar-footer">:${config?.port ?? ""}</div>
         </aside>
@@ -178,6 +184,9 @@ export class Dashboard extends LitElement {
             </div>
             <div class="view-telemetry" id="performance-container" style="display:${this.activeView === "performance" ? "block" : "none"}">
               <bk-performance-view></bk-performance-view>
+            </div>
+            <div class="view-telemetry" id="graph-container" style="display:${this.activeView === "graph" ? "block" : "none"}">
+              <bk-graph-view></bk-graph-view>
             </div>
           </div>
           <div class="footer">

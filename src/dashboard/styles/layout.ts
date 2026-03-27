@@ -19,6 +19,7 @@ export function getLayoutStyles(): string {
 .sidebar-item:hover .item-icon{opacity:.8}
 .sidebar-item .item-label{flex:1}
 .sidebar-item .item-count{font-size:12px;font-family:var(--mono);color:var(--text-muted);background:var(--bg-muted);padding:2px 8px;border-radius:10px;min-width:24px;text-align:center}
+.sidebar-beta{font-size:9px;color:#6366f1;background:#eef2ff;border:1px solid #e0e7ff;border-radius:4px;padding:0 5px;margin-left:auto;line-height:16px}
 .sidebar-item.disabled{opacity:.35;cursor:default;pointer-events:none}
 .sidebar-item .coming-soon{font-size:10px;color:var(--text-muted);background:var(--bg-muted);padding:2px 8px;border-radius:10px;font-weight:600;letter-spacing:.3px}
 .sidebar-footer{padding:16px 24px;border-top:1px solid var(--border-subtle);font-size:12px;color:var(--text-muted);font-family:var(--mono)}
@@ -44,6 +45,7 @@ export function getLayoutStyles(): string {
 .main-content{flex:1;overflow-y:auto}
 bk-dashboard{display:contents}
 bk-overview-view,bk-flows-view,bk-requests-view,bk-fetches-view,bk-queries-view,bk-errors-view,bk-logs-view,bk-security-view,bk-performance-view,bk-timeline-panel,bk-empty-state{display:block}
+bk-graph-view{display:block}
 bk-method-badge,bk-status-pill,bk-duration-label,bk-copy-button{display:inline-flex;flex-shrink:0}
 bk-stat-card{display:inline-flex}
 bk-toast{display:block;position:fixed;top:0;left:0;right:0;z-index:100;pointer-events:none}

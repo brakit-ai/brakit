@@ -6,6 +6,7 @@ import { getPerformanceStyles } from "./styles/graph.js";
 import { getOverviewStyles } from "./styles/overview.js";
 import { getSecurityStyles } from "./styles/security.js";
 import { getTimelineStyles } from "./styles/timeline.js";
+import { getGraphViewStyles } from "./styles/graph-view.js";
 
 export function getStyles(): string {
   return (
@@ -16,6 +17,7 @@ export function getStyles(): string {
     getPerformanceStyles() +
     getOverviewStyles() +
     getSecurityStyles() +
-    getTimelineStyles()
+    getTimelineStyles() +
+    getGraphViewStyles()
   );
 }

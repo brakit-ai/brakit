@@ -1,6 +1,7 @@
 /** <bk-flows-view> — User action flows with insights and waterfall timeline tabs. */
 
 import { LitElement, html, nothing } from "lit";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, state } from "lit/decorators.js";
 import { consume } from "@lit/context";
 import { DashboardStore, dashboardContext } from "../store/dashboard-store.js";
@@ -158,10 +159,6 @@ export class FlowsView extends LitElement {
       if (expandEl) this.loadTimelineForContainer(expandEl);
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
 
   render() {
     const flows = this.flows;
@@ -415,7 +412,7 @@ export class FlowsView extends LitElement {
           <span class="chevron">▸</span
           ><span class="arrow-${direction}">${arrowChar}</span> ${label}
         </button>
-        <pre .innerHTML=${formatJsonBody(body)}></pre>
+        <pre>${unsafeHTML(formatJsonBody(body))}</pre>
       </div>
     `;
   }
@@ -479,19 +476,19 @@ export class FlowsView extends LitElement {
       <div class="detail-grid">
         <div class="detail-section">
           <h4>Request Headers</h4>
-          <pre .innerHTML=${formatHeaders(req.headers)}></pre>
+          <pre>${unsafeHTML(formatHeaders(req.headers))}</pre>
         </div>
         <div class="detail-section">
           <h4>Response Headers</h4>
-          <pre .innerHTML=${formatHeaders(req.responseHeaders)}></pre>
+          <pre>${unsafeHTML(formatHeaders(req.responseHeaders))}</pre>
         </div>
         <div class="detail-section">
           <h4>Request Body</h4>
-          <pre .innerHTML=${formatJsonBody(req.requestBody)}></pre>
+          <pre>${unsafeHTML(formatJsonBody(req.requestBody))}</pre>
         </div>
         <div class="detail-section">
           <h4>Response Body</h4>
-          <pre .innerHTML=${formatJsonBody(req.responseBody)}></pre>
+          <pre>${unsafeHTML(formatJsonBody(req.responseBody))}</pre>
         </div>
       </div>
       <div class="detail-actions">

@@ -93,11 +93,9 @@ export class IssueStore {
       if (!isActive) continue;
       if (currentIssueIds.has(stateful.issueId)) continue;
 
-      // Issue was not detected in this cycle
       const endpoint = stateful.issue.endpoint;
 
       if (endpoint && activeEndpoints.has(endpoint)) {
-        // Endpoint was hit but issue did not reproduce → positive evidence
         stateful.cleanHitsSinceLastSeen++;
         if (stateful.cleanHitsSinceLastSeen >= CLEAN_HITS_FOR_RESOLUTION) {
           stateful.state = "resolved";
@@ -105,14 +103,11 @@ export class IssueStore {
         }
         this.dirty = true;
       } else if (now - stateful.lastSeenAt > STALE_ISSUE_TTL_MS) {
-        // Endpoint hasn't been hit for a long time → stale
         stateful.state = "stale";
         this.dirty = true;
       }
-      // Otherwise: endpoint not hit, no evidence → keep current state
     }
 
-    // Prune issues that have been resolved or stale for longer than the TTL
     for (const [id, stateful] of this.issues) {
       if (stateful.state === "resolved" && stateful.resolvedAt && now - stateful.resolvedAt > ISSUE_PRUNE_TTL_MS) {
         this.issues.delete(id);

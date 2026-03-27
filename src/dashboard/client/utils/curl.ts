@@ -12,7 +12,7 @@ interface CurlTarget {
 
 /** POSIX-standard single-quote escaping: replace ' with '\\'' */
 function shellEscape(s: string): string {
-  return s.replace(/'/g, "'\\''");
+  return s.replaceAll("'", "'\\''");
 }
 
 export function buildCurlCommand(req: CurlTarget, port?: number | string): string {

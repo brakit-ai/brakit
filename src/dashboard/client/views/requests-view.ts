@@ -1,6 +1,7 @@
 /** <bk-requests-view> — HTTP request list with expandable detail panels. */
 
 import { LitElement, html, nothing } from "lit";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { customElement, state } from "lit/decorators.js";
 import { consume } from "@lit/context";
 import { DashboardStore, dashboardContext } from "../store/dashboard-store.js";
@@ -44,10 +45,10 @@ export class RequestsView extends LitElement {
       </div>
       <div class="request-timeline tl-hidden" data-request-id=${req.id} data-request-started=${String(req.startedAt)}></div>
       <div class="detail-grid">
-        <div class="detail-section"><h4>Request Headers</h4><pre .innerHTML=${formatHeaders(req.headers)}></pre></div>
-        <div class="detail-section"><h4>Response Headers</h4><pre .innerHTML=${formatHeaders(req.responseHeaders)}></pre></div>
-        <div class="detail-section"><h4>Request Body</h4><pre .innerHTML=${formatJsonBody(req.requestBody)}></pre></div>
-        <div class="detail-section"><h4>Response Body</h4><pre .innerHTML=${formatJsonBody(req.responseBody)}></pre></div>
+        <div class="detail-section"><h4>Request Headers</h4><pre>${unsafeHTML(formatHeaders(req.headers))}</pre></div>
+        <div class="detail-section"><h4>Response Headers</h4><pre>${unsafeHTML(formatHeaders(req.responseHeaders))}</pre></div>
+        <div class="detail-section"><h4>Request Body</h4><pre>${unsafeHTML(formatJsonBody(req.requestBody))}</pre></div>
+        <div class="detail-section"><h4>Response Body</h4><pre>${unsafeHTML(formatJsonBody(req.responseBody))}</pre></div>
       </div>
       <div class="detail-actions">
         <button class="btn btn-curl" @click=${(e: Event) => this.handleCopyAsCurl(req, e)}>Copy cURL</button>

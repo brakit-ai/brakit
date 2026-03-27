@@ -23,7 +23,12 @@ export function normalizeSQL(sql: string): { op: NormalizedOp; table: string } {
   if (!sql) return { op: "OTHER", table: "" };
 
   const trimmed = sql.trim();
-  const keyword = trimmed.split(/\s+/, 1)[0].toUpperCase();
+  let spaceIdx = -1;
+  for (let i = 0; i < trimmed.length; i++) {
+    const c = trimmed[i];
+    if (c === " " || c === "\t" || c === "\n" || c === "\r") { spaceIdx = i; break; }
+  }
+  const keyword = (spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx)).toUpperCase();
   const op: NormalizedOp = VALID_OPS.has(keyword) ? (keyword as NormalizedOp) : "OTHER";
   const table = trimmed.match(TABLE_RE)?.[1] ?? "";
 

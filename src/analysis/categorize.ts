@@ -4,6 +4,11 @@
  */
 import type { TracedRequest, RequestCategory } from "../types/index.js";
 
+function isAuthPath(path: string): boolean {
+  const lower = path.toLowerCase();
+  return lower.startsWith("/api/auth") || lower.startsWith("/clerk") || lower.startsWith("/api/clerk");
+}
+
 export function detectCategory(req: TracedRequest): RequestCategory {
   const { method, url, statusCode, responseHeaders } = req;
 
@@ -21,7 +26,7 @@ export function detectCategory(req: TracedRequest): RequestCategory {
   // Classify based on WHERE middleware rewrote to, not that middleware touched it
   const effectivePath = getEffectivePath(req);
 
-  if (/^\/api\/auth/i.test(effectivePath) || /^\/(api\/)?clerk/i.test(effectivePath)) {
+  if (isAuthPath(effectivePath)) {
     return "auth-check";
   }
 
@@ -55,6 +60,31 @@ export function detectCategory(req: TracedRequest): RequestCategory {
   }
 
   return "unknown";
+}
+
+/** Cookie name prefixes that indicate authentication credentials. */
+const AUTH_COOKIE_NAMES = [
+  "__session=", "__clerk", "__host-next-auth", "next-auth.session-token=",
+  "auth_token=", "session_id=", "access_token=", "_session=", "appsession=",
+];
+
+/**
+ * Detect whether a request carries authentication credentials.
+ * Catches inline auth patterns (e.g. requireAuth() inside handlers)
+ * that URL-based category detection misses.
+ */
+export function hasAuthCredentials(req: TracedRequest): boolean {
+  // Authorization header (Bearer, Basic, etc.)
+  if (req.headers["authorization"]) return true;
+
+  // Session cookies from common auth providers
+  const cookie = (req.headers["cookie"] || "").toLowerCase();
+  if (cookie && AUTH_COOKIE_NAMES.some((name) => cookie.includes(name))) return true;
+
+  // 401 response = endpoint requires auth
+  if (req.statusCode === 401) return true;
+
+  return false;
 }
 
 export function getEffectivePath(req: TracedRequest): string {

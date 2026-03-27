@@ -12,7 +12,6 @@ import { ISSUE_ID_HASH_LENGTH } from "../constants/config.js";
  * - `desc` distinguishes specific instance within the same rule+endpoint
  */
 export function computeIssueId(issue: Issue): string {
-  // Normalize dynamic values so the same logical issue always produces the same ID.
   const stableDesc = issue.desc.replace(/\d[\d,.]*\s*\w*/g, "#");
   const key = `${issue.rule}:${issue.endpoint ?? "global"}:${stableDesc}`;
   return createHash("sha256").update(key).digest("hex").slice(0, ISSUE_ID_HASH_LENGTH);

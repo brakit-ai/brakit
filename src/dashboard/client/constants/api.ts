@@ -16,6 +16,7 @@ export const API = {
   insights: `${API_PREFIX}/insights`,
   tab: `${API_PREFIX}/tab`,
   activity: `${API_PREFIX}/activity`,
+  graph: `${API_PREFIX}/graph`,
 } as const;
 
 export type ApiEndpoint = keyof typeof API;

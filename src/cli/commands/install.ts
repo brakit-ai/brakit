@@ -96,9 +96,8 @@ export default defineCommand({
 
     // Print next steps
     console.log();
-    const port = nodeProjects[0]!.node?.defaultPort ?? 3000;
     console.log(pc.dim("  Start your app and visit:"));
-    console.log(pc.bold(`  http://localhost:${port}/__brakit`));
+    console.log(pc.bold("  http://localhost:<your-port>/__brakit"));
 
     // Hint about detected Python projects
     if (pythonProjects.length > 0) {

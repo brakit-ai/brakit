@@ -18,10 +18,10 @@ export function formatSize(bytes: number | undefined): string {
 export function escHtml(s: string | null | undefined): string {
   if (!s) return "";
   return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 export function statusPillClass(code: number): string {

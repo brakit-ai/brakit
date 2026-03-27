@@ -70,11 +70,14 @@ function generateHumanLabel(
   }
 }
 
+function stripApiPrefix(s: string): string {
+  return s.startsWith("/api/") ? s.slice(5) : s;
+}
+
 export function prettifyEndpoint(name: string): string {
-  const cleaned = name
-    .replace(/^\/api\//, "")
-    .replace(/\//g, " ")
-    .replace(/\.\.\./g, "")
+  const cleaned = stripApiPrefix(name)
+    .split("/").join(" ")
+    .split("...").join("")
     .trim();
 
   if (!cleaned) return "data";
@@ -91,26 +94,30 @@ export function prettifyEndpoint(name: string): string {
     .join(" ");
 }
 
+const VERB_MAP: [string, string][] = [
+  ["enhance", "Enhanced"],
+  ["generate", "Generated"],
+  ["create", "Created"],
+  ["update", "Updated"],
+  ["delete", "Deleted"],
+  ["remove", "Deleted"],
+  ["send", "Sent"],
+  ["upload", "Uploaded"],
+  ["save", "Saved"],
+  ["submit", "Submitted"],
+  ["login", "Logged in"],
+  ["signin", "Logged in"],
+  ["logout", "Logged out"],
+  ["signout", "Logged out"],
+  ["register", "Registered"],
+  ["signup", "Registered"],
+];
+
 export function deriveActionVerb(method: string, endpointName: string): string {
   const lower = endpointName.toLowerCase();
 
-  const VERB_PATTERNS: [RegExp, string][] = [
-    [/enhance/, "Enhanced"],
-    [/generate/, "Generated"],
-    [/create/, "Created"],
-    [/update/, "Updated"],
-    [/delete|remove/, "Deleted"],
-    [/send/, "Sent"],
-    [/upload/, "Uploaded"],
-    [/save/, "Saved"],
-    [/submit/, "Submitted"],
-    [/login|signin/, "Logged in"],
-    [/logout|signout/, "Logged out"],
-    [/register|signup/, "Registered"],
-  ];
-
-  for (const [pattern, verb] of VERB_PATTERNS) {
-    if (pattern.test(lower)) return verb;
+  for (const [keyword, verb] of VERB_MAP) {
+    if (lower.includes(keyword)) return verb;
   }
 
   switch (method) {
@@ -127,7 +134,7 @@ export function deriveActionVerb(method: string, endpointName: string): string {
 }
 
 function getEndpointName(path: string): string {
-  const parts = path.replace(/^\/api\//, "").split("/");
+  const parts = stripApiPrefix(path).split("/");
   if (parts.length <= 2) return parts.join("/");
   return parts
     .map((p) => (p.length > ENDPOINT_TRUNCATE_LENGTH ? "..." : p))
@@ -135,13 +142,15 @@ function getEndpointName(path: string): string {
 }
 
 export function prettifyPageName(path: string): string {
-  const clean = path.replace(/^\//, "").replace(/\/$/, "");
+  let clean = path;
+  if (clean.startsWith("/")) clean = clean.slice(1);
+  if (clean.endsWith("/")) clean = clean.slice(0, -1);
 
   if (!clean) return "Home";
 
   return clean
     .split("/")
-    .map((s) => capitalize(s.replace(/[-_]/g, " ")))
+    .map((s) => capitalize(s.split("-").join(" ").split("_").join(" ")))
     .join(" ");
 }
 
