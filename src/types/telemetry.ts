@@ -1,3 +1,5 @@
+import type { DbDriver, LogLevel, NormalizedOp, SourceLocation } from "./shared.js";
+
 export interface TelemetryEntry {
   id: string;
   parentRequestId: string | null;
@@ -10,10 +12,11 @@ export interface TracedFetch extends TelemetryEntry {
   method: string;
   statusCode: number;
   durationMs: number;
+  callSite?: SourceLocation;
 }
 
 export interface TracedLog extends TelemetryEntry {
-  level: "log" | "warn" | "error" | "info" | "debug";
+  level: LogLevel;
   message: string;
 }
 
@@ -23,11 +26,8 @@ export interface TracedError extends TelemetryEntry {
   stack?: string;
 }
 
-export type NormalizedOp = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
-
 export interface TracedQuery extends TelemetryEntry {
-  // Python SDK supports: asyncpg, sqlalchemy, sdk
-  driver: "pg" | "mysql2" | "prisma" | "asyncpg" | "sqlalchemy" | "sdk";
+  driver: DbDriver;
   sql?: string;
   model?: string;
   operation?: string;
@@ -37,6 +37,7 @@ export interface TracedQuery extends TelemetryEntry {
   table?: string;
   source?: string;
   parentFetchId?: string;
+  callSite?: SourceLocation;
 }
 
 export type TelemetryEvent =

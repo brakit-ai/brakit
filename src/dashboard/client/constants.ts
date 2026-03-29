@@ -34,7 +34,7 @@ export {
   SECURITY_RULES,
   PERFORMANCE_RULES,
   categorizeIssue,
-  type InsightCategory,
+  type IssueCategory,
 } from "./constants/rules.js";
 
 export { UI_STRINGS } from "./constants/ui-strings.js";
@@ -82,21 +82,28 @@ export {
 
 export const ALL_ENDPOINTS_SELECTOR = "__all__";
 
-export const QUERY_OP_COLORS: Record<string, string> = {
+import type { NormalizedOp, LogLevel, Severity } from "./store/types.js";
+
+const QUERY_OP_COLOR_MAP: Record<NormalizedOp, string> = {
   SELECT: "var(--blue)",
   INSERT: "var(--green)",
   UPDATE: "var(--amber)",
   DELETE: "var(--red)",
-  COUNT: "var(--text-muted)",
+  OTHER: "var(--text-muted)",
 };
 
-export const LOG_LEVEL_COLORS: Record<string, string> = {
+/** Safe lookup with fallback for unknown operation strings from the API. */
+export const QUERY_OP_COLORS: Record<string, string> = QUERY_OP_COLOR_MAP;
+
+const LOG_LEVEL_COLOR_MAP: Record<LogLevel, string> = {
   error: "var(--red)",
   warn: "var(--amber)",
   info: "var(--blue)",
   debug: "var(--text-muted)",
   log: "var(--text-dim)",
 };
+
+export const LOG_LEVEL_COLORS: Record<string, string> = LOG_LEVEL_COLOR_MAP;
 
 export const GRAPH_COLORS = [
   "#2563eb", "#7c3aed", "#16a34a", "#d97706", "#dc2626",
@@ -162,7 +169,7 @@ export const HTTP_STATUS_MAP: Record<number, string> = {
 
 export const CURL_SKIP_HEADERS = new Set(["host", "connection", "accept-encoding"]);
 
-export const SEVERITY_MAP: Record<string, { icon: string; cls: string; sort: number }> = {
+export const SEVERITY_MAP: Record<Severity, { icon: string; cls: string; sort: number }> = {
   critical: { icon: "\u2717", cls: "critical", sort: 0 },
   warning: { icon: "\u26A0", cls: "warning", sort: 1 },
   info: { icon: "\u2139", cls: "info", sort: 2 },

@@ -4,17 +4,17 @@ import { html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { BkViewBase } from "./bk-view-base.js";
 import { SEVERITY_MAP, CLEAN_HITS_FOR_RESOLUTION } from "../constants.js";
-import { categorizeIssue, type InsightCategory } from "../constants/rules.js";
+import { categorizeIssue, type IssueCategory } from "../constants/rules.js";
 import { isNotStale } from "../utils/issue-filters.js";
 import type { StatefulIssue, Severity } from "../store/types.js";
 
-type InsightFilter = "all" | InsightCategory;
+type InsightFilter = "all" | IssueCategory;
 
 const FILTER_CHIPS: readonly { key: InsightFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "security", label: "Security" },
   { key: "performance", label: "Performance" },
-  { key: "quality", label: "Quality" },
+  { key: "reliability", label: "Reliability" },
 ];
 
 @customElement("bk-insights-view")
@@ -39,7 +39,7 @@ export class InsightsView extends BkViewBase {
   }
 
   private getCounts(nonStale: StatefulIssue[]): Record<InsightFilter, number> {
-    const counts: Record<InsightFilter, number> = { all: nonStale.length, security: 0, performance: 0, quality: 0 };
+    const counts: Record<InsightFilter, number> = { all: nonStale.length, security: 0, performance: 0, reliability: 0 };
     for (const entry of nonStale) {
       counts[categorizeIssue(entry)]++;
     }

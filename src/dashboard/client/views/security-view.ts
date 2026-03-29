@@ -91,7 +91,7 @@ export class SecurityView extends LitElement {
 
     for (const sf of open) {
       const f = sf.issue;
-      const key = f.rule || f.type;
+      const key = f.rule;
       if (!groups[key]) {
         groups[key] = { rule: key, title: f.title, severity: f.severity, hint: f.hint, items: [] };
         groupOrder.push(key);

@@ -1,11 +1,9 @@
-/** Generic bounded in-memory store for telemetry entries with pub/sub support. */
 import { randomUUID } from "node:crypto";
 import type { TelemetryEntry } from "../types/index.js";
 import { MAX_TELEMETRY_ENTRIES } from "../constants/index.js";
 
 export type TelemetryListener<T> = (entry: T) => void;
 
-/** Read-only view of a TelemetryStore — used by API handlers that only query data. */
 export interface ReadonlyTelemetryStore {
   getAll(): readonly TelemetryEntry[];
   getByRequest(requestId: string): TelemetryEntry[];
@@ -13,7 +11,7 @@ export interface ReadonlyTelemetryStore {
 
 export class TelemetryStore<T extends TelemetryEntry> implements ReadonlyTelemetryStore {
   private entries: T[] = [];
-  private listeners: TelemetryListener<T>[] = [];
+  private listeners = new Set<TelemetryListener<T>>();
 
   constructor(private maxEntries = MAX_TELEMETRY_ENTRIES) {}
 
@@ -38,11 +36,10 @@ export class TelemetryStore<T extends TelemetryEntry> implements ReadonlyTelemet
   }
 
   onEntry(fn: TelemetryListener<T>): void {
-    this.listeners.push(fn);
+    this.listeners.add(fn);
   }
 
   offEntry(fn: TelemetryListener<T>): void {
-    const idx = this.listeners.indexOf(fn);
-    if (idx !== -1) this.listeners.splice(idx, 1);
+    this.listeners.delete(fn);
   }
 }

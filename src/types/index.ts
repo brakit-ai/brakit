@@ -1,4 +1,16 @@
 export type {
+  DbDriver,
+  LogLevel,
+  NormalizedOp,
+  Severity,
+  IssueState,
+  IssueSource,
+  IssueCategory,
+  AiFixStatus,
+  SourceLocation,
+} from "./shared.js";
+
+export type {
   HttpMethod,
   FlatHeaders,
   TracedRequest,
@@ -20,7 +32,6 @@ export type {
 } from "./analysis.js";
 
 export type {
-  NormalizedOp,
   TelemetryEntry,
   TracedFetch,
   TracedLog,
@@ -40,13 +51,9 @@ export type {
   RequestMetrics,
 } from "./metrics.js";
 
-export type { Severity, SecuritySeverity, SecurityFinding } from "./security.js";
+export type { SecuritySeverity, SecurityFinding } from "./security.js";
 
 export type {
-  IssueState,
-  IssueSource,
-  IssueCategory,
-  AiFixStatus,
   Issue,
   StatefulIssue,
   IssuesData,

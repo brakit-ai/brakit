@@ -1,6 +1,6 @@
 {
   "name": "brakit",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "See what your API is really doing. Security scanning, N+1 detection, duplicate calls, DB queries — one command, zero config.",
   "type": "module",
   "bin": {
