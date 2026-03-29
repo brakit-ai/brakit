@@ -3,14 +3,14 @@ export interface Disposable {
 }
 
 export class SubscriptionBag implements Disposable {
-  private items: Disposable[] = [];
+  private items = new Set<Disposable>();
 
   add(teardown: (() => void) | Disposable): void {
-    this.items.push(typeof teardown === "function" ? { dispose: teardown } : teardown);
+    this.items.add(typeof teardown === "function" ? { dispose: teardown } : teardown);
   }
 
   dispose(): void {
     for (const d of this.items) d.dispose();
-    this.items.length = 0;
+    this.items.clear();
   }
 }

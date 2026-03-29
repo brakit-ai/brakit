@@ -199,9 +199,15 @@ export class IssueStore {
     }
   }
 
-  /** Parse and populate issues from a raw JSON string. */
   private hydrate(raw: string): void {
-    const validated = validateIssuesData(JSON.parse(raw));
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      brakitDebug(`IssueStore: corrupt JSON in issues file, starting fresh: ${err}`);
+      return;
+    }
+    const validated = validateIssuesData(parsed);
     if (!validated) return;
     for (const issue of validated.issues) {
       this.issues.set(issue.issueId, issue);
@@ -216,8 +222,12 @@ export class IssueStore {
 
   private flushSync(): void {
     if (!this.dirty) return;
-    this.writer.writeSync(this.serialize());
-    this.dirty = false;
+    try {
+      this.writer.writeSync(this.serialize());
+      this.dirty = false;
+    } catch (err) {
+      brakitDebug(`IssueStore: flush failed, will retry: ${err}`);
+    }
   }
 
   private serialize(): string {

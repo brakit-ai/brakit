@@ -1,30 +1,47 @@
 /**
  * Dashboard client types.
  *
- * These mirror the server-side types but represent the JSON shapes received
- * from the dashboard API. The server types live in src/types/ and include
- * Node.js-specific concerns; these are the browser-side equivalents.
+ * JSON shapes received from the dashboard API. Shared union types are
+ * imported from src/types/shared.ts (single source of truth); interface
+ * shapes here may carry extra optional fields added by the API layer.
  */
+import type {
+  DbDriver,
+  LogLevel,
+  NormalizedOp,
+  IssueState,
+  IssueCategory,
+  AiFixStatus,
+  Severity,
+  IssueSource,
+} from "../../../types/shared.js";
 
-// ---------------------------------------------------------------------------
-// Shared enums — keep in sync with src/types/telemetry.ts
-// ---------------------------------------------------------------------------
-
-export type DbDriver =
-  | "pg"
-  | "mysql2"
-  | "prisma"
-  | "asyncpg"
-  | "sqlalchemy"
-  | "sdk";
-export type LogLevel = "log" | "warn" | "error" | "info" | "debug";
-export type NormalizedOp = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
-export type IssueState = "open" | "fixing" | "resolved" | "stale" | "regressed";
-export type IssueCategory = "security" | "performance" | "reliability";
-export type AiFixStatus = "fixed" | "wont_fix";
-export type Severity = "critical" | "warning" | "info";
-export type DashboardView = "overview" | "actions" | "insights" | "performance" | "graph" | "explorer";
-export type NavigableView = DashboardView | "requests" | "fetches" | "queries" | "errors" | "logs" | "security";
+export type {
+  DbDriver,
+  LogLevel,
+  NormalizedOp,
+  IssueState,
+  IssueCategory,
+  AiFixStatus,
+  Severity,
+  IssueSource,
+  SourceLocation,
+} from "../../../types/shared.js";
+export type DashboardView =
+  | "overview"
+  | "actions"
+  | "insights"
+  | "performance"
+  | "graph"
+  | "explorer";
+export type NavigableView =
+  | DashboardView
+  | "requests"
+  | "fetches"
+  | "queries"
+  | "errors"
+  | "logs"
+  | "security";
 
 // ---------------------------------------------------------------------------
 // Global config injected by the server into the HTML page.
@@ -161,10 +178,10 @@ export interface FlowInsight {
 export interface StatefulIssue {
   issueId: string;
   state: IssueState;
-  source: string;
+  source: IssueSource;
   category: IssueCategory;
   issue: {
-    type: string;
+    rule: string;
     severity: Severity;
     title: string;
     desc: string;
@@ -172,7 +189,6 @@ export interface StatefulIssue {
     endpoint: string;
     detail?: string;
     nav?: string;
-    rule?: string;
     count?: number;
   };
   firstSeenAt: number;
@@ -187,7 +203,7 @@ export interface StatefulIssue {
 export interface GroupedIssue {
   rule: string;
   title: string;
-  severity: string;
+  severity: Severity;
   hint: string;
   items: StatefulIssue[];
 }

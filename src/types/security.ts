@@ -1,5 +1,6 @@
-/** Shared severity levels used by both security findings and insights. */
-export type Severity = "critical" | "warning" | "info";
+export type { Severity } from "./shared.js";
+
+import type { Severity } from "./shared.js";
 
 export type SecuritySeverity = Severity;
 
