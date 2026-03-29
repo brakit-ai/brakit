@@ -93,7 +93,6 @@ interface SessionState {
   tabsViewed: Set<string>;
   dashboardOpened: boolean;
   explainUsed: boolean;
-  // Enhanced fields
   frameworkCandidates: string[];
   adaptersFailed: string[];
   setupDurationMs: number;
@@ -251,8 +250,8 @@ export function trackSession(services: Services): void {
     tabs_viewed: [...session.tabsViewed],
     dashboard_opened: session.dashboardOpened,
     explain_used: session.explainUsed,
-    session_duration_s: Math.round((now - session.startTime) / 1000),
-    // Enhanced fields
+    session_duration_s: Math.ceil((now - session.startTime) / 1000),
+    session_duration_ms: now - session.startTime,
     setup_succeeded: session.setupSucceeded,
     setup_duration_ms: session.setupDurationMs,
     framework_detection_candidates: session.frameworkCandidates,

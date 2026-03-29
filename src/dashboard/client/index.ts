@@ -19,6 +19,8 @@ import "./views/security-view.js";
 import "./views/overview-view.js";
 import "./views/performance-view.js";
 import "./views/graph-view.js";
+import "./views/explorer-view.js";
+import "./views/insights-view.js";
 import "./views/timeline-panel.js";
 
 import "./app.js";

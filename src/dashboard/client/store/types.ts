@@ -22,6 +22,9 @@ export type NormalizedOp = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
 export type IssueState = "open" | "fixing" | "resolved" | "stale" | "regressed";
 export type IssueCategory = "security" | "performance" | "reliability";
 export type AiFixStatus = "fixed" | "wont_fix";
+export type Severity = "critical" | "warning" | "info";
+export type DashboardView = "overview" | "actions" | "insights" | "performance" | "graph" | "explorer";
+export type NavigableView = DashboardView | "requests" | "fetches" | "queries" | "errors" | "logs" | "security";
 
 // ---------------------------------------------------------------------------
 // Global config injected by the server into the HTML page.
@@ -162,7 +165,7 @@ export interface StatefulIssue {
   category: IssueCategory;
   issue: {
     type: string;
-    severity: string;
+    severity: Severity;
     title: string;
     desc: string;
     hint: string;
@@ -192,6 +195,12 @@ export interface GroupedIssue {
 // ---------------------------------------------------------------------------
 // Metrics / Performance
 // ---------------------------------------------------------------------------
+
+export interface GraphSummary {
+  endpoints: number;
+  tables: number;
+  externals: number;
+}
 
 export interface MetricDataPoint {
   ts: number;
@@ -324,5 +333,5 @@ export interface DashboardState {
   issues: StatefulIssue[];
   metrics: EndpointMetrics[];
   viewMode: ViewMode;
-  activeView: string;
+  activeView: DashboardView;
 }

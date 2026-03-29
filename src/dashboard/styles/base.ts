@@ -13,7 +13,10 @@ export function getBaseStyles(): string {
   --red:#dc2626;
   --cyan:#0891b2;
   --green-bg:rgba(22,163,74,0.08);--green-bg-subtle:rgba(22,163,74,0.05);--green-border:rgba(22,163,74,0.2);--green-border-subtle:rgba(22,163,74,0.15);
-  --amber-bg:rgba(217,119,6,0.07);--red-bg:rgba(220,38,38,0.07);--blue-bg:rgba(37,99,235,0.08);--cyan-bg:rgba(8,145,178,0.07);
+  --amber-bg:rgba(217,119,6,0.08);--amber-border:rgba(217,119,6,0.15);
+  --red-bg:rgba(220,38,38,0.08);--red-border:rgba(220,38,38,0.2);
+  --blue-bg:rgba(37,99,235,0.08);--cyan-bg:rgba(8,145,178,0.07);
+  --accent-bg:rgba(99,102,241,0.08);
   --sidebar-width:232px;--header-height:52px;
   --radius:8px;--radius-sm:6px;
   --shadow-sm:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.03);

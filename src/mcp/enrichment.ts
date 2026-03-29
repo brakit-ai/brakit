@@ -17,7 +17,6 @@ export async function enrichFindings(
     (si) => si.state !== "resolved" && si.state !== "stale",
   );
 
-  // Fetch context for issues with endpoints in parallel
   const contexts = await Promise.all(
     issues.map(async (si): Promise<string> => {
       const endpoint = si.issue.endpoint;
@@ -28,10 +27,27 @@ export async function enrichFindings(
         if (reqData.requests.length > 0) {
           const req = reqData.requests[0];
           if (req.id) {
-            const activity = await client.getActivity(req.id);
-            const queryCount = activity.counts?.queries ?? 0;
-            const fetchCount = activity.counts?.fetches ?? 0;
-            return `Request took ${req.durationMs}ms. ${queryCount} DB queries, ${fetchCount} fetches.`;
+            const [activity, queries, fetches] = await Promise.all([
+              client.getActivity(req.id),
+              client.getQueries(req.id),
+              client.getFetches(req.id),
+            ]);
+            const lines: string[] = [`Request took ${req.durationMs}ms.`];
+            if (queries.entries.length > 0) {
+              lines.push(`DB Queries (${queries.entries.length}):`);
+              for (const q of queries.entries.slice(0, 5)) {
+                const sql = q.sql ?? `${q.operation ?? ""} ${q.table ?? q.model ?? ""}`;
+                lines.push(`  [${q.durationMs}ms] ${sql}`);
+              }
+              if (queries.entries.length > 5) lines.push(`  ... and ${queries.entries.length - 5} more`);
+            }
+            if (fetches.entries.length > 0) {
+              lines.push(`Fetches (${fetches.entries.length}):`);
+              for (const f of fetches.entries.slice(0, 3)) {
+                lines.push(`  [${f.durationMs}ms] ${f.method} ${f.url} → ${f.statusCode}`);
+              }
+            }
+            return lines.join("\n");
           }
         }
       } catch {
@@ -41,6 +57,7 @@ export async function enrichFindings(
     }),
   );
 
+  // Parallel arrays: issues[i] corresponds to contexts[i]
   const enriched: EnrichedFinding[] = [];
 
   for (let i = 0; i < issues.length; i++) {

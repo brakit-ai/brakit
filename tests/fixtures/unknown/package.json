@@ -1,6 +1,6 @@
 {
-  "name": "test-express-app",
+  "name": "test-unknown-app",
   "dependencies": {
-    "express": "^4.0.0"
+    "lodash": "^4.0.0"
   }
 }

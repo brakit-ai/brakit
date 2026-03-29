@@ -4,6 +4,7 @@ import { createContext } from "@lit/context";
 import { CLIENT_MAX_REQUESTS } from "../constants.js";
 import type {
   DashboardState,
+  DashboardView,
   StoreStateKey,
   TracedRequest,
   TracedFetch,
@@ -35,45 +36,19 @@ export class DashboardStore extends EventTarget {
     return this._state;
   }
 
-  setFlows(flows: FlowData[]): void {
-    this._state = { ...this._state, flows };
-    this.notify("flows");
+  private setState<K extends keyof DashboardState>(key: K, value: DashboardState[K]): void {
+    this._state = { ...this._state, [key]: value };
+    this.notify(key as StoreStateKey);
   }
 
-  setRequests(requests: TracedRequest[]): void {
-    this._state = { ...this._state, requests };
-    this.notify("requests");
-  }
-
-  setFetches(fetches: TracedFetch[]): void {
-    this._state = { ...this._state, fetches };
-    this.notify("fetches");
-  }
-
-  setErrors(errors: TracedError[]): void {
-    this._state = { ...this._state, errors };
-    this.notify("errors");
-  }
-
-  setLogs(logs: TracedLog[]): void {
-    this._state = { ...this._state, logs };
-    this.notify("logs");
-  }
-
-  setQueries(queries: TracedQuery[]): void {
-    this._state = { ...this._state, queries };
-    this.notify("queries");
-  }
-
-  setIssues(issues: StatefulIssue[]): void {
-    this._state = { ...this._state, issues };
-    this.notify("issues");
-  }
-
-  setMetrics(metrics: EndpointMetrics[]): void {
-    this._state = { ...this._state, metrics };
-    this.notify("metrics");
-  }
+  setFlows(flows: FlowData[]): void { this.setState("flows", flows); }
+  setRequests(requests: TracedRequest[]): void { this.setState("requests", requests); }
+  setFetches(fetches: TracedFetch[]): void { this.setState("fetches", fetches); }
+  setErrors(errors: TracedError[]): void { this.setState("errors", errors); }
+  setLogs(logs: TracedLog[]): void { this.setState("logs", logs); }
+  setQueries(queries: TracedQuery[]): void { this.setState("queries", queries); }
+  setIssues(issues: StatefulIssue[]): void { this.setState("issues", issues); }
+  setMetrics(metrics: EndpointMetrics[]): void { this.setState("metrics", metrics); }
 
   prependRequest(req: TracedRequest): void {
     const requests = [req, ...this._state.requests.slice(0, CLIENT_MAX_REQUESTS - 1)];
@@ -105,15 +80,9 @@ export class DashboardStore extends EventTarget {
     this.notify("queries");
   }
 
-  setActiveView(view: string): void {
-    this._state = { ...this._state, activeView: view };
-    this.notify("activeView");
-  }
+  setActiveView(view: DashboardView): void { this.setState("activeView", view); }
 
-  setViewMode(mode: "simple" | "detailed"): void {
-    this._state = { ...this._state, viewMode: mode };
-    this.notify("viewMode");
-  }
+  setViewMode(mode: "simple" | "detailed"): void { this.setState("viewMode", mode); }
 
   clearAll(): void {
     this._state = {

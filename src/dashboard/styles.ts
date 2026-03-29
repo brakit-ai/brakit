@@ -7,6 +7,8 @@ import { getOverviewStyles } from "./styles/overview.js";
 import { getSecurityStyles } from "./styles/security.js";
 import { getTimelineStyles } from "./styles/timeline.js";
 import { getGraphViewStyles } from "./styles/graph-view.js";
+import { getExplorerStyles } from "./styles/explorer.js";
+import { getInsightsStyles } from "./styles/insights.js";
 
 export function getStyles(): string {
   return (
@@ -18,6 +20,8 @@ export function getStyles(): string {
     getOverviewStyles() +
     getSecurityStyles() +
     getTimelineStyles() +
-    getGraphViewStyles()
+    getGraphViewStyles() +
+    getExplorerStyles() +
+    getInsightsStyles()
   );
 }

@@ -24,6 +24,7 @@ import {
   DASHBOARD_API_GRAPH,
   MAX_TAB_NAME_LENGTH,
   VALID_TABS,
+  type DashboardView,
 } from "../constants/index.js";
 import {
   HTTP_OK,
@@ -99,7 +100,7 @@ export function createDashboardHandler(
     if (isTelemetryEnabled()) {
       const url = new URL(req.url ?? "/", "http://localhost");
       const tab = url.searchParams.get("tab");
-      if (tab && tab.length <= MAX_TAB_NAME_LENGTH && VALID_TABS.has(tab)) {
+      if (tab && tab.length <= MAX_TAB_NAME_LENGTH && VALID_TABS.has(tab as DashboardView)) {
         recordTabViewed(tab);
       }
       const event = url.searchParams.get("event");

@@ -11,6 +11,7 @@ export function getLayoutStyles(): string {
 .sidebar-logo .logo-version{font-weight:400;font-size:11px;color:var(--text-muted);margin-left:8px;letter-spacing:0}
 .sidebar-nav{padding:12px;flex:1}
 .sidebar-section{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);padding:16px 12px 8px}
+.sidebar-divider{height:1px;background:var(--border-subtle);margin:8px 12px}
 .sidebar-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--radius);color:var(--text-dim);font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;border:none;background:transparent;width:100%;text-align:left;font-family:var(--sans)}
 .sidebar-item:hover{background:var(--bg-hover);color:var(--text)}
 .sidebar-item.active{background:var(--bg-active);color:var(--accent)}
@@ -44,7 +45,7 @@ export function getLayoutStyles(): string {
 /* Content */
 .main-content{flex:1;overflow-y:auto}
 bk-dashboard{display:contents}
-bk-overview-view,bk-flows-view,bk-requests-view,bk-fetches-view,bk-queries-view,bk-errors-view,bk-logs-view,bk-security-view,bk-performance-view,bk-timeline-panel,bk-empty-state{display:block}
+bk-overview-view,bk-flows-view,bk-requests-view,bk-fetches-view,bk-queries-view,bk-errors-view,bk-logs-view,bk-security-view,bk-performance-view,bk-explorer-view,bk-insights-view,bk-timeline-panel,bk-empty-state{display:block}
 bk-graph-view{display:block}
 bk-method-badge,bk-status-pill,bk-duration-label,bk-copy-button{display:inline-flex;flex-shrink:0}
 bk-stat-card{display:inline-flex}

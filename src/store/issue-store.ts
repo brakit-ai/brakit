@@ -52,7 +52,7 @@ export class IssueStore {
       existing.occurrences++;
       existing.issue = issue;
       existing.cleanHitsSinceLastSeen = 0;
-      if (existing.state === "resolved" || existing.state === "stale") {
+      if (existing.aiStatus !== "wont_fix" && (existing.state === "resolved" || existing.state === "stale")) {
         existing.state = "regressed";
         existing.resolvedAt = null;
       }
@@ -80,10 +80,11 @@ export class IssueStore {
   }
 
   /**
-   * Reconcile issues against the current analysis results using evidence-based resolution.
-   *
-   * @param currentIssueIds - IDs of issues detected in the current analysis cycle
-   * @param activeEndpoints - Endpoints that had requests in the current cycle
+   * Evidence-based reconciliation: for each active issue whose endpoint had
+   * traffic but the issue was NOT re-detected, increment cleanHitsSinceLastSeen.
+   * After CLEAN_HITS_FOR_RESOLUTION consecutive clean cycles, auto-resolve.
+   * Issues on endpoints with no recent traffic are marked stale after STALE_ISSUE_TTL_MS.
+   * Resolved and stale issues are pruned after their respective TTLs expire.
    */
   reconcile(currentIssueIds: Set<string>, activeEndpoints: Set<string>): void {
     const now = Date.now();

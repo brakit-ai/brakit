@@ -74,6 +74,8 @@ export function startTerminalInsights(
     const regressedLines: string[] = [];
 
     for (const si of issues) {
+      if (si.aiStatus === "wont_fix") continue;
+
       if (si.state === "resolved") {
         if (resolvedKeys.has(si.issueId)) continue;
         resolvedKeys.add(si.issueId);

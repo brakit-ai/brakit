@@ -40,6 +40,11 @@ export const getFindings = {
 
     let findings = await enrichFindings(client);
 
+    // Exclude won't-fix issues by default — the AI already decided these can't be resolved
+    if (!state) {
+      findings = findings.filter((f) => f.aiStatus !== "wont_fix");
+    }
+
     if (severity) {
       findings = findings.filter((f) => f.severity === severity);
     }
@@ -54,20 +59,24 @@ export const getFindings = {
       return { content: [{ type: "text" as const, text: "No findings detected. The application looks healthy." }] };
     }
 
-    const lines: string[] = [`Found ${findings.length} issue(s):\n`];
+    const lines: string[] = [
+      `Found ${findings.length} issue(s). Full context included below — no need to call get_request_detail separately.`,
+      `After fixing, call report_fixes ONCE with all results.\n`,
+    ];
 
     for (const f of findings) {
       lines.push(`[${f.severity.toUpperCase()}] ${f.title}`);
       lines.push(`  ID: ${f.findingId}`);
       lines.push(`  Endpoint: ${f.endpoint}`);
       lines.push(`  Issue: ${f.description}`);
-      if (f.context) lines.push(`  Context: ${f.context}`);
+      if (f.context) {
+        for (const ctxLine of f.context.split("\n")) {
+          lines.push(`  ${ctxLine}`);
+        }
+      }
       lines.push(`  Fix: ${f.hint}`);
       if (f.aiStatus === "fixed") {
         lines.push(`  AI Status: fixed (awaiting verification)`);
-        if (f.aiNotes) lines.push(`  AI Notes: ${f.aiNotes}`);
-      } else if (f.aiStatus === "wont_fix") {
-        lines.push(`  AI Status: won't fix`);
         if (f.aiNotes) lines.push(`  AI Notes: ${f.aiNotes}`);
       }
       lines.push("");

@@ -160,6 +160,7 @@ export const DETAIL_PREVIEW_LENGTH = 120;
  */
 export const KNOWN_DEPENDENCY_NAMES = [
   "next", "@remix-run/dev", "nuxt", "vite", "astro",
-  "express", "fastify", "hono", "koa", "nest",
+  "@nestjs/core", "@adonisjs/core", "sails",
+  "express", "fastify", "hono", "koa", "@hapi/hapi",
   "prisma", "drizzle-orm", "typeorm", "sequelize",
 ] as const;

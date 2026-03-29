@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { enrichFindings, enrichEndpoints, enrichRequestDetail } from "../../src/mcp/enrichment.js";
 import { makeStatefulIssue, makeMockClient } from "../helpers/mcp-factories.js";
-import { makeRequest, makeQuery } from "../helpers/factories.js";
+import { makeRequest, makeQuery, makeFetch } from "../helpers/factories.js";
 
 describe("enrichFindings", () => {
   it("returns empty array when no issues exist", async () => {
@@ -110,6 +110,8 @@ describe("enrichFindings", () => {
       },
     });
     const req = makeRequest({ id: "req-1", durationMs: 120 });
+    const queries = [makeQuery({ parentRequestId: "req-1" }), makeQuery({ parentRequestId: "req-1" }), makeQuery({ parentRequestId: "req-1" })];
+    const fetches = [makeFetch({ parentRequestId: "req-1" }), makeFetch({ parentRequestId: "req-1" })];
     const client = makeMockClient({
       getIssues: vi.fn().mockResolvedValue({ issues: [issue] }),
       getRequests: vi.fn().mockResolvedValue({ total: 1, requests: [req] }),
@@ -117,12 +119,14 @@ describe("enrichFindings", () => {
         requestId: "req-1", total: 0, timeline: [],
         counts: { fetches: 2, logs: 0, errors: 0, queries: 3 },
       }),
+      getQueries: vi.fn().mockResolvedValue({ total: 3, entries: queries }),
+      getFetches: vi.fn().mockResolvedValue({ total: 2, entries: fetches }),
     });
 
     const result = await enrichFindings(client);
     expect(result[0].context).toContain("120ms");
-    expect(result[0].context).toContain("3 DB queries");
-    expect(result[0].context).toContain("2 fetches");
+    expect(result[0].context).toContain("DB Queries (3)");
+    expect(result[0].context).toContain("Fetches (2)");
   });
 
   it("handles context enrichment failure gracefully", async () => {
