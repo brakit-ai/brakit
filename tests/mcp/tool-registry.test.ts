@@ -4,7 +4,7 @@ import { makeMockClient } from "../helpers/mcp-factories.js";
 
 const EXPECTED_TOOL_NAMES = [
   "get_findings", "get_endpoints", "get_request_detail",
-  "verify_fix", "get_report", "clear_findings", "report_fix",
+  "verify_fix", "get_report", "clear_findings", "report_fix", "report_fixes",
 ];
 
 describe("getToolDefinitions", () => {

@@ -33,31 +33,27 @@ export function createIngestHandler(
   const routeEvent = (event: TelemetryEvent): void => {
     switch (event.type) {
       case TIMELINE_FETCH:
-        services.fetchStore.add(event.data);
+        bus.emit("telemetry:fetch", event.data as TracedFetch);
         break;
       case TIMELINE_LOG:
-        services.logStore.add(event.data);
+        bus.emit("telemetry:log", event.data as TracedLog);
         break;
       case TIMELINE_ERROR:
-        services.errorStore.add(event.data);
+        bus.emit("telemetry:error", event.data as TracedError);
         break;
       case TIMELINE_QUERY:
-        services.queryStore.add(event.data);
+        bus.emit("telemetry:query", event.data as TracedQuery);
         break;
     }
   };
 
-  const queryStore = services.queryStore;
-  const fetchStore = services.fetchStore;
-  const logStore = services.logStore;
-  const errorStore = services.errorStore;
-  const requestStore = services.requestStore;
+  const { bus, requestStore } = services;
 
   const stores = {
-    addQuery: (data: Omit<TracedQuery, "id">) => queryStore.add(data),
-    addFetch: (data: Omit<TracedFetch, "id">) => fetchStore.add(data),
-    addLog: (data: Omit<TracedLog, "id">) => logStore.add(data),
-    addError: (data: Omit<TracedError, "id">) => errorStore.add(data),
+    addQuery: (data: Omit<TracedQuery, "id">) => bus.emit("telemetry:query", data as TracedQuery),
+    addFetch: (data: Omit<TracedFetch, "id">) => bus.emit("telemetry:fetch", data as TracedFetch),
+    addLog: (data: Omit<TracedLog, "id">) => bus.emit("telemetry:log", data as TracedLog),
+    addError: (data: Omit<TracedError, "id">) => bus.emit("telemetry:error", data as TracedError),
     addRequest: (data: TracedRequest) => requestStore.add(data),
   };
 

@@ -68,6 +68,24 @@ function toBuffer(chunk: unknown): Buffer | null {
   return null;
 }
 
+let pendingCaptures = 0;
+let drainResolvers: (() => void)[] = [];
+
+/** Resolves when all in-flight async captures have completed. */
+export function drainPendingCaptures(): Promise<void> {
+  if (pendingCaptures === 0) return Promise.resolve();
+  return new Promise((resolve) => { drainResolvers.push(resolve); });
+}
+
+function onCaptureSettled(): void {
+  pendingCaptures--;
+  if (pendingCaptures === 0 && drainResolvers.length > 0) {
+    const resolvers = drainResolvers;
+    drainResolvers = [];
+    for (const resolve of resolvers) resolve();
+  }
+}
+
 export function captureInProcess(
   req: IncomingMessage,
   res: ServerResponse,
@@ -130,6 +148,7 @@ export function captureInProcess(
 
     const capturedChunks = resChunks.slice();
     if (!isChild) {
+      pendingCaptures++;
       void (async () => {
         try {
           let body = capturedChunks.length > 0 ? Buffer.concat(capturedChunks) : null;
@@ -153,6 +172,8 @@ export function captureInProcess(
           });
         } catch (e) {
           brakitDebug(`capture store: ${getErrorMessage(e)}`);
+        } finally {
+          onCaptureSettled();
         }
       })();
     }

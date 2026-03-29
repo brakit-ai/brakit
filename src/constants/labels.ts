@@ -21,11 +21,12 @@ export const DASHBOARD_API_FINDINGS_REPORT = `${DASHBOARD_PREFIX}/api/findings/r
 export const DASHBOARD_API_GRAPH = `${DASHBOARD_PREFIX}/api/graph` as const;
 
 const VALID_TABS_TUPLE = [
-  "overview", "actions", "requests", "fetches", "queries",
-  "errors", "logs", "performance", "security", "graph",
+  "overview", "actions", "insights", "performance", "graph", "explorer",
 ] as const;
 
-export const VALID_TABS: Set<string> = new Set(VALID_TABS_TUPLE);
+export type DashboardView = (typeof VALID_TABS_TUPLE)[number];
+
+export const VALID_TABS: Set<DashboardView> = new Set(VALID_TABS_TUPLE);
 
 // ── Headers ──
 

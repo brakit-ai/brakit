@@ -7,9 +7,10 @@ import { verifyFix } from "./verify-fix.js";
 import { getReport } from "./get-report.js";
 import { clearFindings } from "./clear-findings.js";
 import { reportFix } from "./report-fix.js";
+import { reportFixes } from "./report-fixes.js";
 
 const TOOL_MAP = new Map<string, McpTool>(
-  [getFindings, getEndpoints, getRequestDetail, verifyFix, getReport, clearFindings, reportFix]
+  [getFindings, getEndpoints, getRequestDetail, verifyFix, getReport, clearFindings, reportFix, reportFixes]
     .map((t) => [t.name, t] as const),
 );
 

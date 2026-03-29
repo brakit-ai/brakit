@@ -26,13 +26,24 @@ export {
 export {
   VIEW_TITLES,
   VIEW_SUBTITLES,
+  EXPLORER_TABS,
+  type ExplorerTab,
 } from "./constants/navigation.js";
 
+export {
+  SECURITY_RULES,
+  PERFORMANCE_RULES,
+  categorizeIssue,
+  type InsightCategory,
+} from "./constants/rules.js";
+
+export { UI_STRINGS } from "./constants/ui-strings.js";
+
 import {
-  HEALTH_FAST_MS as _FAST,
-  HEALTH_GOOD_MS as _GOOD,
-  HEALTH_OK_MS as _OK,
-  HEALTH_SLOW_MS as _SLOW,
+  HEALTH_FAST_MS,
+  HEALTH_GOOD_MS,
+  HEALTH_OK_MS,
+  HEALTH_SLOW_MS,
 } from "./constants/thresholds.js";
 
 export {
@@ -108,11 +119,11 @@ export interface HealthGrade {
 }
 
 export const HEALTH_GRADES: HealthGrade[] = [
-  { max: _FAST, label: "Fast", color: "var(--green)", bg: "rgba(22,163,74,0.08)", border: "rgba(22,163,74,0.2)" },
-  { max: _GOOD, label: "Good", color: "var(--green)", bg: "rgba(22,163,74,0.06)", border: "rgba(22,163,74,0.15)" },
-  { max: _OK, label: "OK", color: "var(--amber)", bg: "rgba(217,119,6,0.06)", border: "rgba(217,119,6,0.15)" },
-  { max: _SLOW, label: "Slow", color: "var(--red)", bg: "rgba(220,38,38,0.06)", border: "rgba(220,38,38,0.15)" },
-  { max: Infinity, label: "Critical", color: "var(--red)", bg: "rgba(220,38,38,0.08)", border: "rgba(220,38,38,0.2)" },
+  { max: HEALTH_FAST_MS, label: "Fast", color: "var(--green)", bg: "var(--green-bg)", border: "var(--green-border)" },
+  { max: HEALTH_GOOD_MS, label: "Good", color: "var(--green)", bg: "var(--green-bg-subtle)", border: "var(--green-border-subtle)" },
+  { max: HEALTH_OK_MS, label: "OK", color: "var(--amber)", bg: "var(--amber-bg)", border: "var(--amber-border)" },
+  { max: HEALTH_SLOW_MS, label: "Slow", color: "var(--red)", bg: "var(--red-bg)", border: "var(--red-border)" },
+  { max: Infinity, label: "Critical", color: "var(--red)", bg: "var(--red-bg)", border: "var(--red-border)" },
 ];
 
 export const CHART_GRID_COLOR = "rgba(228,228,231,0.8)";

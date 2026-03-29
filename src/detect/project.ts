@@ -17,11 +17,22 @@ interface FrameworkDetector {
 
 // Priority order — first match wins
 const FRAMEWORKS: FrameworkDetector[] = [
-  { name: "nextjs", dep: "next", devCmd: "next dev", bin: "next", defaultPort: 3000, devArgs: ["dev", "--port"] },
-  { name: "remix", dep: "@remix-run/dev", devCmd: "remix dev", bin: "remix", defaultPort: 3000, devArgs: ["dev"] },
-  { name: "nuxt", dep: "nuxt", devCmd: "nuxt dev", bin: "nuxt", defaultPort: 3000, devArgs: ["dev", "--port"] },
-  { name: "vite", dep: "vite", devCmd: "vite", bin: "vite", defaultPort: 5173, devArgs: ["--port"] },
-  { name: "astro", dep: "astro", devCmd: "astro dev", bin: "astro", defaultPort: 4321, devArgs: ["dev", "--port"] },
+  // Meta-frameworks first (they bundle Express/Vite internally)
+  { name: "nextjs",  dep: "next",            devCmd: "next dev",    bin: "next",    defaultPort: 3000, devArgs: ["dev", "--port"] },
+  { name: "remix",   dep: "@remix-run/dev",  devCmd: "remix dev",   bin: "remix",   defaultPort: 3000, devArgs: ["dev"] },
+  { name: "nuxt",    dep: "nuxt",            devCmd: "nuxt dev",    bin: "nuxt",    defaultPort: 3000, devArgs: ["dev", "--port"] },
+  { name: "astro",   dep: "astro",           devCmd: "astro dev",   bin: "astro",   defaultPort: 4321, devArgs: ["dev", "--port"] },
+  { name: "nestjs",  dep: "@nestjs/core",    devCmd: "nest start",  bin: "nest",    defaultPort: 3000, devArgs: ["--watch"] },
+  { name: "adonis",  dep: "@adonisjs/core",  devCmd: "node ace serve", bin: "ace", defaultPort: 3333, devArgs: ["serve", "--watch"] },
+  { name: "sails",   dep: "sails",           devCmd: "sails lift",  bin: "sails",   defaultPort: 1337, devArgs: ["lift"] },
+  // Server frameworks
+  { name: "hono",    dep: "hono",            devCmd: "node",        bin: "node",    defaultPort: 3000 },
+  { name: "fastify", dep: "fastify",         devCmd: "node",        bin: "node",    defaultPort: 3000 },
+  { name: "koa",     dep: "koa",             devCmd: "node",        bin: "node",    defaultPort: 3000 },
+  { name: "hapi",    dep: "@hapi/hapi",      devCmd: "node",        bin: "node",    defaultPort: 3000 },
+  { name: "express", dep: "express",         devCmd: "node",        bin: "node",    defaultPort: 3000 },
+  // Bundlers (last — likely used alongside a framework above)
+  { name: "vite",    dep: "vite",            devCmd: "vite",        bin: "vite",    defaultPort: 5173, devArgs: ["--port"] },
 ];
 
 export async function detectProject(

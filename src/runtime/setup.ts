@@ -1,4 +1,5 @@
 import { setupFetchHook, setBrakitPort } from "../instrument/hooks/fetch.js";
+import { drainPendingCaptures } from "./capture.js";
 import { setupConsoleHook } from "../instrument/hooks/console.js";
 import { setupErrorHook } from "../instrument/hooks/errors.js";
 import { createDefaultRegistry } from "../instrument/adapters/index.js";
@@ -224,7 +225,8 @@ function registerLifecycle(
 
   process.on("SIGINT", () => { recordExitReason(EXIT_REASON_SIGINT); });
   process.on("SIGTERM", () => { recordExitReason(EXIT_REASON_SIGTERM); });
-  process.on("beforeExit", () => {
+  process.on("beforeExit", async () => {
+    await drainPendingCaptures();
     recordExitReason(EXIT_REASON_CLEAN);
     sendTelemetry();
   });
